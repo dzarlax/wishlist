@@ -35,7 +35,26 @@
   }
 
   async function handleUnreserve() {
-    dispatch('reserve');
+    const secretCode = prompt('Введите ваш секретный код для отмены бронирования:');
+    if (secretCode) {
+      try {
+        const response = await fetch(`/api/gifts/${gift.id}/unreserve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret_code: secretCode })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          alert(error.error || 'Ошибка');
+          return;
+        }
+
+        dispatch('refresh');
+      } catch (error) {
+        alert('Ошибка при отмене бронирования');
+      }
+    }
   }
 
   function getStatusBadge() {
@@ -136,7 +155,7 @@
     {#if gift.status === 'available'}
       <button
         on:click={handleReserve}
-        class="w-full py-1.5 px-3 rounded text-xs font-medium text-white bg-slate-700 hover:bg-slate-600"
+        class="w-full py-1.5 px-3 rounded text-xs font-medium text-white bg-slate-700 hover:bg-slate-600 border border-slate-600"
       >
         Забронировать
       </button>
@@ -144,21 +163,24 @@
       <div class="flex gap-1.5">
         <button
           on:click={handleReserve}
-          class="flex-1 py-1.5 px-2 rounded text-xs font-medium text-white bg-slate-700 hover:bg-slate-600"
+          class="flex-1 py-1.5 px-2 rounded text-xs font-medium text-white bg-slate-700 hover:bg-slate-600 border border-slate-600"
         >
           Куплено
         </button>
         <button
           on:click={handleUnreserve}
-          class="flex-1 py-1.5 px-2 rounded text-xs font-medium text-red-400 bg-red-900/20 hover:bg-red-900/30"
+          class="flex-1 py-1.5 px-2 rounded text-xs font-medium text-red-300 bg-red-900/30 hover:bg-red-900/40 border border-red-900/50 hover:border-red-900/70"
         >
           Отменить
         </button>
       </div>
-    {:else}
-      <div class="text-center py-1.5 px-3 rounded text-xs text-slate-500 bg-slate-800/50">
-        Куплено
-      </div>
+    {:else if gift.status === 'purchased'}
+      <button
+        on:click={handleUnreserve}
+        class="w-full py-1.5 px-3 rounded text-xs font-medium text-amber-300 bg-amber-900/30 hover:bg-amber-900/40 border border-amber-900/50 hover:border-amber-900/70"
+      >
+        Отменить
+      </button>
     {/if}
   </div>
 </div>
