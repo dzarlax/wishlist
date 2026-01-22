@@ -1,5 +1,10 @@
 # Dependencies
 node_modules/
+frontend/node_modules/
+
+# Build outputs
+frontend/dist/
+public/
 
 # Environment variables
 .env
@@ -26,3 +31,6 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# Claude
+.claude/

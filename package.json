@@ -8,7 +8,6 @@
     "dev": "concurrently \"npm run server\" \"npm run frontend\"",
     "server": "node server.js",
     "frontend": "cd frontend && npm run dev",
-    "import": "node import.js",
     "build": "cd frontend && npm run build"
   },
   "dependencies": {

@@ -1,9 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { fly, fade } from 'svelte/transition';
 
   export let gift;
-  export let index;
 
   const dispatch = createEventDispatcher();
 

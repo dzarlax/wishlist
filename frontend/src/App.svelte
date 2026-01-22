@@ -96,10 +96,9 @@
     {:else}
       <!-- Gifts Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {#each gifts as gift, index}
+        {#each gifts as gift}
           <GiftCard
             {gift}
-            {index}
             on:edit={() => openEditModal(gift)}
             on:reserve={() => openReserveModal(gift)}
             on:delete={() => openDeleteModal(gift)}
@@ -139,28 +138,3 @@
     on:deleted={onGiftSaved}
   />
 {/if}
-
-<style>
-  @keyframes gradient-x {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-
-  @keyframes pulse-slow {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 0.6; }
-  }
-
-  .animate-gradient-x {
-    background-size: 200% 200%;
-    animation: gradient-x 5s ease infinite;
-  }
-
-  .animate-pulse-slow {
-    animation: pulse-slow 10s ease-in-out infinite;
-  }
-
-  .bg-gradient-radial {
-    background: radial-gradient(circle, var(--tw-gradient-stops));
-  }
-</style>
