@@ -1,0 +1,23 @@
+{
+  "name": "wishlist-app",
+  "version": "2.0.0",
+  "description": "Modern wishlist app with Svelte + Tailwind + SQLite",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "concurrently \"npm run server\" \"npm run frontend\"",
+    "server": "node server.js",
+    "frontend": "cd frontend && npm run dev",
+    "import": "node import.js",
+    "build": "cd frontend && npm run build"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "sql.js": "^1.10.3"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

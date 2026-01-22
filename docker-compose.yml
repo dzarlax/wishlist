@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  wishlist:
+    build: .
+    container_name: wishlist-app
+    ports:
+      - "3000:3000"
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-wishlist2025}
+      - PORT=${PORT:-3000}
+    volumes:
+      - ./data:/app/data
+      - ./wishlist.db:/app/wishlist.db
+    restart: unless-stopped
