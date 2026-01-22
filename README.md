@@ -207,23 +207,35 @@ wishlist/
 
 ## 🐳 Docker
 
-### Сборка и запуск
+### Использование готового образа (рекомендуется)
 ```bash
-# Сборка образа
-docker build -t wishlist-app .
+# С docker-compose (использует образ из Docker Hub)
+docker-compose up -d
 
-# Запуск с настройкой пароля
+# Или вручную
 docker run -d \
   --name wishlist \
   -p 3000:3000 \
+  -v $(pwd)/wishlist.db:/app/wishlist.db \
   -e ADMIN_PASSWORD="your_password" \
-  -v $(pwd)/data:/app/data \
-  wishlist-app
+  dzarlax/wishlist-app:latest
 ```
 
-### С docker-compose
+### Локальная сборка
 ```bash
-docker-compose up -d
+# Локальная сборка с docker-compose
+docker-compose -f docker-compose.dev.yml up -d
+
+# Или сборка вручную
+docker build -t wishlist-app .
+
+# Запуск локального образа
+docker run -d \
+  --name wishlist \
+  -p 3000:3000 \
+  -v $(pwd)/wishlist.db:/app/wishlist.db \
+  -e ADMIN_PASSWORD="your_password" \
+  wishlist-app
 ```
 
 ## 💡 Советы

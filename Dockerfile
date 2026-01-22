@@ -21,9 +21,8 @@ RUN npm install --production
 COPY server.js ./
 COPY --from=builder /app/frontend/dist ./public
 
-# Create directory for database
-RUN mkdir -p /app/data && \
-    chown -R node:node /app
+# Setup permissions
+RUN chown -R node:node /app
 
 USER node
 
