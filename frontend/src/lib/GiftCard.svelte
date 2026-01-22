@@ -40,14 +40,12 @@
 
   function getStatusBadge() {
     switch (gift.status) {
-      case 'available':
-        return { text: '✨ Свободен', class: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' };
       case 'reserved':
-        return { text: '🔒 Забронирован', class: 'bg-amber-500/20 text-amber-300 border-amber-500/30' };
+        return { text: '🔒 Забронирован', class: 'bg-amber-500 text-white border-amber-400' };
       case 'purchased':
-        return { text: '🎁 Куплен', class: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' };
+        return { text: '✅ Куплен', class: 'bg-emerald-600 text-white border-emerald-500' };
       default:
-        return { text: gift.status, class: 'bg-slate-500/20 text-slate-300' };
+        return { text: '', class: '' };
     }
   }
 
@@ -55,13 +53,6 @@
 </script>
 
 <div class="group relative flex flex-col bg-slate-900 rounded-lg overflow-hidden border border-slate-800 hover:border-slate-700">
-  <!-- Status Badge -->
-  {#if gift.status !== 'available'}
-    <div class="absolute top-2 right-2 z-10 px-2 py-1 rounded text-xs font-medium border {status.class}">
-      {status.text}
-    </div>
-  {/if}
-
   <!-- Image -->
   <div class="relative h-36 overflow-hidden bg-slate-800 flex-shrink-0">
     {#if gift.image_url && !imageError}
@@ -73,6 +64,15 @@
       />
     {:else}
       <div class="w-full h-full flex items-center justify-center text-4xl text-slate-600">🎁</div>
+    {/if}
+
+    <!-- Status Badge -->
+    {#if status.text}
+      <div class="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="px-4 py-2 rounded-lg text-base font-bold border-2 {status.class}">
+          {status.text}
+        </div>
+      </div>
     {/if}
   </div>
 
