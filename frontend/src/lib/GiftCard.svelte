@@ -1,206 +1,325 @@
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
 
   export let gift;
+  export let index = 0;
 
   const dispatch = createEventDispatcher();
 
   let imageError = false;
+  let error = '';
+  let loading = false;
+  let hovered = false;
 
   async function handleReserve() {
+    error = '';
+    loading = true;
+
     if (gift.status === 'available') {
+      loading = false;
       dispatch('reserve');
     } else if (gift.status === 'reserved') {
       const secretCode = prompt('Введите ваш секретный код для отметки "Куплено":');
-      if (secretCode) {
-        try {
-          const response = await fetch(`/api/gifts/${gift.id}/purchased`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ secret_code: secretCode })
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            alert(error.error || 'Ошибка');
-            return;
-          }
-
-          dispatch('refresh');
-        } catch (error) {
-          alert('Ошибка при изменении статуса');
-        }
+      if (!secretCode) {
+        loading = false;
+        return;
       }
-    }
-  }
 
-  async function handleUnreserve() {
-    const secretCode = prompt('Введите ваш секретный код для отмены бронирования:');
-    if (secretCode) {
       try {
-        const response = await fetch(`/api/gifts/${gift.id}/unreserve`, {
+        const response = await fetch(`/api/gifts/${gift.id}/purchased`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ secret_code: secretCode })
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          alert(error.error || 'Ошибка');
+          const err = await response.json();
+          error = err.error || 'Ошибка';
+          loading = false;
           return;
         }
 
         dispatch('refresh');
-      } catch (error) {
-        alert('Ошибка при отмене бронирования');
+      } catch (err) {
+        error = 'Ошибка при изменении статуса';
+        loading = false;
       }
+    }
+  }
+
+  async function handleUnreserve() {
+    error = '';
+    loading = true;
+
+    const secretCode = prompt('Введите ваш секретный код для отмены бронирования:');
+    if (!secretCode) {
+      loading = false;
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/gifts/${gift.id}/unreserve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret_code: secretCode })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        error = err.error || 'Ошибка';
+        loading = false;
+        return;
+      }
+
+      dispatch('refresh');
+    } catch (err) {
+      error = 'Ошибка при отмене бронирования';
+      loading = false;
     }
   }
 
   function getStatusBadge() {
     switch (gift.status) {
       case 'reserved':
-        return { text: '🔒 Забронирован', class: 'bg-amber-500 text-white border-amber-400' };
+        return { text: '🔒 Забронирован', class: 'bg-amber-500/90 text-white border-amber-400 shadow-lg shadow-amber-500/20' };
       case 'purchased':
-        return { text: '✅ Куплен', class: 'bg-emerald-600 text-white border-emerald-500' };
+        return { text: '✅ Куплен', class: 'bg-emerald-600/90 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' };
       default:
         return { text: '', class: '' };
     }
   }
 
   const status = getStatusBadge();
+
+  function formatPrice(price) {
+    if (!price) return '';
+    if (/^\d+(\.\d{1,2})?$/.test(price)) {
+      return `${price} ₽`;
+    }
+    return price;
+  }
 </script>
 
-<div class="group relative flex flex-col bg-slate-900 rounded-lg overflow-hidden border border-slate-800 hover:border-slate-700">
+<div
+  class="gift-card group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-300 ease-out {gift.status === 'available'
+    ? 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/95 dark:to-slate-800/95 border-slate-300 dark:border-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1'
+    : 'bg-slate-100 dark:bg-slate-900/80 border-slate-300 dark:border-slate-800/50 opacity-75'}"
+  on:mouseenter={() => hovered = true}
+  on:mouseleave={() => hovered = false}
+  in:fly={{ y: 50, opacity: 0, duration: 400, delay: index * 50, easing: quintOut }}
+>
   <!-- Image -->
-  <div class="relative h-36 overflow-hidden bg-slate-800 flex-shrink-0">
+  <div class="relative h-40 overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 flex-shrink-0">
     {#if gift.image_url && !imageError}
       <img
         src={gift.image_url}
         alt={gift.name}
-        class="w-full h-full object-cover"
+        class="w-full h-full object-cover transition-transform duration-500 ease-out {hovered ? 'scale-110' : 'scale-100'}"
         on:error={() => imageError = true}
       />
     {:else}
-      <div class="w-full h-full flex items-center justify-center text-4xl text-slate-600">🎁</div>
+      <div class="w-full h-full flex items-center justify-center text-5xl opacity-30 transition-transform duration-500 ease-out {hovered ? 'scale-110 rotate-5' : 'scale-100'}">
+        🎁
+      </div>
     {/if}
 
-    <!-- Status Badge -->
     {#if status.text}
-      <div class="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div class="px-4 py-2 rounded-lg text-base font-bold border-2 {status.class}">
+      <div class="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-md transition-opacity duration-300" transition:fade={{ duration: 200 }}>
+        <div class="px-4 py-2 rounded-lg text-base font-bold border-2 {status.class} transform transition-transform duration-300 hover:scale-105">
           {status.text}
         </div>
       </div>
     {/if}
+
+    {#if gift.status === 'available' && gift.priority === '🔥 Очень хочу'}
+      <div class="absolute top-2 right-2 w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-lg shadow-red-500/50"></div>
+    {/if}
   </div>
 
   <!-- Content -->
-  <div class="p-3 space-y-2 flex flex-col flex-1">
-    <!-- Badges -->
-    {#if gift.category}
-      <div class="flex gap-1.5 flex-wrap">
-        <span class="px-2 py-0.5 rounded text-xs text-slate-400 bg-slate-800">
+  <div class="p-4 space-y-3 flex flex-col flex-1 backdrop-blur-sm">
+    {#if error}
+      <div
+        class="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 text-xs text-red-600 dark:text-red-300 flex items-center gap-2"
+        transition:fade={{ duration: 200 }}
+      >
+        <span>⚠️</span>
+        <span>{error}</span>
+      </div>
+    {/if}
+
+    <div class="flex gap-2 flex-wrap">
+      {#if gift.category}
+        <span class="px-2.5 py-1 rounded-lg text-xs text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/50 backdrop-blur-sm">
           {gift.category}
         </span>
-        <span class="px-2 py-0.5 rounded text-xs text-slate-400 bg-slate-800">
-          {gift.priority}
-        </span>
-      </div>
-    {/if}
+      {/if}
+      <span class="px-2.5 py-1 rounded-lg text-xs {gift.priority === '🔥 Очень хочу'
+        ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800/50'
+        : gift.priority === '⭐ Было бы здорово'
+        ? 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800/50'
+        : 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/50'} backdrop-blur-sm">
+        {gift.priority}
+      </span>
+    </div>
 
-    <!-- Title -->
-    <h3 class="text-sm font-medium text-white">{gift.name}</h3>
+    <h3 class="text-base font-semibold text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors duration-200">
+      {gift.name}
+    </h3>
 
-    <!-- Description -->
     {#if gift.description}
-      <p class="text-slate-500 text-xs">{gift.description}</p>
+      <p class="text-slate-600 dark:text-slate-400 text-sm line-clamp-2 leading-relaxed">
+        {gift.description}
+      </p>
     {/if}
 
-    <!-- Spacer -->
     <div class="flex-1"></div>
 
-    <!-- Price & Actions -->
-    {#if gift.price}
-      <div class="flex items-center justify-between pt-2">
-        <span class="text-sm font-semibold text-emerald-400">{gift.price}</span>
-        <div class="flex gap-1">
-          {#if gift.link}
-            <a
-              href={gift.link}
-              target="_blank"
-              rel="noopener"
-              class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-xs"
-            >
-              🔗
-            </a>
-          {/if}
-          <button
-            on:click={() => dispatch('edit')}
-            class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-xs"
-          >
-            ✏️
-          </button>
-          <button
-            on:click={() => dispatch('delete')}
-            class="w-7 h-7 rounded bg-slate-800 hover:bg-red-900/50 flex items-center justify-center text-xs"
-          >
-            🗑️
-          </button>
-        </div>
-      </div>
-    {/if}
+    <div class="flex items-center justify-between pt-2 border-t border-slate-300 dark:border-slate-700/50">
+      {#if gift.price}
+        <span class="text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
+          {formatPrice(gift.price)}
+        </span>
+      {:else}
+        <span></span>
+      {/if}
 
-    <!-- Action Button -->
+      <div class="flex gap-2">
+        {#if gift.link}
+          <a
+            href={gift.link}
+            target="_blank"
+            rel="noopener"
+            class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+            title="Открыть ссылку"
+          >
+            🔗
+          </a>
+        {/if}
+        <button
+          on:click={() => dispatch('edit')}
+          class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-amber-100 dark:hover:bg-amber-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-amber-400 dark:hover:border-amber-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+          title="Редактировать"
+        >
+          ✏️
+        </button>
+        <button
+          on:click={() => dispatch('delete')}
+          class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-red-100 dark:hover:bg-red-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-red-400 dark:hover:border-red-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+          title="Удалить"
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
+
     {#if gift.status === 'available'}
       <button
         on:click={handleReserve}
-        class="w-full py-1.5 px-3 rounded text-xs font-medium text-white bg-slate-700 hover:bg-slate-600 border border-slate-600"
+        disabled={loading}
+        class="w-full py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border border-indigo-500/50 shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5 active:translate-y-0"
       >
-        Забронировать
+        {#if loading}
+          <span class="flex items-center justify-center gap-2">
+            <span class="animate-spin">⏳</span>
+            <span>Загрузка...</span>
+          </span>
+        {:else}
+          Забронировать подарок
+        {/if}
       </button>
     {:else if gift.status === 'reserved'}
-      <div class="flex gap-1.5">
+      <div class="flex gap-2">
         <button
           on:click={handleReserve}
-          class="flex-1 py-1.5 px-2 rounded text-xs font-medium text-white bg-slate-700 hover:bg-slate-600 border border-slate-600"
+          disabled={loading}
+          class="flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/50 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0"
         >
-          Куплено
+          {#if loading}
+            <span class="flex items-center justify-center gap-2">
+              <span class="animate-spin">⏳</span>
+              <span>Загрузка...</span>
+            </span>
+          {:else}
+            ✅ Куплено
+          {/if}
         </button>
         <button
           on:click={handleUnreserve}
-          class="flex-1 py-1.5 px-2 rounded text-xs font-medium text-red-300 bg-red-900/30 hover:bg-red-900/40 border border-red-900/50 hover:border-red-900/70"
+          disabled={loading}
+          class="flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-900/50 hover:border-red-400 dark:hover:border-red-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
         >
-          Отменить
+          {#if loading}
+            <span class="flex items-center justify-center gap-2">
+              <span class="animate-spin">⏳</span>
+              <span>Загрузка...</span>
+            </span>
+          {:else}
+            Отменить
+          {/if}
         </button>
       </div>
     {:else if gift.status === 'purchased'}
       <button
         on:click={handleUnreserve}
-        class="w-full py-1.5 px-3 rounded text-xs font-medium text-amber-300 bg-amber-900/30 hover:bg-amber-900/40 border border-amber-900/50 hover:border-amber-900/70"
+        disabled={loading}
+        class="w-full py-2.5 px-4 rounded-lg text-sm font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/50 border border-amber-300 dark:border-amber-900/50 hover:border-amber-400 dark:hover:border-amber-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
       >
-        Отменить
+        {#if loading}
+          <span class="flex items-center justify-center gap-2">
+            <span class="animate-spin">⏳</span>
+            <span>Загрузка...</span>
+          </span>
+        {:else}
+          Отменить бронь
+        {/if}
       </button>
     {/if}
   </div>
 </div>
 
 <style>
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .gift-card {
+    animation: card-appear 0.5s ease-out backwards;
+  }
+
   @keyframes card-appear {
     from {
       opacity: 0;
-      transform: translateY(30px);
+      transform: translateY(30px) scale(0.95);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
     }
   }
 
-  .line-clamp-3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+  .gift-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .gift-card:hover::before {
+    opacity: 1;
   }
 </style>

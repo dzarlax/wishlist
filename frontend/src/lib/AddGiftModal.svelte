@@ -1,6 +1,8 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
+  import { toasts } from './stores/toasts.js';
+  import { validators } from './utils/validation.js';
 
   const dispatch = createEventDispatcher();
 
@@ -12,6 +14,8 @@
   let link = '';
   let imageUrl = '';
   let adminPassword = '';
+  let loading = false;
+  let errors = {};
 
   const categories = [
     '🔧 Электроника и гаджеты',
@@ -30,36 +34,63 @@
     '💭 Просто мечта'
   ];
 
+  function validateForm() {
+    errors = {};
+
+    const nameError = validators.giftName(name);
+    if (nameError) errors.name = nameError;
+
+    const descError = validators.description(description);
+    if (descError) errors.description = descError;
+
+    const priceError = validators.price(price);
+    if (priceError) errors.price = priceError;
+
+    const linkError = validators.link(link);
+    if (linkError) errors.link = linkError;
+
+    const imageError = validators.imageUrl(imageUrl);
+    if (imageError) errors.imageUrl = imageError;
+
+    const passwordError = validators.adminPassword(adminPassword);
+    if (passwordError) errors.adminPassword = passwordError;
+
+    return Object.keys(errors).length === 0;
+  }
+
   async function handleSubmit() {
-    if (!name.trim()) {
-      alert('Введите название подарка');
+    errors = {};
+
+    if (!validateForm()) {
       return;
     }
 
-    if (!adminPassword) {
-      alert('Введите пароль администратора');
-      return;
-    }
+    loading = true;
 
     try {
+      const payload = {
+        name: name.trim(),
+        description: description.trim(),
+        category,
+        priority
+      };
+
+      if (price.trim()) payload.price = price.trim();
+      if (link.trim()) payload.link = link.trim();
+      if (imageUrl.trim()) payload.image_url = imageUrl.trim();
+
       const response = await fetch('/api/gifts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          admin_password: adminPassword,
-          name: name.trim(),
-          description: description.trim(),
-          category,
-          priority,
-          price: price.trim(),
-          link: link.trim(),
-          image_url: imageUrl.trim()
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Password': adminPassword
+        },
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        alert(error.error || 'Ошибка при добавлении');
+        const err = await response.json();
+        toasts.error(err.error || 'Ошибка при добавлении');
         return;
       }
 
@@ -73,9 +104,12 @@
       imageUrl = '';
       adminPassword = '';
 
+      toasts.success('Подарок успешно добавлен');
       dispatch('saved');
-    } catch (error) {
-      alert('Ошибка при добавлении подарка');
+    } catch (err) {
+      toasts.error('Ошибка при добавлении подарка');
+    } finally {
+      loading = false;
     }
   }
 
@@ -117,7 +151,11 @@
           bind:value={name}
           placeholder="Название подарка"
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+          class:border-red-500={errors.name}
         />
+        {#if errors.name}
+          <p class="mt-1 text-sm text-red-400">{errors.name}</p>
+        {/if}
       </div>
 
       <!-- Category & Priority -->
@@ -156,7 +194,11 @@
           rows="3"
           placeholder="Опишите подарок (опционально)"
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+          class:border-red-500={errors.description}
         ></textarea>
+        {#if errors.description}
+          <p class="mt-1 text-sm text-red-400">{errors.description}</p>
+        {/if}
       </div>
 
       <!-- Price & Link -->
@@ -178,7 +220,11 @@
             bind:value={link}
             placeholder="https://..."
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            class:border-red-500={errors.link}
           />
+          {#if errors.link}
+            <p class="mt-1 text-sm text-red-400">{errors.link}</p>
+          {/if}
         </div>
       </div>
 
@@ -190,7 +236,11 @@
           bind:value={imageUrl}
           placeholder="https://..."
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+          class:border-red-500={errors.imageUrl}
         />
+        {#if errors.imageUrl}
+          <p class="mt-1 text-sm text-red-400">{errors.imageUrl}</p>
+        {/if}
       </div>
 
       <!-- Admin Password -->
@@ -201,7 +251,11 @@
           bind:value={adminPassword}
           placeholder="Введите пароль"
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+          class:border-red-500={errors.adminPassword}
         />
+        {#if errors.adminPassword}
+          <p class="mt-1 text-sm text-red-400">{errors.adminPassword}</p>
+        {/if}
       </div>
     </div>
 
@@ -215,9 +269,10 @@
       </button>
       <button
         on:click={handleSubmit}
-        class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5"
+        disabled={loading}
+        class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
       >
-        Добавить
+        {loading ? 'Добавление...' : 'Добавить'}
       </button>
     </div>
   </div>

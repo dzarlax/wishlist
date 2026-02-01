@@ -14,6 +14,8 @@
   let link = '';
   let imageUrl = '';
   let adminPassword = '';
+  let loading = false;
+  let error = '';
 
   const categories = [
     '🔧 Электроника и гаджеты',
@@ -43,41 +45,52 @@
   });
 
   async function handleSubmit() {
+    error = '';
+
     if (!name.trim()) {
-      alert('Введите название подарка');
+      error = 'Введите название подарка';
       return;
     }
 
     if (!adminPassword) {
-      alert('Введите пароль администратора');
+      error = 'Введите пароль администратора';
       return;
     }
 
+    loading = true;
+
     try {
+      const payload = {
+        name: name.trim(),
+        description: description.trim(),
+        category,
+        priority
+      };
+
+      if (price.trim()) payload.price = price.trim();
+      if (link.trim()) payload.link = link.trim();
+      if (imageUrl.trim()) payload.image_url = imageUrl.trim();
+
       const response = await fetch(`/api/gifts/${gift.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          admin_password: adminPassword,
-          name: name.trim(),
-          description: description.trim(),
-          category,
-          priority,
-          price: price.trim(),
-          link: link.trim(),
-          image_url: imageUrl.trim()
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Password': adminPassword
+        },
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        alert(error.error || 'Ошибка при сохранении');
+        const err = await response.json();
+        error = err.error || 'Ошибка при сохранении';
         return;
       }
 
       dispatch('saved');
-    } catch (error) {
-      alert('Ошибка при сохранении изменений');
+    } catch (err) {
+      error = 'Ошибка при сохранении изменений';
+    } finally {
+      loading = false;
     }
   }
 
@@ -106,6 +119,13 @@
 
     <!-- Body -->
     <div class="p-8 space-y-6">
+      <!-- Error Message -->
+      {#if error}
+        <div class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      {/if}
+
       <!-- Name -->
       <div>
         <label class="block text-sm font-semibold text-slate-300 mb-2">Название *</label>
@@ -207,9 +227,10 @@
       </button>
       <button
         on:click={handleSubmit}
-        class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5"
+        disabled={loading}
+        class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
       >
-        Сохранить
+        {loading ? 'Сохранение...' : 'Сохранить'}
       </button>
     </div>
   </div>

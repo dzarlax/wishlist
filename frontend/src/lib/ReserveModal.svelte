@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
+  import { toasts } from './stores/toasts.js';
 
   export let gift;
 
@@ -8,12 +9,18 @@
 
   let reservedBy = '';
   let secretCode = '';
+  let loading = false;
+  let error = '';
 
   async function handleSubmit() {
+    error = '';
+
     if (!secretCode.trim()) {
-      alert('Введите секретный код');
+      error = 'Введите секретный код';
       return;
     }
+
+    loading = true;
 
     try {
       const response = await fetch(`/api/gifts/${gift.id}/reserve`, {
@@ -26,14 +33,24 @@
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        alert(error.error || 'Ошибка при бронировании');
+        const err = await response.json();
+        error = err.error || 'Ошибка при бронировании';
         return;
       }
 
+      // Copy secret code to clipboard
+      try {
+        await navigator.clipboard.writeText(secretCode.trim());
+        toasts.success(`Забронировано! Код скопирован: ${secretCode.trim()}`);
+      } catch {
+        toasts.success(`Забронировано! Ваш код: ${secretCode.trim()}`);
+      }
+
       dispatch('saved');
-    } catch (error) {
-      alert('Ошибка при бронировании подарка');
+    } catch (err) {
+      error = 'Ошибка при бронировании подарка';
+    } finally {
+      loading = false;
     }
   }
 
@@ -62,6 +79,13 @@
 
     <!-- Body -->
     <div class="p-8 space-y-6">
+      <!-- Error Message -->
+      {#if error}
+        <div class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      {/if}
+
       <div>
         <label class="block text-sm font-semibold text-slate-300 mb-2">Ваше имя (опционально)</label>
         <input
@@ -96,9 +120,10 @@
       </button>
       <button
         on:click={handleSubmit}
-        class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5"
+        disabled={loading}
+        class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
       >
-        Забронировать
+        {loading ? 'Бронирование...' : 'Забронировать'}
       </button>
     </div>
   </div>

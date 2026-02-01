@@ -1,156 +1,185 @@
 # 🎁 Wishlist App
 
-Современное приложение для списка желаний с **Svelte + Vite + Tailwind CSS**.
+A modern wishlist application built with **Svelte + Vite + Tailwind CSS**.
 
-Минималистичный дизайн, тёмная тема и анонимное бронирование подарков.
+Minimalist design, dark/light theme support, and anonymous gift reservations.
 
-## ✨ Возможности
+## ✨ Features
 
-- ➕ Добавление подарков с категорией, приоритетом, описанием, ценой и ссылкой
-- 🏷️ **Категории**: Электроника, Умный дом, Аксессуары, Обучение и др.
-- ⭐ **Приоритеты**: Очень хочу, Было бы здорово, Просто мечта
-- 🔒 **Анонимное бронирование** с секретными кодами дарителей
-- ✅ **Статусы**: Свободен → Забронирован → Куплен
-- 🖼️ Поддержка изображений (по URL)
-- 🗑️ Удаление подарков
-- 📱 Полностью адаптивный дизайн
-- 💾 Хранение в SQLite (все данные в файле `wishlist.db`)
-- 🎨 **Svelte + Tailwind CSS** — современный реактивный UI
+- ➕ Add gifts with category, priority, description, price, and link
+- 🏷️ **Categories**: Electronics, Smart Home, Accessories, Education, and more
+- ⭐ **Priorities**: Really want, Would be nice, Just a dream
+- 🔒 **Anonymous reservation** with secret codes from gift givers
+- ✅ **Statuses**: Available → Reserved → Purchased
+- 🖼️ Image support (via URL)
+- 🗑️ Delete gifts
+- 📱 Fully responsive design
+- 💾 SQLite storage (all data in `wishlist.db`)
+- 🎨 **Svelte + Tailwind CSS 4** — modern reactive UI
+- 🌙 **Theme toggle** (light/dark) with preference persistence
+- 🔔 **Toast notifications** for user feedback
 
-## 🚀 Установка и запуск
+## 🚀 Installation
 
-### Требования
-- Node.js (v20 или выше)
+### Requirements
+- Node.js (v20 or higher)
 
-### Быстрый старт
+### Quick Start
 
 ```bash
-# 1. Установите корневые зависимости
+# 1. Install root dependencies
 npm install
 
-# 2. Установите фронтенд зависимости
+# 2. Install frontend dependencies
 cd frontend && npm install && cd ..
 
-# 3. Запустите в режиме разработки (backend + frontend)
+# 3. Run in development mode (backend + frontend)
 npm run dev
 ```
 
-Приложение будет доступно по адресам:
+The app will be available at:
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:3000
 
-### Продакшн
+### Production
 
 ```bash
-# Соберите фронтенд
+# Build frontend
 npm run build
 
-# Запустите сервер (будет обслуживать статику из public/)
+# Start server (will serve static files from frontend/dist/)
 npm start
 ```
 
-### 🔒 Пароль администратора
+### 🔒 Admin Password
 
-**По умолчанию:** `wishlist2025`
+**Default:** `wishlist2025`
 
-**Как изменить пароль:**
+**How to change password:**
 
-Способ 1 - Через .env файл (рекомендуется):
+Method 1 - Via .env file (recommended):
 ```bash
-# Отредактируйте .env файл
-ADMIN_PASSWORD=ваш_надёжный_пароль
+# Edit .env file
+ADMIN_PASSWORD=your_secure_password
 npm start
 ```
 
-Способ 2 - Через переменную окружения:
+Method 2 - Via environment variable:
 ```bash
-ADMIN_PASSWORD="твой_пароль" npm start
+ADMIN_PASSWORD="your_password" npm start
 ```
 
-**Пароль нужен для:**
-- ➕ Добавления подарков
-- ✏️ Редактирования подарков
-- 🗑️ Удаления подарков
+**Password is required for:**
+- ➕ Adding gifts
+- ✏️ Editing gifts
+- 🗑️ Deleting gifts
 
-## 🛠️ Технологии
+## 🛠️ Tech Stack
 
 ### Frontend
-- **Svelte** — реактивный фреймворк с отличной производительностью
-- **Vite** — молниеносная сборка
-- **Tailwind CSS** — утилитарные CSS классы
+- **Svelte 5** — reactive framework with excellent performance
+- **Vite 7** — lightning-fast build tool
+- **Tailwind CSS 4** — utility-first CSS with dark theme
+- **Vitest** — unit testing
 
 ### Backend
 - **Express.js** — REST API
-- **sql.js** — SQLite на чистом JavaScript (без native compilation)
-- **dotenv** — переменные окружения
+- **sql.js** — SQLite in pure JavaScript (no native compilation)
+- **dotenv** — environment variables
+- **express-rate-limit** — rate limiting protection
 
-## 📂 Структура проекта
+## 📂 Project Structure
 
 ```
 wishlist/
-├── server.js              # Backend на Express + sql.js
-├── package.json           # Корневые зависимости и скрипты
-├── .env                   # Переменные окружения
-├── wishlist.db            # База данных SQLite
-├── import.js              # Скрипт импорта данных
-├── Dockerfile             # Docker конфигурация
-├── docker-compose.yml     # Docker Compose конфигурация
-├── frontend/              # Svelte приложение
+├── server.js              # Express + sql.js backend
+├── server/                # Modular backend structure
+│   ├── config/
+│   │   └── env.js        # Environment configuration
+│   ├── middleware/
+│   │   ├── rateLimiter.js    # Rate limiting
+│   │   └── validation.js     # Request validation
+│   ├── models/
+│   │   └── Gift.js       # Gift model
+│   └── migrations/
+│       ├── migrationManager.js  # Migration system
+│       └── 0001-initial-schema.js
+├── package.json           # Root dependencies and scripts
+├── .env                   # Environment variables
+├── wishlist.db            # SQLite database
+├── Dockerfile             # Docker configuration
+├── docker-compose.yml     # Docker Compose configuration
+├── frontend/              # Svelte application
 │   ├── src/
-│   │   ├── App.svelte              # Главный компонент
-│   │   ├── app.css                # Глобальные стили
+│   │   ├── App.svelte              # Main component
+│   │   ├── app.css                # Global styles with Tailwind
 │   │   └── lib/
-│   │       ├── GiftCard.svelte     # Карточка подарка
-│   │       ├── AddGiftModal.svelte # Модалка добавления
-│   │       ├── EditGiftModal.svelte # Модалка редактирования
-│   │       ├── ReserveModal.svelte # Модалка бронирования
-│   │       └── DeleteModal.svelte  # Модалка удаления
+│   │       ├── GiftCard.svelte     # Gift card component
+│   │       ├── AddGiftModal.svelte # Add gift modal
+│   │       ├── EditGiftModal.svelte # Edit gift modal
+│   │       ├── ReserveModal.svelte # Reserve modal
+│   │       ├── DeleteModal.svelte  # Delete modal
+│   │       ├── components/         # Reusable components
+│   │       │   ├── Toast.svelte
+│   │       │   └── ToastContainer.svelte
+│   │       ├── stores/             # Svelte stores
+│   │       │   ├── theme.js        # Theme management
+│   │       │   └── toasts.js       # Toast notifications
+│   │       └── utils/              # Utilities
+│   │           ├── api.js          # API client
+│   │           └── validation.js   # Form validation
+│   ├── tests/               # Unit tests (Vitest)
 │   ├── package.json
-│   ├── vite.config.js       # Vite конфиг + proxy
-│   ├── tailwind.config.js   # Tailwind конфиг
+│   ├── vite.config.js       # Vite config + proxy
+│   ├── tailwind.config.js   # Tailwind config
+│   ├── postcss.config.js    # PostCSS config
+│   ├── vitest.config.js     # Vitest config
 │   └── svelte.config.js
+├── CLAUDE.md             # Documentation for Claude Code
 └── README.md
 ```
 
-## 🎨 Дизайн
+## 🎨 Design
 
-- 🌙 **Тёмная тема** с slate оттенками
-- ⚡ **Минималистичный интерфейс** без лишних эффектов
-- 💫 **Плавные переходы** и hover эффекты
-- 📱 **Адаптивный дизайн** для всех устройств
+- 🌙 **Theme toggle** (light/dark) with automatic system preference detection
+- ⚡ **Minimalist interface** without unnecessary effects
+- 💫 **Smooth transitions** and hover effects
+- 📱 **Responsive design** for all devices
+- 🎨 **Slate palette** in Tailwind CSS 4
 
-## 🎭 Как работает анонимность?
+## 🎭 How Anonymity Works
 
-1. Даритель бронирует подарок и вводит **секретный код**
-2. Этот код сохраняется в базе данных, но **не отображается** в интерфейсе
-3. Владелец вишлиста обещает не смотреть в базу данных до праздника
-4. Даритель может отменить или изменить статус только зная код
-5. После праздника владелец может посмотреть кто что подарил (если захочет)
+1. Gift giver reserves a gift and enters a **secret code**
+2. This code is saved in the database but **not displayed** in the UI
+3. Wishlist owner promises not to look at the database before the holiday
+4. Gift giver can cancel or change status only knowing the code
+5. After the holiday, the owner can see who gave what (if they want)
 
-## 🔄 Импорт данных
+## 🔄 Data Import
 
-Команда `npm run import` создаёт базу данных из файла `wishlist.md` со всеми:
-- Категориями (🔧 Электроника, 🏠 Умный дом, 🔋 Аксессуары, 📚 Обучение)
-- Приоритетами (🔥 Очень хочу, ⭐ Было бы здорово)
-- Ценами и ссылками
+The database is created automatically on first run through the migration system.
+
+Initialization includes:
+- Creating the `gifts` table with all necessary fields
+- Ready to work with categories and priorities
 
 ## 🔧 API
 
 ### GET /api/gifts
-Получить список всех подарков (сортировка по приоритету)
+Get all gifts (sorted by priority)
 
 ### GET /api/gifts/:id
-Получить информацию о конкретном подарке
+Get information about a specific gift
 
 ### POST /api/gifts
-Добавить новый подарок
+Add a new gift
 ```json
 {
   "admin_password": "wishlist2025",
-  "name": "Название",
-  "description": "Описание",
-  "category": "🔧 Электроника и гаджеты",
-  "priority": "🔥 Очень хочу",
+  "name": "Gift Name",
+  "description": "Description",
+  "category": "🔧 Electronics and Gadgets",
+  "priority": "🔥 Really want",
   "link": "https://...",
   "image_url": "https://...",
   "price": "1000 ₽"
@@ -158,16 +187,16 @@ wishlist/
 ```
 
 ### POST /api/gifts/:id/reserve
-Забронировать подарок
+Reserve a gift
 ```json
 {
   "secret_code": "SantaHelper123",
-  "reserved_by": "Даритель"
+  "reserved_by": "Gift Giver"
 }
 ```
 
 ### POST /api/gifts/:id/unreserve
-Отменить бронирование
+Cancel reservation
 ```json
 {
   "secret_code": "SantaHelper123"
@@ -175,7 +204,7 @@ wishlist/
 ```
 
 ### POST /api/gifts/:id/purchased
-Отметить как купленный
+Mark as purchased
 ```json
 {
   "secret_code": "SantaHelper123"
@@ -183,14 +212,14 @@ wishlist/
 ```
 
 ### PUT /api/gifts/:id
-Редактировать подарок
+Edit a gift
 ```json
 {
   "admin_password": "wishlist2025",
-  "name": "Новое название",
-  "description": "Новое описание",
-  "category": "🔧 Электроника и гаджеты",
-  "priority": "🔥 Очень хочу",
+  "name": "New Name",
+  "description": "New Description",
+  "category": "🔧 Electronics and Gadgets",
+  "priority": "🔥 Really want",
   "link": "https://...",
   "image_url": "https://...",
   "price": "2000 ₽"
@@ -198,7 +227,7 @@ wishlist/
 ```
 
 ### DELETE /api/gifts/:id
-Удалить подарок
+Delete a gift
 ```json
 {
   "admin_password": "wishlist2025"
@@ -207,12 +236,12 @@ wishlist/
 
 ## 🐳 Docker
 
-### Использование готового образа (рекомендуется)
+### Using pre-built image (recommended)
 ```bash
-# С docker-compose (использует образ из Docker Hub)
+# With docker-compose (uses image from Docker Hub)
 docker-compose up -d
 
-# Или вручную
+# Or manually
 docker run -d \
   --name wishlist \
   -p 3000:3000 \
@@ -221,15 +250,15 @@ docker run -d \
   dzarlax/wishlist-app:latest
 ```
 
-### Локальная сборка
+### Local build
 ```bash
-# Локальная сборка с docker-compose
+# Local build with docker-compose
 docker-compose -f docker-compose.dev.yml up -d
 
-# Или сборка вручную
+# Or build manually
 docker build -t wishlist-app .
 
-# Запуск локального образа
+# Run local image
 docker run -d \
   --name wishlist \
   -p 3000:3000 \
@@ -238,13 +267,13 @@ docker run -d \
   wishlist-app
 ```
 
-## 💡 Советы
+## 💡 Tips
 
-- Для изображений можно использовать ссылки на товары
-- База данных создается автоматически при первом запуске
-- Все данные сохраняются в файл `wishlist.db`
-- Подарки сортируются по приоритету (🔥 > ⭐ > 💭)
+- You can use product links for images
+- Database is created automatically on first run
+- All data is saved in `wishlist.db`
+- Gifts are sorted by priority (🔥 > ⭐ > 💭)
 
-## 📝 Лицензия
+## 📝 License
 
 MIT

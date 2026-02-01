@@ -7,10 +7,14 @@
   const dispatch = createEventDispatcher();
 
   let adminPassword = '';
+  let loading = false;
+  let error = '';
 
   async function handleDelete() {
+    error = '';
+
     if (!adminPassword) {
-      alert('Введите пароль администратора');
+      error = 'Введите пароль администратора';
       return;
     }
 
@@ -18,22 +22,28 @@
       return;
     }
 
+    loading = true;
+
     try {
       const response = await fetch(`/api/gifts/${gift.id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ admin_password: adminPassword })
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Password': adminPassword
+        }
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        alert(error.error || 'Ошибка при удалении');
+        const err = await response.json();
+        error = err.error || 'Ошибка при удалении';
         return;
       }
 
       dispatch('deleted');
-    } catch (error) {
-      alert('Ошибка при удалении подарка');
+    } catch (err) {
+      error = 'Ошибка при удалении подарка';
+    } finally {
+      loading = false;
     }
   }
 
@@ -62,6 +72,13 @@
 
     <!-- Body -->
     <div class="p-8 space-y-6">
+      <!-- Error Message -->
+      {#if error}
+        <div class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      {/if}
+
       <p class="text-slate-400">
         Вы уверены, что хотите удалить <span class="text-white font-semibold">{gift.name}</span>?
         Это действие нельзя отменить.
@@ -88,9 +105,10 @@
       </button>
       <button
         on:click={handleDelete}
-        class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transition-all duration-300 hover:-translate-y-0.5"
+        disabled={loading}
+        class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
       >
-        Удалить
+        {loading ? 'Удаление...' : 'Удалить'}
       </button>
     </div>
   </div>
