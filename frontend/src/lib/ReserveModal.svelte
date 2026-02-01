@@ -74,13 +74,15 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="reserve-modal-title"
+  aria-hidden="true"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-lg"
     transition:fly={{ y: 50, opacity: 0, duration: 300 }}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="reserve-modal-title"
+    tabindex="-1"
   >
     <!-- Header -->
     <div class="px-8 py-6 border-b border-slate-700/50">
