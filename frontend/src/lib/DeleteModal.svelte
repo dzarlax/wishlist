@@ -54,12 +54,23 @@
       dispatch('close');
     }
   }
+
+  function handleKeydown(event) {
+    if (event.key === 'Escape') {
+      dispatch('close');
+    }
+  }
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="delete-modal-title"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-lg"
@@ -67,7 +78,7 @@
   >
     <!-- Header -->
     <div class="px-8 py-6 border-b border-slate-700/50">
-      <h2 class="text-2xl font-bold bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent">
+      <h2 id="delete-modal-title" class="text-2xl font-bold bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent">
         🗑️ {$t('modals.delete.title')}
       </h2>
     </div>
@@ -86,8 +97,9 @@
       </p>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">🔒 {$t('validation.adminPassword')} *</label>
+        <label for="delete-admin-password" class="block text-sm font-semibold text-slate-300 mb-2">🔒 {$t('validation.adminPassword')} *</label>
         <input
+          id="delete-admin-password"
           type="password"
           bind:value={adminPassword}
           placeholder="••••••••"

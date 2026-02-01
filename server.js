@@ -85,8 +85,11 @@ function saveDB() {
 // Configure CORS with allowed origins
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin (like mobile apps, curl requests, or same-origin requests)
     if (!origin) return callback(null, true);
+    // Allow all origins if wildcard is set (production mode)
+    if (config.allowedOrigins.includes('*')) return callback(null, true);
+    // Check if origin is in allowed list
     if (config.allowedOrigins.indexOf(origin) === -1) {
       const msg = 'CORS policy: This origin is not allowed';
       return callback(new Error(msg), false);

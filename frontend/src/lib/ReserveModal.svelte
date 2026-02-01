@@ -60,12 +60,23 @@
       dispatch('close');
     }
   }
+
+  function handleKeydown(event) {
+    if (event.key === 'Escape') {
+      dispatch('close');
+    }
+  }
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="reserve-modal-title"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-lg"
@@ -73,7 +84,7 @@
   >
     <!-- Header -->
     <div class="px-8 py-6 border-b border-slate-700/50">
-      <h2 class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
+      <h2 id="reserve-modal-title" class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
         🔒 {$t('modals.reserve.title')}
       </h2>
     </div>
@@ -88,8 +99,9 @@
       {/if}
 
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.reserve.yourName')} {$t('modals.add.optional')}</label>
+        <label for="reserve-name" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.reserve.yourName')} {$t('modals.add.optional')}</label>
         <input
+          id="reserve-name"
           type="text"
           bind:value={reservedBy}
           placeholder={$t('modals.reserve.yourNamePlaceholder')}
@@ -98,8 +110,9 @@
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">🔑 {$t('modals.reserve.secretCode')} *</label>
+        <label for="reserve-secret-code" class="block text-sm font-semibold text-slate-300 mb-2">🔑 {$t('modals.reserve.secretCode')} *</label>
         <input
+          id="reserve-secret-code"
           type="text"
           bind:value={secretCode}
           placeholder={$t('modals.reserve.secretCodePlaceholder')}

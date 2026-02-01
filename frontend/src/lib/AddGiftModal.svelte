@@ -119,12 +119,23 @@
       dispatch('close');
     }
   }
+
+  function handleKeydown(event) {
+    if (event.key === 'Escape') {
+      dispatch('close');
+    }
+  }
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="modal-title"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
@@ -132,7 +143,7 @@
   >
     <!-- Header -->
     <div class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur-xl px-8 py-6 border-b border-slate-700/50">
-      <h2 class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
+      <h2 id="modal-title" class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
         ➕ {$t('modals.add.title')}
       </h2>
     </div>
@@ -146,8 +157,9 @@
 
       <!-- Name -->
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.name')} *</label>
+        <label for="gift-name" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.name')} *</label>
         <input
+          id="gift-name"
           type="text"
           bind:value={name}
           placeholder={$t('modals.add.namePlaceholder')}
@@ -162,8 +174,9 @@
       <!-- Category & Priority -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.category')}</label>
+          <label for="gift-category" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.category')}</label>
           <select
+            id="gift-category"
             bind:value={category}
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           >
@@ -175,8 +188,9 @@
         </div>
 
         <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.priority')}</label>
+          <label for="gift-priority" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.priority')}</label>
           <select
+            id="gift-priority"
             bind:value={priority}
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           >
@@ -189,8 +203,9 @@
 
       <!-- Description -->
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.description')}</label>
+        <label for="gift-description" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.description')}</label>
         <textarea
+          id="gift-description"
           bind:value={description}
           rows="3"
           placeholder={$t('modals.add.descriptionPlaceholder')}
@@ -205,8 +220,9 @@
       <!-- Price & Link -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.price')}</label>
+          <label for="gift-price" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.price')}</label>
           <input
+            id="gift-price"
             type="text"
             bind:value={price}
             placeholder={$t('modals.add.pricePlaceholder')}
@@ -215,8 +231,9 @@
         </div>
 
         <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.link')}</label>
+          <label for="gift-link" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.link')}</label>
           <input
+            id="gift-link"
             type="url"
             bind:value={link}
             placeholder={$t('modals.add.linkPlaceholder')}
@@ -231,8 +248,9 @@
 
       <!-- Image URL -->
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.image')}</label>
+        <label for="gift-image" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.image')}</label>
         <input
+          id="gift-image"
           type="url"
           bind:value={imageUrl}
           placeholder={$t('modals.add.imagePlaceholder')}
@@ -246,8 +264,9 @@
 
       <!-- Admin Password -->
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">🔒 {$t('validation.adminPassword')} *</label>
+        <label for="admin-password" class="block text-sm font-semibold text-slate-300 mb-2">🔒 {$t('validation.adminPassword')} *</label>
         <input
+          id="admin-password"
           type="password"
           bind:value={adminPassword}
           placeholder="••••••••"

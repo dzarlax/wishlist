@@ -102,7 +102,7 @@
   $: status = getStatusBadge();
 </script>
 
-<div
+<article
   class="gift-card group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-300 ease-out {gift.status === 'available'
     ? 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/95 dark:to-slate-800/95 border-slate-300 dark:border-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1'
     : 'bg-slate-100 dark:bg-slate-900/80 border-slate-300 dark:border-slate-800/50 opacity-75'}"
@@ -278,7 +278,7 @@
       </button>
     {/if}
   </div>
-</div>
+</article>
 
 <style>
   .line-clamp-2 {
