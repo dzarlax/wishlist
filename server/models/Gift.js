@@ -5,6 +5,25 @@ class GiftModel {
     this.db = db;
   }
 
+  // Category code to Russian name mapping (for backward compatibility)
+  categoryCodeToName = {
+    'electronics': '🔧 Электроника и гаджеты',
+    'home': '🏠 Умный дом',
+    'accessories': '🔋 Аксессуары',
+    'education': '📚 Обучение и развитие',
+    'games': '🎮 Игры и развлечения',
+    'clothing': '👔 Одежда и стиль',
+    'sports': '🏃 Спорт и здоровье',
+    'creativity': '🎨 Творчество'
+  };
+
+  // Priority code to Russian name mapping (for backward compatibility)
+  priorityCodeToName = {
+    'hot': '🔥 Очень хочу',
+    'medium': '⭐ Было бы здорово',
+    'low': '💭 Просто мечта'
+  };
+
   /**
    * Map database row to gift object
    */
@@ -13,8 +32,8 @@ class GiftModel {
       id: row[0],
       name: row[1],
       description: row[2],
-      category: row[3],
-      priority: row[4],
+      category_code: row[3],
+      priority_code: row[4],
       link: row[5],
       image_url: row[6],
       price: row[7],
@@ -46,16 +65,16 @@ class GiftModel {
 
   /**
    * Get all gifts with proper priority sorting
-   * Priority order: 🔥 Очень хочу > ⭐ Было бы здорово > 💭 Просто мечта
+   * Priority order: hot > medium > low
    */
   findAll() {
     const results = this.db.exec(`
       SELECT * FROM gifts
       ORDER BY
-        CASE priority
-          WHEN '🔥 Очень хочу' THEN 1
-          WHEN '⭐ Было бы здорово' THEN 2
-          WHEN '💭 Просто мечта' THEN 3
+        CASE priority_code
+          WHEN 'hot' THEN 1
+          WHEN 'medium' THEN 2
+          WHEN 'low' THEN 3
           ELSE 4
         END,
         created_at DESC
@@ -77,15 +96,32 @@ class GiftModel {
    * Create new gift
    */
   create(data) {
-    const { name, description, category, priority, link, image_url, price } = data;
+    const { name, description, category_code, priority_code, link, image_url, price } = data;
+
+    // Map old text format to codes if needed (for backward compatibility)
+    let categoryCode = category_code;
+    let priorityCode = priority_code;
+
+    // If old text format is provided, map to code
+    if (!categoryCode && data.category) {
+      categoryCode = Object.keys(this.categoryCodeToName).find(
+        key => this.categoryCodeToName[key] === data.category
+      ) || 'electronics';
+    }
+
+    if (!priorityCode && data.priority) {
+      priorityCode = Object.keys(this.priorityCodeToName).find(
+        key => this.priorityCodeToName[key] === data.priority
+      ) || 'medium';
+    }
 
     const query = `
-      INSERT INTO gifts (name, description, category, priority, link, image_url, price)
+      INSERT INTO gifts (name, description, category_code, priority_code, link, image_url, price)
       VALUES (
         ${this.escapeString(name)},
         ${this.escapeString(description)},
-        ${this.escapeString(category)},
-        ${this.escapeString(priority)},
+        ${this.escapeString(categoryCode)},
+        ${this.escapeString(priorityCode)},
         ${this.escapeString(link)},
         ${this.escapeString(image_url)},
         ${this.escapeString(price)}
@@ -102,14 +138,31 @@ class GiftModel {
    * Update gift
    */
   update(id, data) {
-    const { name, description, category, priority, link, image_url, price } = data;
+    const { name, description, category_code, priority_code, link, image_url, price } = data;
+
+    // Map old text format to codes if needed (for backward compatibility)
+    let categoryCode = category_code;
+    let priorityCode = priority_code;
+
+    // If old text format is provided, map to code
+    if (!categoryCode && data.category) {
+      categoryCode = Object.keys(this.categoryCodeToName).find(
+        key => this.categoryCodeToName[key] === data.category
+      ) || 'electronics';
+    }
+
+    if (!priorityCode && data.priority) {
+      priorityCode = Object.keys(this.priorityCodeToName).find(
+        key => this.priorityCodeToName[key] === data.priority
+      ) || 'medium';
+    }
 
     const query = `
       UPDATE gifts
       SET name = ${this.escapeString(name)},
           description = ${this.escapeString(description)},
-          category = ${this.escapeString(category)},
-          priority = ${this.escapeString(priority)},
+          category_code = ${this.escapeString(categoryCode)},
+          priority_code = ${this.escapeString(priorityCode)},
           link = ${this.escapeString(link)},
           image_url = ${this.escapeString(image_url)},
           price = ${this.escapeString(price)}

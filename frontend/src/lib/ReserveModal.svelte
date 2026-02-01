@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { toasts } from './stores/toasts.js';
+  import { t } from './utils/i18n.js';
 
   export let gift;
 
@@ -16,7 +17,7 @@
     error = '';
 
     if (!secretCode.trim()) {
-      error = 'Введите секретный код';
+      error = $t('validation.secretCodeRequired');
       return;
     }
 
@@ -28,27 +29,27 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           secret_code: secretCode.trim(),
-          reserved_by: reservedBy.trim() || 'Аноним'
+          reserved_by: reservedBy.trim() || $t('modals.reserve.yourNamePlaceholder')
         })
       });
 
       if (!response.ok) {
         const err = await response.json();
-        error = err.error || 'Ошибка при бронировании';
+        error = err.error || $t('toasts.error');
         return;
       }
 
       // Copy secret code to clipboard
       try {
         await navigator.clipboard.writeText(secretCode.trim());
-        toasts.success(`Забронировано! Код скопирован: ${secretCode.trim()}`);
+        toasts.success($t('toasts.reserved') + `: ${secretCode.trim()}`);
       } catch {
-        toasts.success(`Забронировано! Ваш код: ${secretCode.trim()}`);
+        toasts.success($t('toasts.reserved') + `: ${secretCode.trim()}`);
       }
 
       dispatch('saved');
     } catch (err) {
-      error = 'Ошибка при бронировании подарка';
+      error = $t('toasts.error');
     } finally {
       loading = false;
     }
@@ -73,7 +74,7 @@
     <!-- Header -->
     <div class="px-8 py-6 border-b border-slate-700/50">
       <h2 class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
-        🔒 Забронировать подарок
+        🔒 {$t('modals.reserve.title')}
       </h2>
     </div>
 
@@ -87,25 +88,25 @@
       {/if}
 
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">Ваше имя (опционально)</label>
+        <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.reserve.yourName')} {$t('modals.add.optional')}</label>
         <input
           type="text"
           bind:value={reservedBy}
-          placeholder="Аноним"
+          placeholder={$t('modals.reserve.yourNamePlaceholder')}
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
         />
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">🔑 Секретный код *</label>
+        <label class="block text-sm font-semibold text-slate-300 mb-2">🔑 {$t('modals.reserve.secretCode')} *</label>
         <input
           type="text"
           bind:value={secretCode}
-          placeholder="Придумайте код (например: SantaHelper123)"
+          placeholder={$t('modals.reserve.secretCodePlaceholder')}
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
         />
         <p class="mt-2 text-sm text-slate-400">
-          ⚠️ Запомните этот код! Он понадобится для отмены брони или изменения статуса.
+          ⚠️ {$t('modals.reserve.secretCodeHint')}
         </p>
       </div>
     </div>
@@ -116,14 +117,14 @@
         on:click={() => dispatch('close')}
         class="px-6 py-3 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 transition-all duration-300"
       >
-        Отмена
+        {$t('actions.cancel')}
       </button>
       <button
         on:click={handleSubmit}
         disabled={loading}
         class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
       >
-        {loading ? 'Бронирование...' : 'Забронировать'}
+        {loading ? $t('app.loading') : $t('actions.reserve')}
       </button>
     </div>
   </div>

@@ -3,13 +3,14 @@
   import { fade, fly } from 'svelte/transition';
   import { toasts } from './stores/toasts.js';
   import { validators } from './utils/validation.js';
+  import { t } from './utils/i18n.js';
 
   const dispatch = createEventDispatcher();
 
   let name = '';
   let description = '';
-  let category = '';
-  let priority = '⭐ Было бы здорово';
+  let category = 'electronics';
+  let priority = 'medium';
   let price = '';
   let link = '';
   let imageUrl = '';
@@ -17,21 +18,21 @@
   let loading = false;
   let errors = {};
 
-  const categories = [
-    '🔧 Электроника и гаджеты',
-    '🏠 Умный дом',
-    '🔋 Аксессуары',
-    '📚 Обучение и развитие',
-    '🎮 Игры и развлечения',
-    '👔 Одежда и стиль',
-    '🏃 Спорт и здоровье',
-    '🎨 Творчество'
+  $: categories = [
+    { code: 'electronics', name: $t('categories.electronics') },
+    { code: 'home', name: $t('categories.home') },
+    { code: 'accessories', name: $t('categories.accessories') },
+    { code: 'education', name: $t('categories.education') },
+    { code: 'games', name: $t('categories.games') },
+    { code: 'clothing', name: $t('categories.clothing') },
+    { code: 'sports', name: $t('categories.sports') },
+    { code: 'creativity', name: $t('categories.creativity') }
   ];
 
-  const priorities = [
-    '🔥 Очень хочу',
-    '⭐ Было бы здорово',
-    '💭 Просто мечта'
+  $: priorities = [
+    { code: 'hot', name: $t('priorities.hot') },
+    { code: 'medium', name: $t('priorities.medium') },
+    { code: 'low', name: $t('priorities.low') }
   ];
 
   function validateForm() {
@@ -71,8 +72,8 @@
       const payload = {
         name: name.trim(),
         description: description.trim(),
-        category,
-        priority
+        category_code: category,
+        priority_code: priority
       };
 
       if (price.trim()) payload.price = price.trim();
@@ -90,24 +91,24 @@
 
       if (!response.ok) {
         const err = await response.json();
-        toasts.error(err.error || 'Ошибка при добавлении');
+        toasts.error(err.error || $t('toasts.error'));
         return;
       }
 
       // Reset form
       name = '';
       description = '';
-      category = '';
-      priority = '⭐ Было бы здорово';
+      category = 'electronics';
+      priority = 'medium';
       price = '';
       link = '';
       imageUrl = '';
       adminPassword = '';
 
-      toasts.success('Подарок успешно добавлен');
+      toasts.success($t('toasts.added'));
       dispatch('saved');
     } catch (err) {
-      toasts.error('Ошибка при добавлении подарка');
+      toasts.error($t('toasts.error'));
     } finally {
       loading = false;
     }
@@ -132,7 +133,7 @@
     <!-- Header -->
     <div class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur-xl px-8 py-6 border-b border-slate-700/50">
       <h2 class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
-        ➕ Новый подарок
+        ➕ {$t('modals.add.title')}
       </h2>
     </div>
 
@@ -140,16 +141,16 @@
     <div class="p-8 space-y-6">
       <!-- Password Hint -->
       <div class="bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3 text-sm text-indigo-300">
-        🔒 Нужен пароль администратора для добавления подарков
+        🔒 {$t('validation.adminPassword')} {$t('validation.required').toLowerCase()}
       </div>
 
       <!-- Name -->
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">Название *</label>
+        <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.name')} *</label>
         <input
           type="text"
           bind:value={name}
-          placeholder="Название подарка"
+          placeholder={$t('modals.add.namePlaceholder')}
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           class:border-red-500={errors.name}
         />
@@ -161,26 +162,26 @@
       <!-- Category & Priority -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">Категория</label>
+          <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.category')}</label>
           <select
             bind:value={category}
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           >
-            <option value="">Выберите категорию</option>
+            <option value="">{$t('modals.add.category')}</option>
             {#each categories as cat}
-              <option value={cat}>{cat}</option>
+              <option value={cat.code}>{cat.name}</option>
             {/each}
           </select>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">Приоритет</label>
+          <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.priority')}</label>
           <select
             bind:value={priority}
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           >
             {#each priorities as prio}
-              <option value={prio}>{prio}</option>
+              <option value={prio.code}>{prio.name}</option>
             {/each}
           </select>
         </div>
@@ -188,11 +189,11 @@
 
       <!-- Description -->
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">Описание</label>
+        <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.description')}</label>
         <textarea
           bind:value={description}
           rows="3"
-          placeholder="Опишите подарок (опционально)"
+          placeholder={$t('modals.add.descriptionPlaceholder')}
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
           class:border-red-500={errors.description}
         ></textarea>
@@ -204,21 +205,21 @@
       <!-- Price & Link -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">Цена</label>
+          <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.price')}</label>
           <input
             type="text"
             bind:value={price}
-            placeholder="Например: 5000 ₽"
+            placeholder={$t('modals.add.pricePlaceholder')}
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           />
         </div>
 
         <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">Ссылка</label>
+          <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.link')}</label>
           <input
             type="url"
             bind:value={link}
-            placeholder="https://..."
+            placeholder={$t('modals.add.linkPlaceholder')}
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             class:border-red-500={errors.link}
           />
@@ -230,11 +231,11 @@
 
       <!-- Image URL -->
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">Ссылка на изображение</label>
+        <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.image')}</label>
         <input
           type="url"
           bind:value={imageUrl}
-          placeholder="https://..."
+          placeholder={$t('modals.add.imagePlaceholder')}
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           class:border-red-500={errors.imageUrl}
         />
@@ -245,11 +246,11 @@
 
       <!-- Admin Password -->
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">🔒 Пароль администратора *</label>
+        <label class="block text-sm font-semibold text-slate-300 mb-2">🔒 {$t('validation.adminPassword')} *</label>
         <input
           type="password"
           bind:value={adminPassword}
-          placeholder="Введите пароль"
+          placeholder="••••••••"
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           class:border-red-500={errors.adminPassword}
         />
@@ -265,14 +266,14 @@
         on:click={() => dispatch('close')}
         class="px-6 py-3 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 transition-all duration-300"
       >
-        Отмена
+        {$t('actions.cancel')}
       </button>
       <button
         on:click={handleSubmit}
         disabled={loading}
         class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
       >
-        {loading ? 'Добавление...' : 'Добавить'}
+        {loading ? $t('app.loading') : $t('actions.save')}
       </button>
     </div>
   </div>

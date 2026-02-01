@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
+  import { t } from './utils/i18n.js';
 
   export let gift;
 
@@ -17,28 +18,46 @@
   let loading = false;
   let error = '';
 
-  const categories = [
-    '🔧 Электроника и гаджеты',
-    '🏠 Умный дом',
-    '🔋 Аксессуары',
-    '📚 Обучение и развитие',
-    '🎮 Игры и развлечения',
-    '👔 Одежда и стиль',
-    '🏃 Спорт и здоровье',
-    '🎨 Творчество'
+  $: categories = [
+    { code: 'electronics', name: $t('categories.electronics') },
+    { code: 'home', name: $t('categories.home') },
+    { code: 'accessories', name: $t('categories.accessories') },
+    { code: 'education', name: $t('categories.education') },
+    { code: 'games', name: $t('categories.games') },
+    { code: 'clothing', name: $t('categories.clothing') },
+    { code: 'sports', name: $t('categories.sports') },
+    { code: 'creativity', name: $t('categories.creativity') }
   ];
 
-  const priorities = [
-    '🔥 Очень хочу',
-    '⭐ Было бы здорово',
-    '💭 Просто мечта'
+  $: priorities = [
+    { code: 'hot', name: $t('priorities.hot') },
+    { code: 'medium', name: $t('priorities.medium') },
+    { code: 'low', name: $t('priorities.low') }
   ];
 
   onMount(() => {
     name = gift.name;
     description = gift.description || '';
-    category = gift.category || '';
-    priority = gift.priority;
+    // Use category_code if available, otherwise map from category name
+    if (gift.category_code) {
+      category = gift.category_code;
+    } else if (gift.category) {
+      // Map category name to code
+      const categoryMapping = $t('categoryMapping');
+      category = categoryMapping[gift.category] || 'electronics';
+    } else {
+      category = 'electronics';
+    }
+    // Use priority_code if available, otherwise map from priority name
+    if (gift.priority_code) {
+      priority = gift.priority_code;
+    } else if (gift.priority) {
+      // Map priority name to code
+      const priorityMapping = $t('priorityMapping');
+      priority = priorityMapping[gift.priority] || 'medium';
+    } else {
+      priority = 'medium';
+    }
     price = gift.price || '';
     link = gift.link || '';
     imageUrl = gift.image_url || '';
@@ -63,8 +82,8 @@
       const payload = {
         name: name.trim(),
         description: description.trim(),
-        category,
-        priority
+        category_code: category,
+        priority_code: priority
       };
 
       if (price.trim()) payload.price = price.trim();
@@ -82,13 +101,13 @@
 
       if (!response.ok) {
         const err = await response.json();
-        error = err.error || 'Ошибка при сохранении';
+        error = err.error || $t('toasts.error');
         return;
       }
 
       dispatch('saved');
     } catch (err) {
-      error = 'Ошибка при сохранении изменений';
+      error = $t('toasts.error');
     } finally {
       loading = false;
     }
@@ -113,7 +132,7 @@
     <!-- Header -->
     <div class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur-xl px-8 py-6 border-b border-slate-700/50">
       <h2 class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
-        ✏️ Редактировать подарок
+        ✏️ {$t('modals.edit.title')}
       </h2>
     </div>
 
@@ -139,26 +158,26 @@
       <!-- Category & Priority -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">Категория</label>
+          <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.category')}</label>
           <select
             bind:value={category}
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           >
-            <option value="">Без категории</option>
+            <option value="">{$t('modals.add.category')}</option>
             {#each categories as cat}
-              <option value={cat}>{cat}</option>
+              <option value={cat.code}>{cat.name}</option>
             {/each}
           </select>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold text-slate-300 mb-2">Приоритет</label>
+          <label class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.priority')}</label>
           <select
             bind:value={priority}
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           >
             {#each priorities as prio}
-              <option value={prio}>{prio}</option>
+              <option value={prio.code}>{prio.name}</option>
             {/each}
           </select>
         </div>
@@ -207,11 +226,11 @@
 
       <!-- Admin Password -->
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">🔒 Пароль администратора *</label>
+        <label class="block text-sm font-semibold text-slate-300 mb-2">🔒 {$t('validation.adminPassword')} *</label>
         <input
           type="password"
           bind:value={adminPassword}
-          placeholder="Введите пароль"
+          placeholder="••••••••"
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
         />
       </div>
@@ -223,14 +242,14 @@
         on:click={() => dispatch('close')}
         class="px-6 py-3 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 transition-all duration-300"
       >
-        Отмена
+        {$t('actions.cancel')}
       </button>
       <button
         on:click={handleSubmit}
         disabled={loading}
         class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
       >
-        {loading ? 'Сохранение...' : 'Сохранить'}
+        {loading ? $t('app.loading') : $t('actions.save')}
       </button>
     </div>
   </div>

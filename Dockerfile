@@ -19,6 +19,7 @@ RUN npm install --production
 
 # Copy backend and built frontend
 COPY server.js ./
+COPY server ./server
 COPY --from=builder /app/frontend/dist ./public
 
 # Setup permissions

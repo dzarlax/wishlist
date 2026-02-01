@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
+  import { t, formatPrice } from './utils/i18n.js';
 
   export let gift;
   export let index = 0;
@@ -13,6 +14,13 @@
   let loading = false;
   let hovered = false;
 
+  // Get priority code from gift (with fallback)
+  $: currentPriorityCode = (() => {
+    if (gift.priority_code) return gift.priority_code;
+    const priorityMapping = $t('priorityMapping');
+    return priorityMapping[gift.priority] || 'medium';
+  })();
+
   async function handleReserve() {
     error = '';
     loading = true;
@@ -21,7 +29,7 @@
       loading = false;
       dispatch('reserve');
     } else if (gift.status === 'reserved') {
-      const secretCode = prompt('Введите ваш секретный код для отметки "Куплено":');
+      const secretCode = prompt($t('modals.markPurchased.prompt'));
       if (!secretCode) {
         loading = false;
         return;
@@ -36,14 +44,14 @@
 
         if (!response.ok) {
           const err = await response.json();
-          error = err.error || 'Ошибка';
+          error = err.error || $t('toasts.error');
           loading = false;
           return;
         }
 
         dispatch('refresh');
       } catch (err) {
-        error = 'Ошибка при изменении статуса';
+        error = $t('toasts.error');
         loading = false;
       }
     }
@@ -53,7 +61,7 @@
     error = '';
     loading = true;
 
-    const secretCode = prompt('Введите ваш секретный код для отмены бронирования:');
+    const secretCode = prompt($t('modals.unreserve.prompt'));
     if (!secretCode) {
       loading = false;
       return;
@@ -68,14 +76,14 @@
 
       if (!response.ok) {
         const err = await response.json();
-        error = err.error || 'Ошибка';
+        error = err.error || $t('toasts.error');
         loading = false;
         return;
       }
 
       dispatch('refresh');
     } catch (err) {
-      error = 'Ошибка при отмене бронирования';
+      error = $t('toasts.error');
       loading = false;
     }
   }
@@ -83,23 +91,15 @@
   function getStatusBadge() {
     switch (gift.status) {
       case 'reserved':
-        return { text: '🔒 Забронирован', class: 'bg-amber-500/90 text-white border-amber-400 shadow-lg shadow-amber-500/20' };
+        return { text: `🔒 ${$t('status.reserved')}`, class: 'bg-amber-500/90 text-white border-amber-400 shadow-lg shadow-amber-500/20' };
       case 'purchased':
-        return { text: '✅ Куплен', class: 'bg-emerald-600/90 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' };
+        return { text: `✅ ${$t('status.purchased')}`, class: 'bg-emerald-600/90 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' };
       default:
         return { text: '', class: '' };
     }
   }
 
-  const status = getStatusBadge();
-
-  function formatPrice(price) {
-    if (!price) return '';
-    if (/^\d+(\.\d{1,2})?$/.test(price)) {
-      return `${price} ₽`;
-    }
-    return price;
-  }
+  $: status = getStatusBadge();
 </script>
 
 <div
@@ -133,7 +133,7 @@
       </div>
     {/if}
 
-    {#if gift.status === 'available' && gift.priority === '🔥 Очень хочу'}
+    {#if gift.status === 'available' && currentPriorityCode === 'hot'}
       <div class="absolute top-2 right-2 w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-lg shadow-red-500/50"></div>
     {/if}
   </div>
@@ -151,17 +151,17 @@
     {/if}
 
     <div class="flex gap-2 flex-wrap">
-      {#if gift.category}
+      {#if gift.category_code}
         <span class="px-2.5 py-1 rounded-lg text-xs text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/50 backdrop-blur-sm">
-          {gift.category}
+          {$t(`categories.${gift.category_code}`)}
         </span>
       {/if}
-      <span class="px-2.5 py-1 rounded-lg text-xs {gift.priority === '🔥 Очень хочу'
+      <span class="px-2.5 py-1 rounded-lg text-xs {currentPriorityCode === 'hot'
         ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800/50'
-        : gift.priority === '⭐ Было бы здорово'
+        : currentPriorityCode === 'medium'
         ? 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800/50'
         : 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/50'} backdrop-blur-sm">
-        {gift.priority}
+        {$t(`priorities.${currentPriorityCode}`)}
       </span>
     </div>
 
@@ -180,7 +180,7 @@
     <div class="flex items-center justify-between pt-2 border-t border-slate-300 dark:border-slate-700/50">
       {#if gift.price}
         <span class="text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
-          {formatPrice(gift.price)}
+          {$formatPrice(gift.price)}
         </span>
       {:else}
         <span></span>
@@ -201,14 +201,14 @@
         <button
           on:click={() => dispatch('edit')}
           class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-amber-100 dark:hover:bg-amber-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-amber-400 dark:hover:border-amber-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-          title="Редактировать"
+          title={$t('actions.edit')}
         >
           ✏️
         </button>
         <button
           on:click={() => dispatch('delete')}
           class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-red-100 dark:hover:bg-red-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-red-400 dark:hover:border-red-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-          title="Удалить"
+          title={$t('actions.delete')}
         >
           🗑️
         </button>
@@ -224,10 +224,10 @@
         {#if loading}
           <span class="flex items-center justify-center gap-2">
             <span class="animate-spin">⏳</span>
-            <span>Загрузка...</span>
+            <span>{$t('app.loading')}</span>
           </span>
         {:else}
-          Забронировать подарок
+          {$t('actions.reserve')}
         {/if}
       </button>
     {:else if gift.status === 'reserved'}
@@ -240,10 +240,10 @@
           {#if loading}
             <span class="flex items-center justify-center gap-2">
               <span class="animate-spin">⏳</span>
-              <span>Загрузка...</span>
+              <span>{$t('app.loading')}</span>
             </span>
           {:else}
-            ✅ Куплено
+            ✅ {$t('actions.markPurchased')}
           {/if}
         </button>
         <button
@@ -254,10 +254,10 @@
           {#if loading}
             <span class="flex items-center justify-center gap-2">
               <span class="animate-spin">⏳</span>
-              <span>Загрузка...</span>
+              <span>{$t('app.loading')}</span>
             </span>
           {:else}
-            Отменить
+            {$t('actions.unreserve')}
           {/if}
         </button>
       </div>
@@ -270,10 +270,10 @@
         {#if loading}
           <span class="flex items-center justify-center gap-2">
             <span class="animate-spin">⏳</span>
-            <span>Загрузка...</span>
+            <span>{$t('app.loading')}</span>
           </span>
         {:else}
-          Отменить бронь
+          {$t('actions.unreserve')}
         {/if}
       </button>
     {/if}

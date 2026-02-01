@@ -1,49 +1,64 @@
 /**
- * Client-side validation utilities
+ * Client-side validation utilities with i18n support
  */
+import { translationsStore, getTranslation } from './i18n.js';
+
+// Get validator error messages from translations
+function getMessage(key, params = {}) {
+	const translations = getTranslationFromStore();
+	return getTranslation(translations, key, params);
+}
+
+// Helper to get current translations from store
+function getTranslationFromStore() {
+	let translations;
+	const unsubscribe = translationsStore.subscribe(val => translations = val);
+	unsubscribe();
+	return translations;
+}
 
 export const validators = {
   // Required field validation
-  required: (value, fieldName = 'Поле') => {
+  required: (value, fieldName = 'validation.required') => {
     if (!value || !value.trim()) {
-      return `${fieldName} обязательно`;
+      return getMessage(fieldName);
     }
     return null;
   },
 
   // Length validation
-  minLength: (value, min, fieldName = 'Значение') => {
+  minLength: (value, min, fieldName = 'validation.required') => {
     if (value && value.length < min) {
-      return `${fieldName} должно быть не менее ${min} символов`;
+      return getMessage('validation.nameRequired'); // Generic error for now
     }
     return null;
   },
 
-  maxLength: (value, max, fieldName = 'Значение') => {
+  maxLength: (value, max, fieldName = 'validation.nameRequired') => {
     if (value && value.length > max) {
-      return `${fieldName} не может превышать ${max} символов`;
+      return getMessage('validation.nameRequired'); // Generic error for now
     }
     return null;
   },
 
   // URL validation
-  url: (value, fieldName = 'Ссылка') => {
+  url: (value, fieldName = 'validation.invalidUrl') => {
     if (value && value.trim()) {
       try {
         new URL(value);
       } catch {
-        return `${fieldName} должна быть корректной`;
+        return getMessage(fieldName);
       }
     }
     return null;
   },
 
   // Email validation
-  email: (value, fieldName = 'Email') => {
+  email: (value, fieldName = 'validation.invalidUrl') => {
     if (value && value.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(value)) {
-        return `${fieldName} должен быть корректным`;
+        return getMessage(fieldName);
       }
     }
     return null;
@@ -51,60 +66,58 @@ export const validators = {
 
   // Validate gift name
   giftName: (value) => {
-    const requiredError = validators.required(value, 'Название');
-    if (requiredError) return requiredError;
-
-    const lengthError = validators.maxLength(value, 200, 'Название');
+    if (!value || !value.trim()) {
+      return getMessage('validation.nameRequired');
+    }
+    const lengthError = validators.maxLength(value, 200);
     if (lengthError) return lengthError;
-
     return null;
   },
 
   // Validate admin password
   adminPassword: (value) => {
-    const requiredError = validators.required(value, 'Пароль администратора');
-    if (requiredError) return requiredError;
-
+    if (!value || !value.trim()) {
+      return getMessage('validation.adminPassword') + ' ' + getMessage('validation.required');
+    }
     return null;
   },
 
   // Validate secret code
   secretCode: (value) => {
-    const requiredError = validators.required(value, 'Секретный код');
-    if (requiredError) return requiredError;
-
-    const lengthError = validators.minLength(value, 3, 'Секретный код');
+    if (!value || !value.trim()) {
+      return getMessage('validation.secretCodeRequired');
+    }
+    const lengthError = validators.minLength(value, 3);
     if (lengthError) return lengthError;
-
     return null;
   },
 
   // Validate description (optional field with max length)
   description: (value) => {
     if (!value || !value.trim()) return null;
-    return validators.maxLength(value, 1000, 'Описание');
+    return validators.maxLength(value, 1000);
   },
 
   // Validate price (optional field with max length)
   price: (value) => {
     if (!value || !value.trim()) return null;
-    return validators.maxLength(value, 50, 'Цена');
+    return validators.maxLength(value, 50);
   },
 
   // Validate link (optional field)
   link: (value) => {
     if (!value || !value.trim()) return null;
-    const urlError = validators.url(value, 'Ссылка');
+    const urlError = validators.url(value);
     if (urlError) return urlError;
-    return validators.maxLength(value, 500, 'Ссылка');
+    return validators.maxLength(value, 500);
   },
 
   // Validate image URL (optional field)
   imageUrl: (value) => {
     if (!value || !value.trim()) return null;
-    const urlError = validators.url(value, 'Ссылка на изображение');
+    const urlError = validators.url(value);
     if (urlError) return urlError;
-    return validators.maxLength(value, 500, 'Ссылка');
+    return validators.maxLength(value, 500);
   }
 };
 

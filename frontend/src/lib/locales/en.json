@@ -1,0 +1,152 @@
+{
+  "app": {
+    "title": "🎁 Wishlist",
+    "addButton": "Add",
+    "filterPlaceholder": "Filter gifts...",
+    "noGifts": "No gifts",
+    "noGiftsDescription": "Add the first gift to your wishlist!",
+    "loading": "Loading...",
+    "error": "Error loading gifts"
+  },
+  "filters": {
+    "all": "All",
+    "allCategories": "All categories",
+    "allStatuses": "All statuses",
+    "allPriorities": "All priorities",
+    "available": "Available",
+    "reserved": "Reserved",
+    "purchased": "Purchased",
+    "resultsCount": "Showing {count} of {total}",
+    "sortByPriority": "By priority",
+    "sortByName": "By name",
+    "sortByDate": "By date"
+  },
+  "priorities": {
+    "hot": "🔥 Really want",
+    "medium": "⭐ Would be nice",
+    "low": "💭 Just dreaming"
+  },
+  "priorityMapping": {
+    "🔥 Очень хочу": "hot",
+    "⭐ Было бы здорово": "medium",
+    "💭 Просто мечта": "low"
+  },
+  "status": {
+    "available": "Available",
+    "reserved": "Reserved",
+    "purchased": "Purchased"
+  },
+  "actions": {
+    "reserve": "Reserve",
+    "unreserve": "Unreserve",
+    "markPurchased": "Mark as purchased",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "confirm": "Confirm"
+  },
+  "modals": {
+    "add": {
+      "title": "New gift",
+      "name": "Name",
+      "namePlaceholder": "e.g. iPhone 15 Pro",
+      "description": "Description",
+      "descriptionPlaceholder": "Describe the gift...",
+      "category": "Category",
+      "categoryPlaceholder": "e.g. Electronics",
+      "priority": "Priority",
+      "link": "Link",
+      "linkPlaceholder": "https://...",
+      "image": "Image URL",
+      "imagePlaceholder": "https://...",
+      "price": "Price",
+      "pricePlaceholder": "15000",
+      "optional": "(optional)"
+    },
+    "edit": {
+      "title": "Edit gift"
+    },
+    "reserve": {
+      "title": "Reserve gift",
+      "yourName": "Your name",
+      "yourNamePlaceholder": "John",
+      "secretCode": "Secret code",
+      "secretCodePlaceholder": "Create a code",
+      "secretCodeHint": "Save this code! You'll need it to cancel the reservation or mark as purchased.",
+      "success": "Gift reserved successfully!",
+      "copyCode": "Code copied!"
+    },
+    "unreserve": {
+      "title": "Cancel reservation",
+      "prompt": "Enter secret code to cancel reservation:",
+      "success": "Reservation cancelled!"
+    },
+    "markPurchased": {
+      "title": "Mark as purchased",
+      "prompt": "Enter secret code to mark as purchased:",
+      "success": "Gift marked as purchased!"
+    },
+    "delete": {
+      "title": "Delete gift",
+      "confirm": "Are you sure you want to delete the gift «{name}»?",
+      "success": "Gift deleted!"
+    }
+  },
+  "validation": {
+    "required": "This field is required",
+    "nameRequired": "Name is required",
+    "invalidUrl": "Invalid URL",
+    "invalidPrice": "Invalid price",
+    "secretCodeRequired": "Secret code is required",
+    "adminPassword": "Admin password",
+    "nameRequiredShort": "Name",
+    "secretCodeRequiredShort": "Secret code"
+  },
+  "toasts": {
+    "added": "Gift added!",
+    "updated": "Gift updated!",
+    "deleted": "Gift deleted!",
+    "reserved": "Gift reserved!",
+    "unreserved": "Reservation cancelled!",
+    "markedPurchased": "Gift marked as purchased!",
+    "error": "An error occurred",
+    "invalidSecretCode": "Invalid secret code",
+    "copySuccess": "Copied!"
+  },
+  "giftCard": {
+    "reservedBy": "Reserved by: {name}",
+    "reservedAt": "Reserved: {date}"
+  },
+  "language": {
+    "switch": "Переключить на русский",
+    "russian": "Русский",
+    "english": "English"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "lightTheme": "Light theme",
+    "darkTheme": "Dark theme"
+  },
+  "categories": {
+    "electronics": "🔧 Electronics",
+    "home": "🏠 Smart Home",
+    "accessories": "🔋 Accessories",
+    "education": "📚 Education",
+    "games": "🎮 Games",
+    "clothing": "👔 Clothing",
+    "sports": "🏃 Sports",
+    "creativity": "🎨 Creativity"
+  },
+  "categoryMapping": {
+    "🔧 Электроника и гаджеты": "electronics",
+    "🏠 Умный дом": "home",
+    "🔋 Аксессуары": "accessories",
+    "📚 Обучение и развитие": "education",
+    "🎮 Игры и развлечения": "games",
+    "👔 Одежда и стиль": "clothing",
+    "🏃 Спорт и здоровье": "sports",
+    "🎨 Творчество": "creativity"
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "app": {
+    "title": "🎁 Wishlist",
+    "addButton": "Dodaj",
+    "filterPlaceholder": "Filtriraj poklone...",
+    "noGifts": "Nema poklona",
+    "noGiftsDescription": "Dodaj prvi poklon na svoju listu želja!",
+    "loading": "Učitavanje...",
+    "error": "Greška pri učitavanju poklona"
+  },
+  "filters": {
+    "all": "Sve",
+    "allCategories": "Sve kategorije",
+    "allStatuses": "Svi statusi",
+    "allPriorities": "Svi prioriteti",
+    "available": "Dostupno",
+    "reserved": "Rezervisano",
+    "purchased": "Kupljeno",
+    "resultsCount": "Prikazano {count} od {total}",
+    "sortByPriority": "Po prioritetu",
+    "sortByName": "Po imenu",
+    "sortByDate": "Po datumu"
+  },
+  "priorities": {
+    "hot": "🔥 Baš hoću",
+    "medium": "⭐ Bilo bi lepo",
+    "low": "💭 Samo sanjam"
+  },
+  "priorityMapping": {
+    "🔥 Очень хочу": "hot",
+    "⭐ Было бы здорово": "medium",
+    "💭 Просто мечта": "low"
+  },
+  "status": {
+    "available": "Dostupno",
+    "reserved": "Rezervisano",
+    "purchased": "Kupljeno"
+  },
+  "actions": {
+    "reserve": "Rezerviši",
+    "unreserve": "Otkaži rezervaciju",
+    "markPurchased": "Označi kao kupljeno",
+    "edit": "Uredi",
+    "delete": "Obriši",
+    "cancel": "Otkaži",
+    "save": "Sačuvaj",
+    "confirm": "Potvrdi"
+  },
+  "modals": {
+    "add": {
+      "title": "Novi poklon",
+      "name": "Naziv",
+      "namePlaceholder": "npr. iPhone 15 Pro",
+      "description": "Opis",
+      "descriptionPlaceholder": "Opiši poklon...",
+      "category": "Kategorija",
+      "categoryPlaceholder": "npr. Elektronika",
+      "priority": "Prioritet",
+      "link": "Link",
+      "linkPlaceholder": "https://...",
+      "image": "Link slike",
+      "imagePlaceholder": "https://...",
+      "price": "Cena",
+      "pricePlaceholder": "15000",
+      "optional": "(opciono)"
+    },
+    "edit": {
+      "title": "Uređivanje poklona"
+    },
+    "reserve": {
+      "title": "Rezervacija poklona",
+      "yourName": "Vaše ime",
+      "yourNamePlaceholder": "Marko",
+      "secretCode": "Tajni kod",
+      "secretCodePlaceholder": "Napravite kod",
+      "secretCodeHint": "Sačuvajte ovaj kod! Biće vam potreban za otkazivanje rezervacije ili označavanje kao kupljeno.",
+      "success": "Poklon uspešno rezervisan!",
+      "copyCode": "Kod kopiran!"
+    },
+    "unreserve": {
+      "title": "Otkaži rezervaciju",
+      "prompt": "Unesite tajni kod za otkazivanje rezervacije:",
+      "success": "Rezervacija otkazana!"
+    },
+    "markPurchased": {
+      "title": "Označi kao kupljeno",
+      "prompt": "Unesite tajni kod za označavanje kao kupljeno:",
+      "success": "Poklon označen kao kupljen!"
+    },
+    "delete": {
+      "title": "Brisanje poklona",
+      "confirm": "Da li ste sigurni da želite da obrišete poklon «{name}»?",
+      "success": "Poklon obrisan!"
+    }
+  },
+  "validation": {
+    "required": "Ovo polje je obavezno",
+    "nameRequired": "Naziv je obavezan",
+    "invalidUrl": "Nevažeći URL",
+    "invalidPrice": "Nevažeća cena",
+    "secretCodeRequired": "Tajni kod je obavezan",
+    "adminPassword": "Admin lozinka",
+    "nameRequiredShort": "Naziv",
+    "secretCodeRequiredShort": "Tajni kod"
+  },
+  "toasts": {
+    "added": "Poklon dodat!",
+    "updated": "Poklon ažuriran!",
+    "deleted": "Poklon obrisan!",
+    "reserved": "Poklon rezervisan!",
+    "unreserved": "Rezervacija otkazana!",
+    "markedPurchased": "Poklon označen kao kupljen!",
+    "error": "Došlo je do greške",
+    "invalidSecretCode": "Nevažeći tajni kod",
+    "copySuccess": "Kopirano!"
+  },
+  "giftCard": {
+    "reservedBy": "Rezervisao: {name}",
+    "reservedAt": "Rezervisano: {date}"
+  },
+  "language": {
+    "switch": "Пребаци на српски",
+    "russian": "Руски",
+    "english": "Енглески",
+    "serbian": "Српски"
+  },
+  "theme": {
+    "light": "Svetla",
+    "dark": "Tamna",
+    "lightTheme": "Svetla tema",
+    "darkTheme": "Tamna tema"
+  },
+  "categories": {
+    "electronics": "🔧 Elektronika i gadgeti",
+    "home": "🏠 Pametan dom",
+    "accessories": "🔋 Dodaci",
+    "education": "📚 Obrazovanje",
+    "games": "🎮 Igre",
+    "clothing": "👔 Odeća",
+    "sports": "🏃 Sport",
+    "creativity": "🎨 Kreativnost"
+  },
+  "categoryMapping": {
+    "🔧 Электроника и гаджеты": "electronics",
+    "🏠 Умный дом": "home",
+    "🔋 Аксессуары": "accessories",
+    "📚 Обучение и развитие": "education",
+    "🎮 Игры и развлечения": "games",
+    "👔 Одежда и стиль": "clothing",
+    "🏃 Спорт и здоровье": "sports",
+    "🎨 Творчество": "creativity"
+  }
+}

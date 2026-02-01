@@ -1,0 +1,152 @@
+{
+  "app": {
+    "title": "🎁 Wishlist",
+    "addButton": "Добавить",
+    "filterPlaceholder": "Фильтр подарков...",
+    "noGifts": "Подарков нет",
+    "noGiftsDescription": "Добавьте первый подарок в свой вишлист!",
+    "loading": "Загрузка...",
+    "error": "Ошибка загрузки подарков"
+  },
+  "filters": {
+    "all": "Все",
+    "allCategories": "Все категории",
+    "allStatuses": "Все статусы",
+    "allPriorities": "Все приоритеты",
+    "available": "Доступные",
+    "reserved": "Забронированные",
+    "purchased": "Купленные",
+    "resultsCount": "Показано {count} из {total}",
+    "sortByPriority": "По приоритету",
+    "sortByName": "По названию",
+    "sortByDate": "По дате"
+  },
+  "priorities": {
+    "hot": "🔥 Очень хочу",
+    "medium": "⭐ Было бы здорово",
+    "low": "💭 Просто мечта"
+  },
+  "priorityMapping": {
+    "🔥 Очень хочу": "hot",
+    "⭐ Было бы здорово": "medium",
+    "💭 Просто мечта": "low"
+  },
+  "status": {
+    "available": "Доступно",
+    "reserved": "Забронировано",
+    "purchased": "Куплено"
+  },
+  "actions": {
+    "reserve": "Забронировать",
+    "unreserve": "Отменить бронь",
+    "markPurchased": "Отметить купленным",
+    "edit": "Редактировать",
+    "delete": "Удалить",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "confirm": "Подтвердить"
+  },
+  "modals": {
+    "add": {
+      "title": "Новый подарок",
+      "name": "Название",
+      "namePlaceholder": "Например: iPhone 15 Pro",
+      "description": "Описание",
+      "descriptionPlaceholder": "Опишите подарок...",
+      "category": "Категория",
+      "categoryPlaceholder": "Например: Электроника",
+      "priority": "Приоритет",
+      "link": "Ссылка",
+      "linkPlaceholder": "https://...",
+      "image": "Ссылка на изображение",
+      "imagePlaceholder": "https://...",
+      "price": "Цена",
+      "pricePlaceholder": "15000",
+      "optional": "(необязательно)"
+    },
+    "edit": {
+      "title": "Редактирование подарка"
+    },
+    "reserve": {
+      "title": "Бронирование подарка",
+      "yourName": "Ваше имя",
+      "yourNamePlaceholder": "Иван",
+      "secretCode": "Секретный код",
+      "secretCodePlaceholder": "Придумайте код",
+      "secretCodeHint": "Сохраните этот код! Он понадобится для отмены бронирования или отметки о покупке.",
+      "success": "Подарок успешно забронирован!",
+      "copyCode": "Код скопирован!"
+    },
+    "unreserve": {
+      "title": "Отмена бронирования",
+      "prompt": "Введите секретный код для отмены бронирования:",
+      "success": "Бронирование отменено!"
+    },
+    "markPurchased": {
+      "title": "Отметить купленным",
+      "prompt": "Введите секретный код для отметки о покупке:",
+      "success": "Подарок отмечен как купленный!"
+    },
+    "delete": {
+      "title": "Удаление подарка",
+      "confirm": "Вы уверены, что хотите удалить подарок «{name}»?",
+      "success": "Подарок удален!"
+    }
+  },
+  "validation": {
+    "required": "Это поле обязательно",
+    "nameRequired": "Название обязательно",
+    "invalidUrl": "Некорректный URL",
+    "invalidPrice": "Некорректная цена",
+    "secretCodeRequired": "Секретный код обязателен",
+    "adminPassword": "Пароль администратора",
+    "nameRequiredShort": "Название",
+    "secretCodeRequiredShort": "Секретный код"
+  },
+  "toasts": {
+    "added": "Подарок добавлен!",
+    "updated": "Подарок обновлен!",
+    "deleted": "Подарок удален!",
+    "reserved": "Подарок забронирован!",
+    "unreserved": "Бронирование отменено!",
+    "markedPurchased": "Подарок отмечен как купленный!",
+    "error": "Произошла ошибка",
+    "invalidSecretCode": "Неверный секретный код",
+    "copySuccess": "Скопировано!"
+  },
+  "giftCard": {
+    "reservedBy": "Забронировал: {name}",
+    "reservedAt": "Забронировано: {date}"
+  },
+  "language": {
+    "switch": "Switch to English",
+    "russian": "Русский",
+    "english": "English"
+  },
+  "theme": {
+    "light": "Светлая",
+    "dark": "Тёмная",
+    "lightTheme": "Светлая тема",
+    "darkTheme": "Тёмная тема"
+  },
+  "categories": {
+    "electronics": "🔧 Электроника и гаджеты",
+    "home": "🏠 Умный дом",
+    "accessories": "🔋 Аксессуары",
+    "education": "📚 Обучение и развитие",
+    "games": "🎮 Игры и развлечения",
+    "clothing": "👔 Одежда и стиль",
+    "sports": "🏃 Спорт и здоровье",
+    "creativity": "🎨 Творчество"
+  },
+  "categoryMapping": {
+    "🔧 Электроника и гаджеты": "electronics",
+    "🏠 Умный дом": "home",
+    "🔋 Аксессуары": "accessories",
+    "📚 Обучение и развитие": "education",
+    "🎮 Игры и развлечения": "games",
+    "👔 Одежда и стиль": "clothing",
+    "🏃 Спорт и здоровье": "sports",
+    "🎨 Творчество": "creativity"
+  }
+}

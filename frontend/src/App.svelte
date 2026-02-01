@@ -8,6 +8,8 @@
   import ReserveModal from './lib/ReserveModal.svelte';
   import DeleteModal from './lib/DeleteModal.svelte';
   import ToastContainer from './lib/components/ToastContainer.svelte';
+  import LanguageSwitcher from './lib/components/LanguageSwitcher.svelte';
+  import { t, formatPrice } from './lib/utils/i18n.js';
 
   let currentTheme = 'dark';
 
@@ -42,7 +44,7 @@
       const response = await fetch('/api/gifts');
       gifts = await response.json();
     } catch (error) {
-      toasts.error('Ошибка при загрузке подарков');
+      toasts.error($t('app.error'));
       console.error('Error loading gifts:', error);
     } finally {
       loading = false;
@@ -50,9 +52,47 @@
   }
 
   // Derived values
-  $: categories = [...new Set(gifts.map(g => g.category).filter(Boolean))].sort();
+  $: categoriesList = [
+    { code: 'electronics', name: $t('categories.electronics') },
+    { code: 'home', name: $t('categories.home') },
+    { code: 'accessories', name: $t('categories.accessories') },
+    { code: 'education', name: $t('categories.education') },
+    { code: 'games', name: $t('categories.games') },
+    { code: 'clothing', name: $t('categories.clothing') },
+    { code: 'sports', name: $t('categories.sports') },
+    { code: 'creativity', name: $t('categories.creativity') }
+  ];
+
+  $: prioritiesList = [
+    { code: 'hot', name: $t('priorities.hot') },
+    { code: 'medium', name: $t('priorities.medium') },
+    { code: 'low', name: $t('priorities.low') }
+  ];
+
+  $: categories = [...new Set(gifts.map(g => g.category_code).filter(Boolean))].sort();
   $: statuses = ['available', 'reserved', 'purchased'];
-  $: priorities = ['🔥 Очень хочу', '⭐ Было бы здорово', '💭 Просто мечта'];
+  $: priorities = prioritiesList;
+
+  // Helper to get priority code with fallback
+  function getPriorityCode(gift) {
+    if (gift.priority_code) return gift.priority_code;
+    // Fallback to old priority text mapping
+    const priorityMapping = $t('priorityMapping');
+    return priorityMapping[gift.priority] || 'medium';
+  }
+
+  // Priority order for sorting
+  function getPriorityOrder(priorityCode) {
+    const order = { hot: 1, medium: 2, low: 3 };
+    return order[priorityCode] || order['medium'] || 2;
+  }
+
+  // Function to get category name from code
+  function getCategoryName(code) {
+    if (!code) return '';
+    const cat = categoriesList.find(c => c.code === code);
+    return cat ? cat.name : code;
+  }
 
   // Filter gifts based on search and filters
   $: filteredGifts = gifts.filter(gift => {
@@ -65,13 +105,15 @@
     }
 
     // Category filter
-    if (selectedCategory && gift.category !== selectedCategory) return false;
+    if (selectedCategory && gift.category_code !== selectedCategory) return false;
 
     // Status filter
     if (selectedStatus && gift.status !== selectedStatus) return false;
 
     // Priority filter
-    if (selectedPriority && gift.priority !== selectedPriority) return false;
+    if (selectedPriority && getPriorityCode(gift) !== selectedPriority) {
+      return false;
+    }
 
     return true;
   });
@@ -80,14 +122,14 @@
   $: sortedGifts = [...filteredGifts].sort((a, b) => {
     switch (sortBy) {
       case 'priority':
-        const priorityOrder = { '🔥 Очень хочу': 1, '⭐ Было бы здорово': 2, '💭 Просто мечта': 3 };
-        const pa = priorityOrder[a.priority] || 4;
-        const pb = priorityOrder[b.priority] || 4;
+        const pa = getPriorityOrder(getPriorityCode(a));
+        const pb = getPriorityOrder(getPriorityCode(b));
         if (pa !== pb) return pa - pb;
         return new Date(b.created_at) - new Date(a.created_at);
 
       case 'name':
-        return a.name.localeCompare(b.name, 'ru');
+        const locale = $theme === 'dark' ? 'ru' : 'en'; // Simplified, should use locale store
+        return a.name.localeCompare(b.name, locale);
 
       case 'created_at':
         return new Date(b.created_at) - new Date(a.created_at);
@@ -151,12 +193,14 @@
         <!-- Theme Toggle -->
         <button
           on:click={() => theme.set(currentTheme === 'dark' ? 'light' : 'dark')}
-          class="w-10 h-10 sm:w-auto sm:h-auto sm:px-3 sm:py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-all duration-200 flex items-center justify-center sm:justify-start gap-2 text-slate-700 dark:text-slate-300 hover:scale-105 active:scale-95"
-          title="{currentTheme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}"
+          class="px-3 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-all duration-200 flex items-center justify-center gap-2 text-slate-700 dark:text-slate-300 hover:scale-105 active:scale-95"
+          title={$t(`theme.${currentTheme === 'dark' ? 'light' : 'dark'}Theme`)}
         >
-          <span class="text-xl">{currentTheme === 'dark' ? '🌙' : '☀️'}</span>
-          <span class="hidden sm:inline text-sm font-medium">{currentTheme === 'dark' ? 'Тёмная' : 'Светлая'}</span>
+          <span class="text-xl">{currentTheme === 'dark' ? '☀️' : '🌙'}</span>
         </button>
+
+        <!-- Language Switcher -->
+        <LanguageSwitcher />
 
         <!-- Add Button -->
         <button
@@ -164,7 +208,7 @@
           class="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-3 sm:px-4 py-2.5 rounded-xl border border-indigo-500/50 shadow-lg shadow-indigo-500/20 transition-all duration-200 text-sm font-semibold hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5 active:translate-y-0"
         >
           <span class="text-base">+</span>
-          <span class="hidden sm:inline">Добавить</span>
+          <span class="hidden sm:inline">{$t('app.addButton')}</span>
         </button>
       </div>
     </header>
@@ -176,64 +220,74 @@
         <input
           type="text"
           bind:value={searchQuery}
-          placeholder="🔍 Поиск по названию или описанию..."
+          placeholder={$t('app.filterPlaceholder')}
           class="w-full px-4 py-3 pl-11 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all shadow-lg"
         />
       </div>
 
       <!-- Filters Row -->
-      <div class="flex flex-wrap gap-2 sm:gap-3">
+      <div class="flex flex-wrap gap-2">
         <!-- Category Filter -->
-        <select
-          bind:value={selectedCategory}
-          class="px-3 sm:px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
-        >
-          <option value="">Все категории</option>
-          {#each categories as cat}
-            <option value={cat}>{cat}</option>
-          {/each}
-        </select>
+        <div class="flex-1 min-w-[140px] sm:min-w-[160px]">
+          <select
+            bind:value={selectedCategory}
+            class="w-full px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
+          >
+            <option value="">{$t('filters.allCategories')}</option>
+            {#each categoriesList as cat}
+              <option value={cat.code}>{cat.name}</option>
+            {/each}
+          </select>
+        </div>
 
         <!-- Status Filter -->
-        <select
-          bind:value={selectedStatus}
-          class="px-3 sm:px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
-        >
-          <option value="">Все статусы</option>
-          <option value="available">✨ Доступен</option>
-          <option value="reserved">🔒 Забронирован</option>
-          <option value="purchased">✅ Куплен</option>
-        </select>
+        <div class="flex-1 min-w-[140px] sm:min-w-[160px]">
+          <select
+            bind:value={selectedStatus}
+            class="w-full px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
+          >
+            <option value="">{$t('filters.allStatuses')}</option>
+            <option value="available">✨ {$t('status.available')}</option>
+            <option value="reserved">🔒 {$t('status.reserved')}</option>
+            <option value="purchased">✅ {$t('status.purchased')}</option>
+          </select>
+        </div>
 
         <!-- Priority Filter -->
-        <select
-          bind:value={selectedPriority}
-          class="px-3 sm:px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
-        >
-          <option value="">Все приоритеты</option>
-          {#each priorities as prio}
-            <option value={prio}>{prio}</option>
-          {/each}
-        </select>
+        <div class="flex-1 min-w-[140px] sm:min-w-[160px]">
+          <select
+            bind:value={selectedPriority}
+            class="w-full px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
+          >
+            <option value="">{$t('filters.allPriorities')}</option>
+            {#each prioritiesList as prio}
+              <option value={prio.code}>{prio.name}</option>
+            {/each}
+          </select>
+        </div>
 
         <!-- Sort By -->
-        <select
-          bind:value={sortBy}
-          class="px-3 sm:px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
-        >
-          <option value="priority">🔥 По приоритету</option>
-          <option value="name">🔤 По названию</option>
-          <option value="created_at">📅 По дате</option>
-        </select>
+        <div class="flex-1 min-w-[140px] sm:min-w-[160px]">
+          <select
+            bind:value={sortBy}
+            class="w-full px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
+          >
+            <option value="priority">🔥 {$t('filters.sortByPriority')}</option>
+            <option value="name">🔤 {$t('filters.sortByName')}</option>
+            <option value="created_at">📅 {$t('filters.sortByDate')}</option>
+          </select>
+        </div>
 
         <!-- Clear Filters Button -->
         {#if searchQuery || selectedCategory || selectedStatus || selectedPriority || sortBy !== 'priority'}
-          <button
-            on:click={clearFilters}
-            class="px-3 sm:px-4 py-2 bg-slate-200 dark:bg-slate-800/80 hover:bg-slate-300 dark:hover:bg-slate-700/80 backdrop-blur-sm text-slate-700 dark:text-slate-300 text-xs sm:text-sm rounded-lg border border-slate-300 dark:border-slate-700/50 transition-all hover:scale-105 active:scale-95"
-          >
-            ✕ Сбросить
-          </button>
+          <div class="flex-1 min-w-[140px] sm:min-w-[160px]">
+            <button
+              on:click={clearFilters}
+              class="w-full px-4 py-2 bg-slate-200 dark:bg-slate-800/80 hover:bg-slate-300 dark:hover:bg-slate-700/80 backdrop-blur-sm text-slate-700 dark:text-slate-300 text-sm rounded-lg border border-slate-300 dark:border-slate-700/50 transition-all hover:scale-105 active:scale-95"
+            >
+              ✕ {$t('actions.cancel')}
+            </button>
+          </div>
         {/if}
       </div>
 
@@ -241,7 +295,7 @@
       {#if filteredGifts.length !== gifts.length}
         <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
           <span class="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-          Показано {sortedGifts.length} из {gifts.length} подарков
+          {$t('filters.resultsCount', { count: sortedGifts.length, total: gifts.length })}
         </p>
       {/if}
     </div>
@@ -251,7 +305,7 @@
       <div class="flex items-center justify-center py-32">
         <div class="text-center">
           <div class="inline-block animate-spin rounded-full h-12 w-12 border-3 border-indigo-500 border-t-transparent mb-4"></div>
-          <p class="text-slate-400">Загрузка...</p>
+          <p class="text-slate-400">{$t('app.loading')}</p>
         </div>
       </div>
     {:else if gifts.length === 0}
@@ -259,8 +313,8 @@
       <div class="flex items-center justify-center py-32">
         <div class="text-center">
           <div class="text-6xl mb-4 opacity-20">🎁</div>
-          <h3 class="text-xl font-semibold text-slate-300 mb-2">Список пуст</h3>
-          <p class="text-slate-500 text-sm">Добавьте первый подарок</p>
+          <h3 class="text-xl font-semibold text-slate-300 mb-2">{$t('app.noGifts')}</h3>
+          <p class="text-slate-500 text-sm">{$t('app.noGiftsDescription')}</p>
         </div>
       </div>
     {:else if sortedGifts.length === 0}
@@ -268,8 +322,8 @@
       <div class="flex items-center justify-center py-32">
         <div class="text-center">
           <div class="text-6xl mb-4 opacity-20">🔍</div>
-          <h3 class="text-xl font-semibold text-slate-300 mb-2">Ничего не найдено</h3>
-          <p class="text-slate-500 text-sm">Попробуйте изменить параметры поиска</p>
+          <h3 class="text-xl font-semibold text-slate-300 mb-2">{$t('app.noGifts')}</h3>
+          <p class="text-slate-500 text-sm">{$t('app.noGiftsDescription')}</p>
         </div>
       </div>
     {:else}

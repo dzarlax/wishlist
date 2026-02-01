@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
+  import { t } from './utils/i18n.js';
 
   export let gift;
 
@@ -14,11 +15,12 @@
     error = '';
 
     if (!adminPassword) {
-      error = 'Введите пароль администратора';
+      error = $t('validation.required');
       return;
     }
 
-    if (!confirm('Вы уверены, что хотите удалить этот подарок? Это действие нельзя отменить.')) {
+    const confirmMsg = $t('modals.delete.confirm', { name: gift.name });
+    if (!confirm(confirmMsg)) {
       return;
     }
 
@@ -35,13 +37,13 @@
 
       if (!response.ok) {
         const err = await response.json();
-        error = err.error || 'Ошибка при удалении';
+        error = err.error || $t('toasts.error');
         return;
       }
 
       dispatch('deleted');
     } catch (err) {
-      error = 'Ошибка при удалении подарка';
+      error = $t('toasts.error');
     } finally {
       loading = false;
     }
@@ -66,7 +68,7 @@
     <!-- Header -->
     <div class="px-8 py-6 border-b border-slate-700/50">
       <h2 class="text-2xl font-bold bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent">
-        🗑️ Удалить подарок
+        🗑️ {$t('modals.delete.title')}
       </h2>
     </div>
 
@@ -80,16 +82,15 @@
       {/if}
 
       <p class="text-slate-400">
-        Вы уверены, что хотите удалить <span class="text-white font-semibold">{gift.name}</span>?
-        Это действие нельзя отменить.
+        {$t('modals.delete.confirm', { name: gift.name })}
       </p>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-300 mb-2">🔒 Пароль администратора *</label>
+        <label class="block text-sm font-semibold text-slate-300 mb-2">🔒 {$t('validation.adminPassword')} *</label>
         <input
           type="password"
           bind:value={adminPassword}
-          placeholder="Введите пароль"
+          placeholder="••••••••"
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
         />
       </div>
@@ -101,14 +102,14 @@
         on:click={() => dispatch('close')}
         class="px-6 py-3 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 transition-all duration-300"
       >
-        Отмена
+        {$t('actions.cancel')}
       </button>
       <button
         on:click={handleDelete}
         disabled={loading}
         class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
       >
-        {loading ? 'Удаление...' : 'Удалить'}
+        {loading ? $t('app.loading') : $t('actions.delete')}
       </button>
     </div>
   </div>
