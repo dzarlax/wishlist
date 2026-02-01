@@ -65,28 +65,13 @@ export function getCurrentLocale() {
 }
 
 /**
- * Format price according to locale
+ * Format price - returns price as-is (supports custom text like "+ delivery" or custom currencies)
  * @param {string|number} price - Price value
- * @returns {string} Formatted price
+ * @returns {string} Price text
  */
 export const formatPrice = derived(locale, ($locale) => (price) => {
 	if (!price) return '';
-
-	const num = parseFloat(price);
-	if (isNaN(num)) return price;
-
-	const localeMap = {
-		ru: 'ru-RU',
-		sr: 'sr-RS',
-		en: 'en-US'
-	};
-
-	return new Intl.NumberFormat(localeMap[$locale] || 'en-US', {
-		style: 'currency',
-		currency: 'RUB',
-		minimumFractionDigits: 0,
-		maximumFractionDigits: 0
-	}).format(num);
+	return price;
 });
 
 /**
