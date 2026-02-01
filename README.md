@@ -2,7 +2,7 @@
 
 A modern wishlist application built with **Svelte + Vite + Tailwind CSS**.
 
-Minimalist design, dark/light theme support, and anonymous gift reservations.
+Minimalist design, dark/light theme support, multi-language interface (Russian, English, Serbian), and anonymous gift reservations.
 
 ## ✨ Features
 
@@ -18,6 +18,7 @@ Minimalist design, dark/light theme support, and anonymous gift reservations.
 - 🎨 **Svelte + Tailwind CSS 4** — modern reactive UI
 - 🌙 **Theme toggle** (light/dark) with preference persistence
 - 🔔 **Toast notifications** for user feedback
+- 🌍 **Multi-language support**: Russian, English, Serbian
 
 ## 🚀 Installation
 
@@ -74,6 +75,15 @@ ADMIN_PASSWORD="your_password" npm start
 - ✏️ Editing gifts
 - 🗑️ Deleting gifts
 
+## 🌍 Languages
+
+The app supports three languages:
+- 🇷🇺 **Russian** (default)
+- 🇬🇧 **English**
+- 🇷🇸 **Serbian**
+
+Language preference is saved in localStorage and persists across sessions. The app automatically detects browser language on first visit.
+
 ## 🛠️ Tech Stack
 
 ### Frontend
@@ -95,7 +105,7 @@ wishlist/
 ├── server.js              # Express + sql.js backend
 ├── server/                # Modular backend structure
 │   ├── config/
-│   │   └── env.js        # Environment configuration
+│   │   └── env.js        # Environment configuration (CORS, etc.)
 │   ├── middleware/
 │   │   ├── rateLimiter.js    # Rate limiting
 │   │   └── validation.js     # Request validation
@@ -103,7 +113,10 @@ wishlist/
 │   │   └── Gift.js       # Gift model
 │   └── migrations/
 │       ├── migrationManager.js  # Migration system
-│       └── 0001-initial-schema.js
+│       ├── 0001-initial-schema.js
+│       ├── 0002-add-category-codes.js
+│       ├── 0003-add-priority-codes.js
+│       └── 0004-cleanup-schema.js
 ├── package.json           # Root dependencies and scripts
 ├── .env                   # Environment variables
 ├── wishlist.db            # SQLite database
@@ -121,13 +134,21 @@ wishlist/
 │   │       ├── DeleteModal.svelte  # Delete modal
 │   │       ├── components/         # Reusable components
 │   │       │   ├── Toast.svelte
-│   │       │   └── ToastContainer.svelte
+│   │       │   ├── ToastContainer.svelte
+│   │       │   └── LanguageSwitcher.svelte
 │   │       ├── stores/             # Svelte stores
 │   │       │   ├── theme.js        # Theme management
+│   │       │   ├── locale.js       # Locale management
 │   │       │   └── toasts.js       # Toast notifications
+│   │       ├── locales/            # Translations
+│   │       │   ├── ru.json         # Russian
+│   │       │   ├── en.json         # English
+│   │       │   ├── sr.json         # Serbian
+│   │       │   └── index.js
 │   │       └── utils/              # Utilities
 │   │           ├── api.js          # API client
-│   │           └── validation.js   # Form validation
+│   │           ├── validation.js   # Form validation
+│   │           └── i18n.js         # i18n utilities
 │   ├── tests/               # Unit tests (Vitest)
 │   ├── package.json
 │   ├── vite.config.js       # Vite config + proxy
@@ -146,6 +167,7 @@ wishlist/
 - 💫 **Smooth transitions** and hover effects
 - 📱 **Responsive design** for all devices
 - 🎨 **Slate palette** in Tailwind CSS 4
+- ♿ **Accessible**: Proper ARIA labels, keyboard navigation, semantic HTML
 
 ## 🎭 How Anonymity Works
 
@@ -161,6 +183,7 @@ The database is created automatically on first run through the migration system.
 
 Initialization includes:
 - Creating the `gifts` table with all necessary fields
+- Adding category and priority codes for better i18n support
 - Ready to work with categories and priorities
 
 ## 🔧 API
@@ -178,13 +201,17 @@ Add a new gift
   "admin_password": "wishlist2025",
   "name": "Gift Name",
   "description": "Description",
-  "category": "🔧 Electronics and Gadgets",
-  "priority": "🔥 Really want",
+  "category_code": "electronics",
+  "priority_code": "hot",
   "link": "https://...",
   "image_url": "https://...",
-  "price": "1000 ₽"
+  "price": "1000 ₽ + доставка"
 }
 ```
+
+**Category codes:** `electronics`, `home`, `accessories`, `education`, `games`, `clothing`, `sports`, `creativity`
+
+**Priority codes:** `hot`, `medium`, `low`
 
 ### POST /api/gifts/:id/reserve
 Reserve a gift
@@ -218,11 +245,11 @@ Edit a gift
   "admin_password": "wishlist2025",
   "name": "New Name",
   "description": "New Description",
-  "category": "🔧 Electronics and Gadgets",
-  "priority": "🔥 Really want",
+  "category_code": "electronics",
+  "priority_code": "medium",
   "link": "https://...",
   "image_url": "https://...",
-  "price": "2000 ₽"
+  "price": "$100 + shipping"
 }
 ```
 
@@ -232,6 +259,35 @@ Delete a gift
 {
   "admin_password": "wishlist2025"
 }
+```
+
+## 🔒 CORS Configuration
+
+### Development
+Allows localhost origins only (ports 5173, 5174, 5175, 5176, 3000)
+
+### Production
+By default, allows all origins (`*`) since frontend and backend are served from the same origin.
+
+**To restrict access:**
+
+Via `.env` file:
+```bash
+ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+```
+
+Via Docker:
+```bash
+docker run -d \
+  -e ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com \
+  -p 3000:3000 \
+  wishlist-app
+```
+
+Via docker-compose:
+```yaml
+environment:
+  - ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 ```
 
 ## 🐳 Docker
@@ -247,6 +303,7 @@ docker run -d \
   -p 3000:3000 \
   -v $(pwd)/wishlist.db:/app/wishlist.db \
   -e ADMIN_PASSWORD="your_password" \
+  -e ALLOWED_ORIGINS="https://yourdomain.com" \
   dzarlax/wishlist-app:latest
 ```
 
@@ -273,6 +330,10 @@ docker run -d \
 - Database is created automatically on first run
 - All data is saved in `wishlist.db`
 - Gifts are sorted by priority (🔥 > ⭐ > 💭)
+- Prices are stored as text - supports custom formats like "15000 ₽ + доставка", "$100", etc.
+- Language preference is saved automatically and persists across sessions
+- Press ESC to close any modal
+- All modals support keyboard navigation
 
 ## 📝 License
 

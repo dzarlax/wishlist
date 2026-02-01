@@ -33,6 +33,7 @@ This is a **full-stack application** with Svelte frontend and modular Express.js
 - **Database**: Single `gifts` table with in-memory SQLite + file persistence
 - **Testing**: Vitest for unit tests
 - **Deployment**: Docker multi-stage build
+- **i18n**: Multi-language support (Russian, English, Serbian)
 
 ### Key Architectural Patterns
 
@@ -44,7 +45,9 @@ This is a **full-stack application** with Svelte frontend and modular Express.js
 **Database Schema:**
 The `gifts` table contains: `id`, `name`, `description`, `category`, `priority`, `link`, `image_url`, `price`, `reserved`, `secret_code`, `reserved_by`, `reserved_at`, `status`, `created_at`.
 
-Priority sorting order: `🔥 Очень хочу` > `⭐ Было бы здорово` > `💭 Просто мечта`
+Priority codes: `hot` (🔥 Очень хочу) > `medium` (⭐ Было бы здорово) > `low` (💭 Просто мечта)
+
+Category codes: `electronics`, `home`, `accessories`, `education`, `games`, `clothing`, `sports`, `creativity`
 
 Status transitions: `available` → `reserved` → `purchased`
 
@@ -69,13 +72,21 @@ App.svelte (root, handles all state)
 │   ├── DeleteModal.svelte - Confirmation dialog
 │   └── components/
 │       ├── Toast.svelte - Individual toast notification
-│       └── ToastContainer.svelte - Container for all toasts
+│       ├── ToastContainer.svelte - Container for all toasts
+│       └── LanguageSwitcher.svelte - Language selection dropdown
 ├── Stores:
 │   ├── theme.js - Theme management with localStorage persistence
+│   ├── locale.js - Locale/language management with localStorage persistence
 │   └── toasts.js - Toast notification system
+├── Locales:
+│   ├── ru.json - Russian translations (default)
+│   ├── en.json - English translations
+│   ├── sr.json - Serbian translations
+│   └── index.js - Translation loader and exports
 └── Utils:
     ├── api.js - API client methods (CRUD operations)
-    └── validation.js - Form validation utilities
+    ├── validation.js - Form validation utilities
+    └── i18n.js - Internationalization utilities (t, formatPrice, formatDate)
 ```
 
 All modals use Svelte event dispatchers for parent communication.
@@ -85,7 +96,7 @@ All modals use Svelte event dispatchers for parent communication.
 ```
 server.js (main entry point)
 ├── config/
-│   └── env.js - Environment configuration & validation
+│   └── env.js - Environment configuration & validation (including CORS)
 ├── middleware/
 │   ├── rateLimiter.js - Rate limiting for API endpoints
 │   └── validation.js - Request validation middleware
@@ -93,7 +104,63 @@ server.js (main entry point)
 │   └── Gift.js - Gift model with database operations
 └── migrations/
     ├── migrationManager.js - Database migration system
-    └── 0001-initial-schema.js - Initial schema migration
+    ├── 0001-initial-schema.js - Initial schema migration
+    ├── 0002-add-category-codes.js - Add category_code column
+    ├── 0003-add-priority-codes.js - Add priority_code column
+    └── 0004-cleanup-schema.js - Final schema cleanup
+```
+
+### Internationalization (i18n)
+
+**Supported Languages:**
+- Russian (`ru`) - default language
+- English (`en`)
+- Serbian (`sr`)
+
+**Locale Store (`lib/stores/locale.js`):**
+- Persists to `localStorage` key `locale`
+- Detects browser language on first visit
+- Automatically loads appropriate translations
+
+**Translation Usage in Components:**
+```svelte
+<script>
+  import { t } from './lib/utils/i18n.js';
+</script>
+
+<h1>{$t('app.title')}</h1>
+<p>{$t('filters.resultsCount', { count: 5, total: 10 })}</p>
+```
+
+**Adding New Translations:**
+1. Add keys to all locale files in `frontend/src/lib/locales/`
+2. Use with `{$t('key.path')}` in components
+3. For dynamic values, use interpolation: `{$t('key', { param: value })}`
+
+**Price Formatting:**
+- Prices are stored and displayed as plain text (not numbers)
+- Supports custom formats: "15000 ₽", "$100", "5000 RUB + доставка"
+- The `formatPrice` utility simply returns the price as-is
+
+**Date Formatting:**
+- Uses `Intl.DateTimeFormat` for locale-aware date formatting
+- Format: `localeMap[$locale]` (ru-RU, en-US, sr-RS)
+
+### CORS Configuration
+
+**Development:** Allows localhost origins only (5173, 5174, 5175, 5176, 3000)
+
+**Production:**
+- Defaults to wildcard (`*`) if no `ALLOWED_ORIGINS` is set
+- Can be restricted via environment variable:
+  ```bash
+  ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+  ```
+
+**Docker:**
+```yaml
+environment:
+  - ALLOWED_ORIGINS=https://mysite.com,https://app.mysite.com
 ```
 
 ### Dark Mode
@@ -120,12 +187,26 @@ This enables class-based dark mode where the `dark` class on `<html>` element ac
 </div>
 ```
 
+### Accessibility
+
+**Modal Components:**
+- All modals have proper ARIA roles: `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
+- ESC key closes modals via `<svelte:window on:keydown />`
+- All form labels have associated `for` attributes matching input `id`s
+- Click outside closes modals
+
+**Gift Card:**
+- Uses semantic `<article>` element instead of `<div>`
+- Proper ARIA attributes for interactive elements
+
 ### Code Conventions
 
-- UI text is in Russian (target audience)
+- Multi-language support: Use `$t()` for all UI text
 - Emoji prefixes for visual hierarchy (🎁, +, 🔥, ⭐, 💭)
 - Color-coded status badges: green (available), yellow (reserved), blue (purchased)
 - Grid layout responsive: 1 column mobile → 4 columns desktop
 - **Toast Notifications**: Use `toasts.success()`, `toasts.error()`, `toasts.info()` for user feedback
 - **API Calls**: Use utility functions from `lib/utils/api.js` instead of raw `fetch()`
 - **Form Validation**: Use validation utilities from `lib/utils/validation.js`
+- **Reactive Translations**: Use reactive statements (`$:`) for translations that need to update on locale change
+- **Price as Text**: Always store and display prices as text (supports custom formats like "+ delivery")

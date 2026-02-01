@@ -88,7 +88,7 @@
     }
   }
 
-  function getStatusBadge() {
+  $: status = (() => {
     switch (gift.status) {
       case 'reserved':
         return { text: `🔒 ${$t('status.reserved')}`, class: 'bg-amber-500/90 text-white border-amber-400 shadow-lg shadow-amber-500/20' };
@@ -97,9 +97,7 @@
       default:
         return { text: '', class: '' };
     }
-  }
-
-  $: status = getStatusBadge();
+  })();
 </script>
 
 <article
