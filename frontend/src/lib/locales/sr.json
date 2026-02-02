@@ -96,6 +96,16 @@
       "title": "Brisanje poklona",
       "confirm": "Da li ste sigurni da želite da obrišete poklon «{name}»?",
       "success": "Poklon obrisan!"
+    },
+    "view": {
+      "title": "Pregled poklona",
+      "description": "Opis",
+      "price": "Cena",
+      "link": "Link",
+      "openLink": "Otvori link",
+      "reservedBy": "Rezervisao",
+      "reservedAt": "Rezervisan u",
+      "createdAt": "Kreiran"
     }
   },
   "validation": {

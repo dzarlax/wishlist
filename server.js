@@ -256,7 +256,7 @@ app.post('/api/extract-metadata', async (req, res) => {
 
 // AI-powered gift parsing endpoint
 app.post('/api/parse-gift', async (req, res) => {
-  const { text } = req.body;
+  const { text, locale = 'ru' } = req.body;
 
   if (!text || text.trim().length === 0) {
     return res.status(400).json({ error: 'Text is required' });
@@ -329,7 +329,15 @@ app.post('/api/parse-gift', async (req, res) => {
       inputText = `URL: ${text}\n\nPage Info:\nTitle: ${metadata.title}\nDescription: ${metadata.description || 'N/A'}\nImage: ${metadata.image || 'N/A'}\n\nUser can provide more context about this gift.`;
     }
 
-    const prompt = `Extract gift information from the following text or link. Return ONLY valid JSON without any additional text or formatting.
+    // Determine description language based on locale
+    const languageMap = {
+      'ru': 'Russian',
+      'en': 'English',
+      'sr': 'Serbian'
+    };
+    const descriptionLanguage = languageMap[locale] || 'Russian';
+
+    const prompt = `Extract gift information from the following text or link and GENERATE a personal, practical description in ${descriptionLanguage}. Return ONLY valid JSON without any additional text or formatting.
 
 Available categories: electronics, home, accessories, education, games, clothing, sports, creativity
 Available priorities: hot (🔥 Очень хочу), medium (⭐ Было бы здорово), low (💭 Просто мечта)
@@ -341,7 +349,7 @@ ${isUrl && metadata.image ? `IMPORTANT: The image URL "${metadata.image}" was fo
 Return JSON in this exact format:
 {
   "name": "gift name",
-  "description": "short description or null",
+  "description": "personal explanation of why someone would want this and how it would be useful in their daily life",
   "price": "price with currency symbol (e.g., 5000 ₽, $100)",
   "category": "one of the available categories",
   "priority": "hot, medium, or low",
@@ -350,7 +358,13 @@ Return JSON in this exact format:
 }
 
 Rules:
-- If input is a URL, try to extract product info (name, price, image)
+- ALWAYS generate a personal description in ${descriptionLanguage}, even if one exists on the product page
+- Focus on WHY someone would want this: what problems it solves, how it fits into their life, what they can do with it
+- AVOID marketing language and promotional phrases
+- Think from the wishlist owner's perspective: "I want this because..."
+- Mention practical use cases and personal benefits, not just technical features
+- Keep descriptions concise (1-2 sentences) but personal and meaningful
+- If input is a URL, extract product info (name, price, image) and write original description in ${descriptionLanguage}
 - For image_url: look for image links in the text, or common product image patterns like:
   * amazon.com/images/...
   * .jpg, .png, .webp URLs
@@ -361,15 +375,21 @@ Rules:
 - Priority medium: phrases like "было бы здорово", "would be nice", "хотелось бы"
 - Priority low: phrases like "мечта", "someday", "just thinking", "мечтаю"
 - Default to medium priority if unclear
-- Return null for missing optional fields (description, price, link, image_url)
+- Return null for missing optional fields (price, link, image_url), but ALWAYS include description
 - Return ONLY JSON, no explanations
 
 Examples:
 Text: "Хочу iPhone 15 Pro 256GB"
-Response: {"name": "iPhone 15 Pro 256GB", "description": null, "price": null, "category": "electronics", "priority": "hot", "link": null, "image_url": null}
+Response: {"name": "iPhone 15 Pro 256GB", "description": "Нужен для работы и творчества — быстрая обработка фото, удобная multitasking и отличная камера для ежедневных снимков", "price": null, "category": "electronics", "priority": "hot", "link": null, "image_url": null}
 
-Text: "https://example.com/product/phone-with-image.jpg"
-Response: {"name": "Phone", "description": null, "price": null, "category": "electronics", "priority": "medium", "link": "https://example.com/product/phone-with-image.jpg", "image_url": "https://example.com/product/phone-with-image.jpg"}`;
+Text: "https://example.com/product/playstation-5"
+Response: {"name": "PlayStation 5", "description": "Хочу для вечеров с друзьями и эксклюзивных игр, которые не выходят на PC — расслабиться и поиграть в любимые серии", "price": null, "category": "games", "priority": "medium", "link": "https://example.com/product/playstation-5", "image_url": null}
+
+Text: "I really want a mechanical keyboard"
+Response: {"name": "Mechanical Keyboard", "description": "Устал от мягких клавиш — хочу тактильные ощущения и комфорт при печатании кода весь день, плюс подсветка для вечерней работы", "price": null, "category": "electronics", "priority": "hot", "link": null, "image_url": null}
+
+Text: "Нужна хорошая кофеварка"
+Response: {"name": "Кофеварка", "description": "Чтобы не тратить время на очередь в кофейню каждое утро и сэкономить деньги — свежий кофе дома перед работой", "price": null, "category": "home", "priority": "medium", "link": null, "image_url": null}`;
 
     const result = await model.generateContent(prompt);
     const response = result.response.text().trim();

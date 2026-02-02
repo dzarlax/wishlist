@@ -8,6 +8,7 @@
   import EditGiftModal from './lib/EditGiftModal.svelte';
   import ReserveModal from './lib/ReserveModal.svelte';
   import DeleteModal from './lib/DeleteModal.svelte';
+  import ViewGiftModal from './lib/ViewGiftModal.svelte';
   import PasswordModal from './lib/PasswordModal.svelte';
   import ToastContainer from './lib/components/ToastContainer.svelte';
   import LanguageSwitcher from './lib/components/LanguageSwitcher.svelte';
@@ -26,6 +27,7 @@
   let showEditModal = false;
   let showReserveModal = false;
   let showDeleteModal = false;
+  let showViewModal = false;
   let showPasswordModal = false;
 
   let selectedGift = null;
@@ -173,11 +175,17 @@
     showDeleteModal = true;
   }
 
+  function openViewModal(gift) {
+    selectedGift = gift;
+    showViewModal = true;
+  }
+
   function onGiftSaved() {
     showAddModal = false;
     showEditModal = false;
     showReserveModal = false;
     showDeleteModal = false;
+    showViewModal = false;
     showPasswordModal = false;
     selectedGift = null;
     loadGifts();
@@ -347,6 +355,7 @@
           <GiftCard
             {gift}
             {index}
+            on:view={() => openViewModal(gift)}
             on:edit={() => openEditModal(gift)}
             on:reserve={() => openReserveModal(gift)}
             on:delete={() => openDeleteModal(gift)}
@@ -391,5 +400,12 @@
     gift={selectedGift}
     on:close={() => (showDeleteModal = false)}
     on:deleted={onGiftSaved}
+  />
+{/if}
+
+{#if showViewModal && selectedGift}
+  <ViewGiftModal
+    gift={selectedGift}
+    on:close={() => (showViewModal = false)}
   />
 {/if}

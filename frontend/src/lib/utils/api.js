@@ -119,6 +119,6 @@ export async function del(url) {
 /**
  * Parse gift information from text/link using AI
  */
-export async function parseGift(text) {
-  return post('/api/parse-gift', { text });
+export async function parseGift(text, locale = 'ru') {
+  return post('/api/parse-gift', { text, locale });
 }

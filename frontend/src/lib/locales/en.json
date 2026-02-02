@@ -96,6 +96,16 @@
       "title": "Delete gift",
       "confirm": "Are you sure you want to delete the gift «{name}»?",
       "success": "Gift deleted!"
+    },
+    "view": {
+      "title": "View gift",
+      "description": "Description",
+      "price": "Price",
+      "link": "Link",
+      "openLink": "Open link",
+      "reservedBy": "Reserved by",
+      "reservedAt": "Reserved at",
+      "createdAt": "Created"
     }
   },
   "validation": {

@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { toasts } from './stores/toasts.js';
+  import { locale } from './stores/locale.js';
   import { validators } from './utils/validation.js';
   import { t } from './utils/i18n.js';
   import { parseGift, getAdminPassword } from './utils/api.js';
@@ -151,7 +152,7 @@
     errors = {};
 
     try {
-      const result = await parseGift(aiText.trim());
+      const result = await parseGift(aiText.trim(), $locale);
 
       // Fill form with AI results
       if (result.name) name = result.name;

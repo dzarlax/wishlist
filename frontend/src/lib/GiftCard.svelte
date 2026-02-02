@@ -14,6 +14,14 @@
   let loading = false;
   let hovered = false;
 
+  function handleCardClick(e) {
+    // Don't trigger if clicking on action buttons
+    if (e.target.closest('button') || e.target.closest('a')) {
+      return;
+    }
+    dispatch('view');
+  }
+
   // Get priority code from gift (with fallback)
   $: currentPriorityCode = (() => {
     if (gift.priority_code) return gift.priority_code;
@@ -113,12 +121,15 @@
     : 'bg-slate-100 dark:bg-slate-900/80 border-slate-300 dark:border-slate-800/50 opacity-75'}"
   on:mouseenter={() => (hovered = true)}
   on:mouseleave={() => (hovered = false)}
+  on:click={handleCardClick}
   in:fly={{ y: 50, opacity: 0, duration: 400, delay: index * 50, easing: quintOut }}
 >
-  <!-- Image -->
-  <div
-    class="relative h-40 overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 flex-shrink-0"
-  >
+  <!-- Clickable area -->
+  <div class="flex-1 cursor-pointer">
+    <!-- Image -->
+    <div
+      class="relative h-40 overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 flex-shrink-0"
+    >
     {#if gift.image_url && !imageError}
       <img
         src={gift.image_url}
@@ -158,7 +169,7 @@
     {/if}
   </div>
 
-  <!-- Content -->
+  <!-- Content (clickable) -->
   <div class="p-4 space-y-3 flex flex-col flex-1 backdrop-blur-sm">
     {#if error}
       <div
@@ -203,49 +214,61 @@
 
     <div class="flex-1"></div>
 
-    <div
-      class="flex items-center justify-between pt-2 border-t border-slate-300 dark:border-slate-700/50"
-    >
-      {#if gift.price}
+    <!-- Price (inside clickable area) -->
+
+    {#if gift.price}
+      <div class="flex items-center pt-2 border-t border-slate-300 dark:border-slate-700/50">
         <span
           class="text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent"
         >
           {$formatPrice(gift.price)}
         </span>
-      {:else}
-        <span></span>
-      {/if}
-
-      <div class="flex gap-2">
-        {#if gift.link}
-          <a
-            href={gift.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-            title="Открыть ссылку"
-          >
-            🔗
-          </a>
-        {/if}
-        <button
-          on:click={() => dispatch('edit')}
-          class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-amber-100 dark:hover:bg-amber-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-amber-400 dark:hover:border-amber-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-          title={$t('actions.edit')}
-        >
-          ✏️
-        </button>
-        <button
-          on:click={() => dispatch('delete')}
-          class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-red-100 dark:hover:bg-red-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-red-400 dark:hover:border-red-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-          title={$t('actions.delete')}
-        >
-          🗑️
-        </button>
       </div>
-    </div>
+    {/if}
+  </div>
+  <!-- End clickable area -->
 
-    {#if gift.status === 'available'}
+  <!-- Action buttons (outside clickable area) -->
+  <div
+    class="flex items-center justify-between px-4 pb-4 {gift.price
+      ? ''
+      : 'pt-2 border-t border-slate-300 dark:border-slate-700/50'}"
+  >
+    {#if !gift.price}
+      <span></span>
+    {/if}
+
+    <div class="flex gap-2 ml-auto">
+      {#if gift.link}
+        <a
+          href={gift.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+          title="Открыть ссылку"
+        >
+          🔗
+        </a>
+      {/if}
+      <button
+        on:click={() => dispatch('edit')}
+        class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-amber-100 dark:hover:bg-amber-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-amber-400 dark:hover:border-amber-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+        title={$t('actions.edit')}
+      >
+        ✏️
+      </button>
+      <button
+        on:click={() => dispatch('delete')}
+        class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-red-100 dark:hover:bg-red-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-red-400 dark:hover:border-red-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+        title={$t('actions.delete')}
+      >
+        🗑️
+      </button>
+    </div>
+  </div>
+
+  {#if gift.status === 'available'}
+    <div class="px-4 pb-4">
       <button
         on:click={handleReserve}
         disabled={loading}
@@ -260,7 +283,9 @@
           {$t('actions.reserve')}
         {/if}
       </button>
-    {:else if gift.status === 'reserved'}
+    </div>
+  {:else if gift.status === 'reserved'}
+    <div class="px-4 pb-4">
       <div class="flex gap-2">
         <button
           on:click={handleReserve}
@@ -291,7 +316,9 @@
           {/if}
         </button>
       </div>
-    {:else if gift.status === 'purchased'}
+    </div>
+  {:else if gift.status === 'purchased'}
+    <div class="px-4 pb-4">
       <button
         on:click={handleUnreserve}
         disabled={loading}
@@ -306,8 +333,8 @@
           {$t('actions.unreserve')}
         {/if}
       </button>
-    {/if}
-  </div>
+    </div>
+  {/if}
 </article>
 
 <style>
