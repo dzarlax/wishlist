@@ -265,7 +265,7 @@
       <button
         on:click={handleReserve}
         disabled={loading}
-        class="w-full py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border border-indigo-500/50 shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5 active:translate-y-0"
+        class="w-full py-2 px-4 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border border-indigo-500/50 shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5 active:translate-y-0"
       >
         {#if loading}
           <span class="flex items-center justify-center gap-2">
@@ -273,7 +273,9 @@
             <span>{$t('app.loading')}</span>
           </span>
         {:else}
-          {$t('actions.reserve')}
+          <span class="flex items-center justify-center gap-2">
+            🎁 {$t('actions.reserve')}
+          </span>
         {/if}
       </button>
     </div>
@@ -283,29 +285,31 @@
         <button
           on:click={handleReserve}
           disabled={loading}
-          class="flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/50 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0"
+          class="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/50 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0"
         >
           {#if loading}
-            <span class="flex items-center justify-center gap-2">
+            <span class="flex items-center justify-center gap-1">
               <span class="animate-spin">⏳</span>
-              <span>{$t('app.loading')}</span>
             </span>
           {:else}
-            ✅ {$t('actions.markPurchased')}
+            <span class="flex items-center justify-center gap-1">
+              ✅ {$t('actions.markPurchased')}
+            </span>
           {/if}
         </button>
         <button
           on:click={handleUnreserve}
           disabled={loading}
-          class="flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-900/50 hover:border-red-400 dark:hover:border-red-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+          class="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-900/50 hover:border-red-400 dark:hover:border-red-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
         >
           {#if loading}
-            <span class="flex items-center justify-center gap-2">
+            <span class="flex items-center justify-center gap-1">
               <span class="animate-spin">⏳</span>
-              <span>{$t('app.loading')}</span>
             </span>
           {:else}
-            {$t('actions.unreserve')}
+            <span class="flex items-center justify-center gap-1">
+              🚫 {$t('actions.unreserve')}
+            </span>
           {/if}
         </button>
       </div>
@@ -315,7 +319,7 @@
       <button
         on:click={handleUnreserve}
         disabled={loading}
-        class="w-full py-2.5 px-4 rounded-lg text-sm font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/50 border border-amber-300 dark:border-amber-900/50 hover:border-amber-400 dark:hover:border-amber-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+        class="w-full py-2 px-4 rounded-lg text-sm font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/50 border border-amber-300 dark:border-amber-900/50 hover:border-amber-400 dark:hover:border-amber-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
       >
         {#if loading}
           <span class="flex items-center justify-center gap-2">
@@ -323,7 +327,9 @@
             <span>{$t('app.loading')}</span>
           </span>
         {:else}
-          {$t('actions.unreserve')}
+          <span class="flex items-center justify-center gap-2">
+            🔄 {$t('actions.unreserve')}
+          </span>
         {/if}
       </button>
     </div>
