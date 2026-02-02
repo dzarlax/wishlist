@@ -117,7 +117,7 @@
         const pa = getPriorityOrder(getPriorityCode(a));
         const pb = getPriorityOrder(getPriorityCode(b));
         if (pa !== pb) return pa - pb;
-        return new Date(b.created_at) - new Date(a.created_at);
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
 
       case 'name': {
@@ -126,7 +126,7 @@
       }
 
       case 'created_at':
-        return new Date(b.created_at) - new Date(a.created_at);
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 
       default:
         return 0;

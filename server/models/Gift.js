@@ -38,7 +38,7 @@ class GiftModel {
       image_url: row[6],
       price: row[7],
       reserved: Boolean(row[8]),
-      _secret_code: row[9],
+      secret_code: row[9],
       reserved_by: row[10],
       reserved_at: row[11],
       status: row[12],
@@ -47,12 +47,12 @@ class GiftModel {
   }
 
   /**
-   * Sanitize gift for public response (remove _secret_code)
+   * Sanitize gift for public response (remove secret_code)
    */
   sanitizeGift(gift) {
     if (!gift) return null;
     // eslint-disable-next-line no-unused-vars
-    const { _secret_code, ...sanitized } = gift;
+    const { secret_code, ...sanitized } = gift;
     return sanitized;
   }
 
@@ -188,7 +188,7 @@ class GiftModel {
     const query = `
       UPDATE gifts
       SET reserved = 1,
-          _secret_code = ${this.escapeString(secretCode)},
+          secret_code = ${this.escapeString(secretCode)},
           reserved_by = ${this.escapeString(reservedBy || 'Аноним')},
           reserved_at = CURRENT_TIMESTAMP,
           status = 'reserved'
@@ -206,7 +206,7 @@ class GiftModel {
     const query = `
       UPDATE gifts
       SET reserved = 0,
-          _secret_code = NULL,
+          secret_code = NULL,
           reserved_by = NULL,
           reserved_at = NULL,
           status = 'available'
