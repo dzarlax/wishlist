@@ -89,22 +89,7 @@ exports.down = function(db) {
   `);
 
   // Copy data back (mapping codes to text)
-  const categoryMap = {
-    'electronics': '🔧 Электроника и гаджеты',
-    'home': '🏠 Умный дом',
-    'accessories': '🔋 Аксессуары',
-    'education': '📚 Обучение и развитие',
-    'games': '🎮 Игры и развлечения',
-    'clothing': '👔 Одежда и стиль',
-    'sports': '🏃 Спорт и здоровье',
-    'creativity': '🎨 Творчество'
-  };
 
-  const priorityMap = {
-    'hot': '🔥 Очень хочу',
-    'medium': '⭐ Было бы здорово',
-    'low': '💭 Просто мечта'
-  };
 
   // This is a simplified rollback - in reality would need to execute mapping for each row
   db.run(`

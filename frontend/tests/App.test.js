@@ -22,13 +22,13 @@ describe('App', () => {
   it('displays empty state when no gifts', async () => {
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => []
+      json: async () => [],
     });
 
     const { container } = render(App);
 
     // Wait for loading to complete
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(container.textContent).toContain('Список пуст');
   });
@@ -41,19 +41,19 @@ describe('App', () => {
         category: '🔧 Электроника и гаджеты',
         priority: '🔥 Очень хочу',
         status: 'available',
-        created_at: new Date().toISOString()
-      }
+        created_at: new Date().toISOString(),
+      },
     ];
 
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockGifts
+      json: async () => mockGifts,
     });
 
     const { container } = render(App);
 
     // Wait for loading to complete
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(container.textContent).toContain('Test Gift');
   });

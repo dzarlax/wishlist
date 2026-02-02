@@ -31,8 +31,8 @@
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'X-Admin-Password': adminPassword
-        }
+          'X-Admin-Password': adminPassword,
+        },
       });
 
       if (!response.ok) {
@@ -42,7 +42,7 @@
       }
 
       dispatch('deleted');
-    } catch (err) {
+    } catch {
       error = $t('toasts.error');
     } finally {
       loading = false;
@@ -60,6 +60,13 @@
       dispatch('close');
     }
   }
+
+  function handleBackdropKeydown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      dispatch('close');
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -68,6 +75,10 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
+  on:keydown={handleBackdropKeydown}
+  role="button"
+  tabindex="-1"
+  aria-label="Close modal"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-lg"
@@ -79,7 +90,10 @@
   >
     <!-- Header -->
     <div class="px-8 py-6 border-b border-slate-700/50">
-      <h2 id="delete-modal-title" class="text-2xl font-bold bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent">
+      <h2
+        id="delete-modal-title"
+        class="text-2xl font-bold bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent"
+      >
         🗑️ {$t('modals.delete.title')}
       </h2>
     </div>
@@ -88,7 +102,9 @@
     <div class="p-8 space-y-6">
       <!-- Error Message -->
       {#if error}
-        <div class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300">
+        <div
+          class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300"
+        >
           {error}
         </div>
       {/if}
@@ -98,7 +114,9 @@
       </p>
 
       <div>
-        <label for="delete-admin-password" class="block text-sm font-semibold text-slate-300 mb-2">🔒 {$t('validation.adminPassword')} *</label>
+        <label for="delete-admin-password" class="block text-sm font-semibold text-slate-300 mb-2"
+          >🔒 {$t('validation.adminPassword')} *</label
+        >
         <input
           id="delete-admin-password"
           type="password"

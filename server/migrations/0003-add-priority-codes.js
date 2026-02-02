@@ -6,7 +6,7 @@ exports.up = function(db) {
   console.log('    Adding priority_code column...');
 
   // Add priority_code column (nullable at first for safety)
-  db.run(`ALTER TABLE gifts ADD COLUMN priority_code TEXT`);
+  db.run('ALTER TABLE gifts ADD COLUMN priority_code TEXT');
 
   console.log('    Migrating existing priorities to codes...');
 

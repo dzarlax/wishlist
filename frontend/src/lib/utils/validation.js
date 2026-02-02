@@ -5,16 +5,16 @@ import { translationsStore, getTranslation } from './i18n.js';
 
 // Get validator error messages from translations
 function getMessage(key, params = {}) {
-	const translations = getTranslationFromStore();
-	return getTranslation(translations, key, params);
+  const translations = getTranslationFromStore();
+  return getTranslation(translations, key, params);
 }
 
 // Helper to get current translations from store
 function getTranslationFromStore() {
-	let translations;
-	const unsubscribe = translationsStore.subscribe(val => translations = val);
-	unsubscribe();
-	return translations;
+  let translations;
+  const unsubscribe = translationsStore.subscribe((val) => (translations = val));
+  unsubscribe();
+  return translations;
 }
 
 export const validators = {
@@ -27,14 +27,14 @@ export const validators = {
   },
 
   // Length validation
-  minLength: (value, min, fieldName = 'validation.required') => {
+  minLength: (value, min, _fieldName = 'validation.required') => {
     if (value && value.length < min) {
       return getMessage('validation.nameRequired'); // Generic error for now
     }
     return null;
   },
 
-  maxLength: (value, max, fieldName = 'validation.nameRequired') => {
+  maxLength: (value, max, _fieldName = 'validation.nameRequired') => {
     if (value && value.length > max) {
       return getMessage('validation.nameRequired'); // Generic error for now
     }
@@ -118,7 +118,7 @@ export const validators = {
     const urlError = validators.url(value);
     if (urlError) return urlError;
     return validators.maxLength(value, 500);
-  }
+  },
 };
 
 /**

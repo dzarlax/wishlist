@@ -29,8 +29,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           secret_code: secretCode.trim(),
-          reserved_by: reservedBy.trim() || $t('modals.reserve.yourNamePlaceholder')
-        })
+          reserved_by: reservedBy.trim() || $t('modals.reserve.yourNamePlaceholder'),
+        }),
       });
 
       if (!response.ok) {
@@ -48,7 +48,7 @@
       }
 
       dispatch('saved');
-    } catch (err) {
+    } catch {
       error = $t('toasts.error');
     } finally {
       loading = false;
@@ -66,6 +66,13 @@
       dispatch('close');
     }
   }
+
+  function handleBackdropKeydown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      dispatch('close');
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -74,6 +81,10 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
+  on:keydown={handleBackdropKeydown}
+  role="button"
+  tabindex="-1"
+  aria-label="Close modal"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-lg"
@@ -85,7 +96,10 @@
   >
     <!-- Header -->
     <div class="px-8 py-6 border-b border-slate-700/50">
-      <h2 id="reserve-modal-title" class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
+      <h2
+        id="reserve-modal-title"
+        class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent"
+      >
         🔒 {$t('modals.reserve.title')}
       </h2>
     </div>
@@ -94,13 +108,17 @@
     <div class="p-8 space-y-6">
       <!-- Error Message -->
       {#if error}
-        <div class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300">
+        <div
+          class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300"
+        >
           {error}
         </div>
       {/if}
 
       <div>
-        <label for="reserve-name" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.reserve.yourName')} {$t('modals.add.optional')}</label>
+        <label for="reserve-name" class="block text-sm font-semibold text-slate-300 mb-2"
+          >{$t('modals.reserve.yourName')} {$t('modals.add.optional')}</label
+        >
         <input
           id="reserve-name"
           type="text"
@@ -111,7 +129,9 @@
       </div>
 
       <div>
-        <label for="reserve-secret-code" class="block text-sm font-semibold text-slate-300 mb-2">🔑 {$t('modals.reserve.secretCode')} *</label>
+        <label for="reserve-secret-code" class="block text-sm font-semibold text-slate-300 mb-2"
+          >🔑 {$t('modals.reserve.secretCode')} *</label
+        >
         <input
           id="reserve-secret-code"
           type="text"

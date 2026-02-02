@@ -6,7 +6,7 @@ exports.up = function(db) {
   console.log('    Adding category_code column...');
 
   // Add category_code column (nullable at first for safety)
-  db.run(`ALTER TABLE gifts ADD COLUMN category_code TEXT`);
+  db.run('ALTER TABLE gifts ADD COLUMN category_code TEXT');
 
   console.log('    Migrating existing categories to codes...');
 

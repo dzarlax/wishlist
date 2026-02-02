@@ -39,7 +39,7 @@
         const response = await fetch(`/api/gifts/${gift.id}/purchased`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ secret_code: secretCode })
+          body: JSON.stringify({ secret_code: secretCode }),
         });
 
         if (!response.ok) {
@@ -50,7 +50,7 @@
         }
 
         dispatch('refresh');
-      } catch (err) {
+      } catch {
         error = $t('toasts.error');
         loading = false;
       }
@@ -71,7 +71,7 @@
       const response = await fetch(`/api/gifts/${gift.id}/unreserve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret_code: secretCode })
+        body: JSON.stringify({ secret_code: secretCode }),
       });
 
       if (!response.ok) {
@@ -82,7 +82,7 @@
       }
 
       dispatch('refresh');
-    } catch (err) {
+    } catch {
       error = $t('toasts.error');
       loading = false;
     }
@@ -91,9 +91,15 @@
   $: status = (() => {
     switch (gift.status) {
       case 'reserved':
-        return { text: `🔒 ${$t('status.reserved')}`, class: 'bg-amber-500/90 text-white border-amber-400 shadow-lg shadow-amber-500/20' };
+        return {
+          text: `🔒 ${$t('status.reserved')}`,
+          class: 'bg-amber-500/90 text-white border-amber-400 shadow-lg shadow-amber-500/20',
+        };
       case 'purchased':
-        return { text: `✅ ${$t('status.purchased')}`, class: 'bg-emerald-600/90 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' };
+        return {
+          text: `✅ ${$t('status.purchased')}`,
+          class: 'bg-emerald-600/90 text-white border-emerald-500 shadow-lg shadow-emerald-500/20',
+        };
       default:
         return { text: '', class: '' };
     }
@@ -101,38 +107,54 @@
 </script>
 
 <article
-  class="gift-card group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-300 ease-out {gift.status === 'available'
+  class="gift-card group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-300 ease-out {gift.status ===
+  'available'
     ? 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/95 dark:to-slate-800/95 border-slate-300 dark:border-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1'
     : 'bg-slate-100 dark:bg-slate-900/80 border-slate-300 dark:border-slate-800/50 opacity-75'}"
-  on:mouseenter={() => hovered = true}
-  on:mouseleave={() => hovered = false}
+  on:mouseenter={() => (hovered = true)}
+  on:mouseleave={() => (hovered = false)}
   in:fly={{ y: 50, opacity: 0, duration: 400, delay: index * 50, easing: quintOut }}
 >
   <!-- Image -->
-  <div class="relative h-40 overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 flex-shrink-0">
+  <div
+    class="relative h-40 overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 flex-shrink-0"
+  >
     {#if gift.image_url && !imageError}
       <img
         src={gift.image_url}
         alt={gift.name}
-        class="w-full h-full object-cover transition-transform duration-500 ease-out {hovered ? 'scale-110' : 'scale-100'}"
-        on:error={() => imageError = true}
+        class="w-full h-full object-cover transition-transform duration-500 ease-out {hovered
+          ? 'scale-110'
+          : 'scale-100'}"
+        on:error={() => (imageError = true)}
       />
     {:else}
-      <div class="w-full h-full flex items-center justify-center text-5xl opacity-30 transition-transform duration-500 ease-out {hovered ? 'scale-110 rotate-5' : 'scale-100'}">
+      <div
+        class="w-full h-full flex items-center justify-center text-5xl opacity-30 transition-transform duration-500 ease-out {hovered
+          ? 'scale-110 rotate-5'
+          : 'scale-100'}"
+      >
         🎁
       </div>
     {/if}
 
     {#if status.text}
-      <div class="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-md transition-opacity duration-300" transition:fade={{ duration: 200 }}>
-        <div class="px-4 py-2 rounded-lg text-base font-bold border-2 {status.class} transform transition-transform duration-300 hover:scale-105">
+      <div
+        class="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-md transition-opacity duration-300"
+        transition:fade={{ duration: 200 }}
+      >
+        <div
+          class="px-4 py-2 rounded-lg text-base font-bold border-2 {status.class} transform transition-transform duration-300 hover:scale-105"
+        >
           {status.text}
         </div>
       </div>
     {/if}
 
     {#if gift.status === 'available' && currentPriorityCode === 'hot'}
-      <div class="absolute top-2 right-2 w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-lg shadow-red-500/50"></div>
+      <div
+        class="absolute top-2 right-2 w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-lg shadow-red-500/50"
+      ></div>
     {/if}
   </div>
 
@@ -150,20 +172,26 @@
 
     <div class="flex gap-2 flex-wrap">
       {#if gift.category_code}
-        <span class="px-2.5 py-1 rounded-lg text-xs text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/50 backdrop-blur-sm">
+        <span
+          class="px-2.5 py-1 rounded-lg text-xs text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/50 backdrop-blur-sm"
+        >
           {$t(`categories.${gift.category_code}`)}
         </span>
       {/if}
-      <span class="px-2.5 py-1 rounded-lg text-xs {currentPriorityCode === 'hot'
-        ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800/50'
-        : currentPriorityCode === 'medium'
-        ? 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800/50'
-        : 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/50'} backdrop-blur-sm">
+      <span
+        class="px-2.5 py-1 rounded-lg text-xs {currentPriorityCode === 'hot'
+          ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800/50'
+          : currentPriorityCode === 'medium'
+            ? 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800/50'
+            : 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/50'} backdrop-blur-sm"
+      >
         {$t(`priorities.${currentPriorityCode}`)}
       </span>
     </div>
 
-    <h3 class="text-base font-semibold text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors duration-200">
+    <h3
+      class="text-base font-semibold text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors duration-200"
+    >
       {gift.name}
     </h3>
 
@@ -175,9 +203,13 @@
 
     <div class="flex-1"></div>
 
-    <div class="flex items-center justify-between pt-2 border-t border-slate-300 dark:border-slate-700/50">
+    <div
+      class="flex items-center justify-between pt-2 border-t border-slate-300 dark:border-slate-700/50"
+    >
       {#if gift.price}
-        <span class="text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
+        <span
+          class="text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent"
+        >
           {$formatPrice(gift.price)}
         </span>
       {:else}
@@ -189,7 +221,7 @@
           <a
             href={gift.link}
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
             title="Открыть ссылку"
           >
@@ -308,8 +340,12 @@
     border-radius: inherit;
     padding: 1px;
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     opacity: 0;

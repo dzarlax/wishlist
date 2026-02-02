@@ -31,7 +31,7 @@
       setAdminPassword(password);
       toasts.success('Пароль сохранен');
       dispatch('authenticated', { password });
-    } catch (err) {
+    } catch {
       toasts.error($t('toasts.error'));
     } finally {
       loading = false;
@@ -52,6 +52,13 @@
       handleSubmit();
     }
   }
+
+  function handleBackdropKeydown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      dispatch('close');
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -60,6 +67,10 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
+  on:keydown={handleBackdropKeydown}
+  role="button"
+  tabindex="-1"
+  aria-label="Close modal"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-md"
@@ -71,7 +82,10 @@
   >
     <!-- Header -->
     <div class="px-8 py-6 border-b border-slate-700/50">
-      <h2 id="password-modal-title" class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
+      <h2
+        id="password-modal-title"
+        class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent"
+      >
         🔒 {$t('validation.adminPassword')}
       </h2>
     </div>
@@ -84,7 +98,9 @@
 
       <!-- Password Input -->
       <div>
-        <label for="auth-password" class="block text-sm font-semibold text-slate-300 mb-2">Пароль *</label>
+        <label for="auth-password" class="block text-sm font-semibold text-slate-300 mb-2"
+          >Пароль *</label
+        >
         <input
           id="auth-password"
           type="password"
@@ -93,9 +109,7 @@
           disabled={loading}
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:opacity-50"
         />
-        <p class="mt-2 text-xs text-slate-500">
-          💾 Пароль будет сохранен в браузере для удобства
-        </p>
+        <p class="mt-2 text-xs text-slate-500">💾 Пароль будет сохранен в браузере для удобства</p>
       </div>
     </div>
 

@@ -27,13 +27,13 @@
     { code: 'games', name: $t('categories.games') },
     { code: 'clothing', name: $t('categories.clothing') },
     { code: 'sports', name: $t('categories.sports') },
-    { code: 'creativity', name: $t('categories.creativity') }
+    { code: 'creativity', name: $t('categories.creativity') },
   ];
 
   $: priorities = [
     { code: 'hot', name: $t('priorities.hot') },
     { code: 'medium', name: $t('priorities.medium') },
-    { code: 'low', name: $t('priorities.low') }
+    { code: 'low', name: $t('priorities.low') },
   ];
 
   onMount(() => {
@@ -87,7 +87,7 @@
         name: name.trim(),
         description: description.trim(),
         category_code: category,
-        priority_code: priority
+        priority_code: priority,
       };
 
       if (price.trim()) payload.price = price.trim();
@@ -98,9 +98,9 @@
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'X-Admin-Password': adminPassword
+          'X-Admin-Password': adminPassword,
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -110,7 +110,7 @@
       }
 
       dispatch('saved');
-    } catch (err) {
+    } catch {
       error = $t('toasts.error');
     } finally {
       loading = false;
@@ -128,6 +128,13 @@
       dispatch('close');
     }
   }
+
+  function handleBackdropKeydown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      dispatch('close');
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -136,6 +143,10 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
+  on:keydown={handleBackdropKeydown}
+  role="button"
+  tabindex="-1"
+  aria-label="Close modal"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
@@ -146,8 +157,13 @@
     tabindex="-1"
   >
     <!-- Header -->
-    <div class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur-xl px-8 py-6 border-b border-slate-700/50">
-      <h2 id="edit-modal-title" class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent">
+    <div
+      class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur-xl px-8 py-6 border-b border-slate-700/50"
+    >
+      <h2
+        id="edit-modal-title"
+        class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent"
+      >
         ✏️ {$t('modals.edit.title')}
       </h2>
     </div>
@@ -156,14 +172,18 @@
     <div class="p-8 space-y-6">
       <!-- Error Message -->
       {#if error}
-        <div class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300">
+        <div
+          class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300"
+        >
           {error}
         </div>
       {/if}
 
       <!-- Name -->
       <div>
-        <label for="edit-gift-name" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.name')} *</label>
+        <label for="edit-gift-name" class="block text-sm font-semibold text-slate-300 mb-2"
+          >{$t('modals.add.name')} *</label
+        >
         <input
           id="edit-gift-name"
           type="text"
@@ -175,27 +195,31 @@
       <!-- Category & Priority -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label for="edit-gift-category" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.category')}</label>
+          <label for="edit-gift-category" class="block text-sm font-semibold text-slate-300 mb-2"
+            >{$t('modals.add.category')}</label
+          >
           <select
             id="edit-gift-category"
             bind:value={category}
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           >
             <option value="">{$t('modals.add.category')}</option>
-            {#each categories as cat}
+            {#each categories as cat (cat.code)}
               <option value={cat.code}>{cat.name}</option>
             {/each}
           </select>
         </div>
 
         <div>
-          <label for="edit-gift-priority" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.priority')}</label>
+          <label for="edit-gift-priority" class="block text-sm font-semibold text-slate-300 mb-2"
+            >{$t('modals.add.priority')}</label
+          >
           <select
             id="edit-gift-priority"
             bind:value={priority}
             class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           >
-            {#each priorities as prio}
+            {#each priorities as prio (prio.code)}
               <option value={prio.code}>{prio.name}</option>
             {/each}
           </select>
@@ -204,7 +228,9 @@
 
       <!-- Description -->
       <div>
-        <label for="edit-gift-description" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.description')}</label>
+        <label for="edit-gift-description" class="block text-sm font-semibold text-slate-300 mb-2"
+          >{$t('modals.add.description')}</label
+        >
         <textarea
           id="edit-gift-description"
           bind:value={description}
@@ -216,7 +242,9 @@
       <!-- Price & Link -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label for="edit-gift-price" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.price')}</label>
+          <label for="edit-gift-price" class="block text-sm font-semibold text-slate-300 mb-2"
+            >{$t('modals.add.price')}</label
+          >
           <input
             id="edit-gift-price"
             type="text"
@@ -226,7 +254,9 @@
         </div>
 
         <div>
-          <label for="edit-gift-link" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.link')}</label>
+          <label for="edit-gift-link" class="block text-sm font-semibold text-slate-300 mb-2"
+            >{$t('modals.add.link')}</label
+          >
           <input
             id="edit-gift-link"
             type="url"
@@ -238,7 +268,9 @@
 
       <!-- Image URL -->
       <div>
-        <label for="edit-gift-image" class="block text-sm font-semibold text-slate-300 mb-2">{$t('modals.add.image')}</label>
+        <label for="edit-gift-image" class="block text-sm font-semibold text-slate-300 mb-2"
+          >{$t('modals.add.image')}</label
+        >
         <input
           id="edit-gift-image"
           type="url"
@@ -249,7 +281,9 @@
     </div>
 
     <!-- Footer -->
-    <div class="sticky bottom-0 bg-slate-800/95 backdrop-blur-xl px-8 py-6 border-t border-slate-700/50 flex gap-3 justify-end">
+    <div
+      class="sticky bottom-0 bg-slate-800/95 backdrop-blur-xl px-8 py-6 border-t border-slate-700/50 flex gap-3 justify-end"
+    >
       <button
         on:click={() => dispatch('close')}
         class="px-6 py-3 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 transition-all duration-300"

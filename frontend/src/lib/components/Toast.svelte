@@ -1,5 +1,5 @@
 <script>
-  import { fade, fly } from 'svelte/transition';
+  import { fly } from 'svelte/transition';
   import { createEventDispatcher } from 'svelte';
 
   export let toast;
@@ -23,14 +23,14 @@
           bg: 'bg-emerald-500/10',
           border: 'border-emerald-500/30',
           text: 'text-emerald-300',
-          icon: '✅'
+          icon: '✅',
         };
       case 'error':
         return {
           bg: 'bg-red-500/10',
           border: 'border-red-500/30',
           text: 'text-red-300',
-          icon: '❌'
+          icon: '❌',
         };
       case 'info':
       default:
@@ -38,7 +38,7 @@
           bg: 'bg-indigo-500/10',
           border: 'border-indigo-500/30',
           text: 'text-indigo-300',
-          icon: 'ℹ️'
+          icon: 'ℹ️',
         };
     }
   }

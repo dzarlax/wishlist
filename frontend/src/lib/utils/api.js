@@ -30,14 +30,18 @@ export function clearAdminPassword() {
 export async function apiRequest(url, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
-    ...(options.headers || {})
+    ...(options.headers || {}),
   };
 
   // Add admin password header if it's set and this is an admin operation
   const adminPassword = getAdminPassword();
-  if (adminPassword && (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE')) {
+  if (
+    adminPassword &&
+    (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE')
+  ) {
     // Check if this URL needs admin auth (not reserve/unreserve/purchased)
-    const needsAdmin = !url.includes('/reserve') && !url.includes('/unreserve') && !url.includes('/purchased');
+    const needsAdmin =
+      !url.includes('/reserve') && !url.includes('/unreserve') && !url.includes('/purchased');
     if (needsAdmin) {
       headers['X-Admin-Password'] = adminPassword;
     }
@@ -46,7 +50,7 @@ export async function apiRequest(url, options = {}) {
   try {
     const response = await fetch(url, {
       ...options,
-      headers
+      headers,
     });
 
     const data = await response.json();
@@ -91,7 +95,7 @@ export async function get(url) {
 export async function post(url, body) {
   return apiRequest(url, {
     method: 'POST',
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 }
 
@@ -101,7 +105,7 @@ export async function post(url, body) {
 export async function put(url, body) {
   return apiRequest(url, {
     method: 'PUT',
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 }
 

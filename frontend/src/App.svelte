@@ -11,12 +11,12 @@
   import PasswordModal from './lib/PasswordModal.svelte';
   import ToastContainer from './lib/components/ToastContainer.svelte';
   import LanguageSwitcher from './lib/components/LanguageSwitcher.svelte';
-  import { t, formatPrice } from './lib/utils/i18n.js';
+  import { t } from './lib/utils/i18n.js';
 
   let currentTheme = 'dark';
 
   // Subscribe to theme changes
-  theme.subscribe(value => {
+  theme.subscribe((value) => {
     currentTheme = value;
   });
 
@@ -63,18 +63,14 @@
     { code: 'games', name: $t('categories.games') },
     { code: 'clothing', name: $t('categories.clothing') },
     { code: 'sports', name: $t('categories.sports') },
-    { code: 'creativity', name: $t('categories.creativity') }
+    { code: 'creativity', name: $t('categories.creativity') },
   ];
 
   $: prioritiesList = [
     { code: 'hot', name: $t('priorities.hot') },
     { code: 'medium', name: $t('priorities.medium') },
-    { code: 'low', name: $t('priorities.low') }
+    { code: 'low', name: $t('priorities.low') },
   ];
-
-  $: categories = [...new Set(gifts.map(g => g.category_code).filter(Boolean))].sort();
-  $: statuses = ['available', 'reserved', 'purchased'];
-  $: priorities = prioritiesList;
 
   // Helper to get priority code with fallback
   function getPriorityCode(gift) {
@@ -90,15 +86,8 @@
     return order[priorityCode] || order['medium'] || 2;
   }
 
-  // Function to get category name from code
-  function getCategoryName(code) {
-    if (!code) return '';
-    const cat = categoriesList.find(c => c.code === code);
-    return cat ? cat.name : code;
-  }
-
   // Filter gifts based on search and filters
-  $: filteredGifts = gifts.filter(gift => {
+  $: filteredGifts = gifts.filter((gift) => {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -124,15 +113,17 @@
   // Sort filtered gifts
   $: sortedGifts = [...filteredGifts].sort((a, b) => {
     switch (sortBy) {
-      case 'priority':
+      case 'priority': {
         const pa = getPriorityOrder(getPriorityCode(a));
         const pb = getPriorityOrder(getPriorityCode(b));
         if (pa !== pb) return pa - pb;
         return new Date(b.created_at) - new Date(a.created_at);
+      }
 
-      case 'name':
+      case 'name': {
         const locale = $theme === 'dark' ? 'ru' : 'en'; // Simplified, should use locale store
         return a.name.localeCompare(b.name, locale);
+      }
 
       case 'created_at':
         return new Date(b.created_at) - new Date(a.created_at);
@@ -193,7 +184,9 @@
   }
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
+<div
+  class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300"
+>
   <!-- Toast Container -->
   <ToastContainer />
 
@@ -201,7 +194,9 @@
     <!-- Header -->
     <header class="flex items-center justify-between mb-6 sm:mb-8">
       <div class="flex items-center gap-3">
-        <h1 class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+        <h1
+          class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent"
+        >
           🎁 Wishlist
         </h1>
       </div>
@@ -251,7 +246,7 @@
             class="w-full px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
           >
             <option value="">{$t('filters.allCategories')}</option>
-            {#each categoriesList as cat}
+            {#each categoriesList as cat (cat.code)}
               <option value={cat.code}>{cat.name}</option>
             {/each}
           </select>
@@ -277,7 +272,7 @@
             class="w-full px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
           >
             <option value="">{$t('filters.allPriorities')}</option>
-            {#each prioritiesList as prio}
+            {#each prioritiesList as prio (prio.code)}
               <option value={prio.code}>{prio.name}</option>
             {/each}
           </select>
@@ -321,7 +316,9 @@
     {#if loading}
       <div class="flex items-center justify-center py-32">
         <div class="text-center">
-          <div class="inline-block animate-spin rounded-full h-12 w-12 border-3 border-indigo-500 border-t-transparent mb-4"></div>
+          <div
+            class="inline-block animate-spin rounded-full h-12 w-12 border-3 border-indigo-500 border-t-transparent mb-4"
+          ></div>
           <p class="text-slate-400">{$t('app.loading')}</p>
         </div>
       </div>
@@ -363,17 +360,20 @@
 
 <!-- Modals -->
 {#if showPasswordModal}
-  <PasswordModal on:close={() => showPasswordModal = false} on:authenticated={onPasswordAuthenticated} />
+  <PasswordModal
+    on:close={() => (showPasswordModal = false)}
+    on:authenticated={onPasswordAuthenticated}
+  />
 {/if}
 
 {#if showAddModal}
-  <AddGiftModal on:close={() => showAddModal = false} on:saved={onGiftSaved} />
+  <AddGiftModal on:close={() => (showAddModal = false)} on:saved={onGiftSaved} />
 {/if}
 
 {#if showEditModal && selectedGift}
   <EditGiftModal
     gift={selectedGift}
-    on:close={() => showEditModal = false}
+    on:close={() => (showEditModal = false)}
     on:saved={onGiftSaved}
   />
 {/if}
@@ -381,7 +381,7 @@
 {#if showReserveModal && selectedGift}
   <ReserveModal
     gift={selectedGift}
-    on:close={() => showReserveModal = false}
+    on:close={() => (showReserveModal = false)}
     on:saved={onGiftSaved}
   />
 {/if}
@@ -389,7 +389,7 @@
 {#if showDeleteModal && selectedGift}
   <DeleteModal
     gift={selectedGift}
-    on:close={() => showDeleteModal = false}
+    on:close={() => (showDeleteModal = false)}
     on:deleted={onGiftSaved}
   />
 {/if}

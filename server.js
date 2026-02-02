@@ -56,28 +56,6 @@ async function initDB() {
   setInterval(saveDB, 5000);
 }
 
-function createTables() {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS gifts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      description TEXT,
-      category TEXT,
-      priority TEXT DEFAULT '⭐ Было бы здорово',
-      link TEXT,
-      image_url TEXT,
-      price TEXT,
-      reserved INTEGER DEFAULT 0,
-      secret_code TEXT,
-      reserved_by TEXT,
-      reserved_at TEXT,
-      status TEXT DEFAULT 'available',
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  saveDB();
-}
-
 function saveDB() {
   const data = db.export();
   const buffer = Buffer.from(data);
@@ -134,7 +112,7 @@ app.get('/health', (req, res) => {
       },
       timestamp: new Date().toISOString()
     });
-  } catch (err) {
+  } catch {
     res.status(500).json({
       status: 'error',
       error: 'Database connection failed'
@@ -222,7 +200,7 @@ app.post('/api/extract-metadata', async (req, res) => {
   // Basic URL validation
   try {
     new URL(url);
-  } catch (err) {
+  } catch {
     return res.status(400).json({ error: 'Invalid URL' });
   }
 
@@ -264,7 +242,7 @@ app.post('/api/extract-metadata', async (req, res) => {
       try {
         const baseUrl = new URL(url);
         metadata.image = new URL(metadata.image, baseUrl.origin).href;
-      } catch (err) {
+      } catch {
         metadata.image = null;
       }
     }
@@ -333,15 +311,15 @@ app.post('/api/parse-gift', async (req, res) => {
             try {
               const baseUrl = new URL(text.trim());
               metadata.image = new URL(metadata.image, baseUrl.origin).href;
-            } catch (err) {
+            } catch {
               metadata.image = null;
             }
           }
         }
-      } catch (metaError) {
+      } catch {
         console.log('Could not extract metadata, continuing with AI only');
       }
-    } catch (err) {
+    } catch {
       // Not a URL, continue with AI only
     }
 
@@ -402,7 +380,7 @@ Response: {"name": "Phone", "description": null, "price": null, "category": "ele
     let parsedData;
     try {
       parsedData = JSON.parse(cleanedResponse);
-    } catch (parseError) {
+    } catch {
       console.error('Failed to parse Gemini response:', cleanedResponse);
       return res.status(500).json({ error: 'Failed to parse AI response' });
     }
@@ -443,7 +421,7 @@ app.use('/api/*', (req, res) => {
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('Error:', err);
 
   // Handle validation errors

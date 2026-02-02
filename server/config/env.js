@@ -1,10 +1,9 @@
-const fs = require('fs');
 const path = require('path');
 
 // Load environment variables from .env file if dotenv exists
 try {
   require('dotenv').config();
-} catch (err) {
+} catch {
   // dotenv is optional
 }
 

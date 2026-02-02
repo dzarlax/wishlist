@@ -37,7 +37,7 @@ function createThemeStore() {
       set(value);
     },
     toggle: () => {
-      update(current => {
+      update((current) => {
         const newTheme = current === 'dark' ? 'light' : 'dark';
         console.log('Toggling theme from', current, 'to', newTheme);
         if (browser) {
@@ -47,11 +47,14 @@ function createThemeStore() {
           } else {
             document.documentElement.classList.remove('dark');
           }
-          console.log('Document classes after toggle:', document.documentElement.classList.toString());
+          console.log(
+            'Document classes after toggle:',
+            document.documentElement.classList.toString()
+          );
         }
         return newTheme;
       });
-    }
+    },
   };
 }
 

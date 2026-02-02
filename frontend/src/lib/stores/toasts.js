@@ -11,10 +11,10 @@ function createToastStore() {
       message,
       type: options.type || 'info', // 'success', 'error', 'info'
       duration: options.duration || 3000,
-      ...options
+      ...options,
     };
 
-    update(toasts => [...toasts, toast]);
+    update((toasts) => [...toasts, toast]);
 
     // Auto-remove after duration
     if (toast.duration > 0) {
@@ -28,7 +28,7 @@ function createToastStore() {
 
   // Remove a toast
   function remove(id) {
-    update(toasts => toasts.filter(t => t.id !== id));
+    update((toasts) => toasts.filter((t) => t.id !== id));
   }
 
   // Clear all toasts
@@ -56,7 +56,7 @@ function createToastStore() {
     clear,
     success,
     error,
-    info
+    info,
   };
 }
 
