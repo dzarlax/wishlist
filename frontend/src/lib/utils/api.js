@@ -1,25 +1,27 @@
-// Admin password storage (in-memory, will reset on refresh)
-let adminPassword = '';
+const ADMIN_PASSWORD_KEY = 'admin_password';
 
 /**
  * Set the admin password for subsequent requests
+ * Persists to localStorage for future sessions
  */
 export function setAdminPassword(password) {
-  adminPassword = password;
+  localStorage.setItem(ADMIN_PASSWORD_KEY, password);
 }
 
 /**
  * Get the current admin password
+ * Retrieves from localStorage if available
  */
 export function getAdminPassword() {
-  return adminPassword;
+  return localStorage.getItem(ADMIN_PASSWORD_KEY) || '';
 }
 
 /**
  * Clear the stored admin password
+ * Removes from localStorage
  */
 export function clearAdminPassword() {
-  adminPassword = '';
+  localStorage.removeItem(ADMIN_PASSWORD_KEY);
 }
 
 /**
@@ -32,6 +34,7 @@ export async function apiRequest(url, options = {}) {
   };
 
   // Add admin password header if it's set and this is an admin operation
+  const adminPassword = getAdminPassword();
   if (adminPassword && (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE')) {
     // Check if this URL needs admin auth (not reserve/unreserve/purchased)
     const needsAdmin = !url.includes('/reserve') && !url.includes('/unreserve') && !url.includes('/purchased');
@@ -107,4 +110,11 @@ export async function put(url, body) {
  */
 export async function del(url) {
   return apiRequest(url, { method: 'DELETE' });
+}
+
+/**
+ * Parse gift information from text/link using AI
+ */
+export async function parseGift(text) {
+  return post('/api/parse-gift', { text });
 }

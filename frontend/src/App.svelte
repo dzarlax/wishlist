@@ -2,11 +2,13 @@
   import { onMount } from 'svelte';
   import { toasts } from './lib/stores/toasts.js';
   import { theme } from './lib/stores/theme.js';
+  import { getAdminPassword } from './lib/utils/api.js';
   import GiftCard from './lib/GiftCard.svelte';
   import AddGiftModal from './lib/AddGiftModal.svelte';
   import EditGiftModal from './lib/EditGiftModal.svelte';
   import ReserveModal from './lib/ReserveModal.svelte';
   import DeleteModal from './lib/DeleteModal.svelte';
+  import PasswordModal from './lib/PasswordModal.svelte';
   import ToastContainer from './lib/components/ToastContainer.svelte';
   import LanguageSwitcher from './lib/components/LanguageSwitcher.svelte';
   import { t, formatPrice } from './lib/utils/i18n.js';
@@ -24,6 +26,7 @@
   let showEditModal = false;
   let showReserveModal = false;
   let showDeleteModal = false;
+  let showPasswordModal = false;
 
   let selectedGift = null;
 
@@ -148,6 +151,19 @@
   }
 
   function openAddModal() {
+    // Check if admin password is already saved
+    const savedPassword = getAdminPassword();
+    if (savedPassword) {
+      // Password exists, open AddGiftModal directly
+      showAddModal = true;
+    } else {
+      // No password, show authentication modal first
+      showPasswordModal = true;
+    }
+  }
+
+  function onPasswordAuthenticated() {
+    showPasswordModal = false;
     showAddModal = true;
   }
 
@@ -171,6 +187,7 @@
     showEditModal = false;
     showReserveModal = false;
     showDeleteModal = false;
+    showPasswordModal = false;
     selectedGift = null;
     loadGifts();
   }
@@ -345,6 +362,10 @@
 </div>
 
 <!-- Modals -->
+{#if showPasswordModal}
+  <PasswordModal on:close={() => showPasswordModal = false} on:authenticated={onPasswordAuthenticated} />
+{/if}
+
 {#if showAddModal}
   <AddGiftModal on:close={() => showAddModal = false} on:saved={onGiftSaved} />
 {/if}

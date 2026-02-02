@@ -24,6 +24,8 @@
   },
   "dependencies": {
     "@skeletonlabs/skeleton": "^4.10.0",
-    "@tailwindcss/postcss": "^4.1.18"
+    "@tailwindcss/postcss": "^4.1.18",
+    "cheerio": "^1.2.0",
+    "node-fetch": "^3.3.2"
   }
 }

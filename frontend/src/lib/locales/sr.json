@@ -62,7 +62,12 @@
       "imagePlaceholder": "https://...",
       "price": "Cena",
       "pricePlaceholder": "15000",
-      "optional": "(opciono)"
+      "optional": "(opciono)",
+      "aiSection": "🤖 AI automatsko popunjavanje",
+      "aiInputPlaceholder": "Nalepi link ili opiši poklon (npr.: Hoću PlayStation 5 za 500€ iz DNS-a)",
+      "aiFillButton": "Popuni pomoću AI",
+      "aiFillButtonLoading": "Analiziram...",
+      "aiError": "AI greška"
     },
     "edit": {
       "title": "Uređivanje poklona"

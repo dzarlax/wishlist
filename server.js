@@ -7,6 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 const morgan = require('morgan');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const cheerio = require('cheerio');
 const { adminAuthLimiter, reservationLimiter } = require('./server/middleware/rateLimiter');
 const {
   validateGiftCreate,
@@ -207,6 +209,232 @@ app.put('/api/gifts/:id', adminAuthLimiter, requireAdminAuth, validateGiftUpdate
 
   if (!updated) return res.status(404).json({ error: 'Not found' });
   res.json(Gift.sanitizeGift(updated));
+});
+
+// Extract metadata from URL (Open Graph, etc.)
+app.post('/api/extract-metadata', async (req, res) => {
+  const { url } = req.body;
+
+  if (!url || !url.trim()) {
+    return res.status(400).json({ error: 'URL is required' });
+  }
+
+  // Basic URL validation
+  try {
+    new URL(url);
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+
+  try {
+    const fetch = (await import('node-fetch')).default;
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      timeout: 10000 // 10 second timeout
+    });
+
+    if (!response.ok) {
+      return res.status(400).json({ error: 'Failed to fetch URL' });
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    // Extract Open Graph metadata
+    const metadata = {
+      title: $('meta[property="og:title"]').attr('content') ||
+              $('meta[name="twitter:title"]').attr('content') ||
+              $('title').text() ||
+              null,
+      description: $('meta[property="og:description"]').attr('content') ||
+                   $('meta[name="twitter:description"]').attr('content') ||
+                   $('meta[name="description"]').attr('content') ||
+                   null,
+      image: $('meta[property="og:image"]').attr('content') ||
+             $('meta[name="twitter:image"]').attr('content') ||
+             $('link[rel="image_src"]').attr('href') ||
+             null,
+      url: $('meta[property="og:url"]').attr('content') || url
+    };
+
+    // Resolve relative URLs for images
+    if (metadata.image && !metadata.image.startsWith('http')) {
+      try {
+        const baseUrl = new URL(url);
+        metadata.image = new URL(metadata.image, baseUrl.origin).href;
+      } catch (err) {
+        metadata.image = null;
+      }
+    }
+
+    res.json(metadata);
+  } catch (error) {
+    console.error('Metadata extraction error:', error);
+    res.status(500).json({ error: 'Failed to extract metadata' });
+  }
+});
+
+// AI-powered gift parsing endpoint
+app.post('/api/parse-gift', async (req, res) => {
+  const { text } = req.body;
+
+  if (!text || text.trim().length === 0) {
+    return res.status(400).json({ error: 'Text is required' });
+  }
+
+  if (!config.geminiApiKey) {
+    return res.status(500).json({ error: 'Gemini API key not configured' });
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(config.geminiApiKey);
+    const model = genAI.getGenerativeModel({ model: config.geminiModel });
+
+    // Check if text is a URL and extract metadata
+    let metadata = {};
+    let isUrl = false;
+    try {
+      new URL(text.trim());
+      isUrl = true;
+
+      // Try to extract metadata from URL
+      try {
+        const fetch = (await import('node-fetch')).default;
+        const response = await fetch(text.trim(), {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          },
+          timeout: 10000
+        });
+
+        if (response.ok) {
+          const html = await response.text();
+          const $ = cheerio.load(html);
+
+          metadata = {
+            title: $('meta[property="og:title"]').attr('content') ||
+                    $('meta[name="twitter:title"]').attr('content') ||
+                    $('title').text() ||
+                    null,
+            description: $('meta[property="og:description"]').attr('content') ||
+                         $('meta[name="twitter:description"]').attr('content') ||
+                         $('meta[name="description"]').attr('content') ||
+                         null,
+            image: $('meta[property="og:image"]').attr('content') ||
+                   $('meta[name="twitter:image"]').attr('content') ||
+                   $('link[rel="image_src"]').attr('href') ||
+                   null
+          };
+
+          // Resolve relative URLs for images
+          if (metadata.image && !metadata.image.startsWith('http')) {
+            try {
+              const baseUrl = new URL(text.trim());
+              metadata.image = new URL(metadata.image, baseUrl.origin).href;
+            } catch (err) {
+              metadata.image = null;
+            }
+          }
+        }
+      } catch (metaError) {
+        console.log('Could not extract metadata, continuing with AI only');
+      }
+    } catch (err) {
+      // Not a URL, continue with AI only
+    }
+
+    // Build prompt with metadata context
+    let inputText = text;
+    if (isUrl && metadata.title) {
+      inputText = `URL: ${text}\n\nPage Info:\nTitle: ${metadata.title}\nDescription: ${metadata.description || 'N/A'}\nImage: ${metadata.image || 'N/A'}\n\nUser can provide more context about this gift.`;
+    }
+
+    const prompt = `Extract gift information from the following text or link. Return ONLY valid JSON without any additional text or formatting.
+
+Available categories: electronics, home, accessories, education, games, clothing, sports, creativity
+Available priorities: hot (🔥 Очень хочу), medium (⭐ Было бы здорово), low (💭 Просто мечта)
+
+Text/Link: ${inputText}
+
+${isUrl && metadata.image ? `IMPORTANT: The image URL "${metadata.image}" was found on the page. Include it in the image_url field.` : ''}
+
+Return JSON in this exact format:
+{
+  "name": "gift name",
+  "description": "short description or null",
+  "price": "price with currency symbol (e.g., 5000 ₽, $100)",
+  "category": "one of the available categories",
+  "priority": "hot, medium, or low",
+  "link": "product URL or null",
+  "image_url": "product image URL or null"
+}
+
+Rules:
+- If input is a URL, try to extract product info (name, price, image)
+- For image_url: look for image links in the text, or common product image patterns like:
+  * amazon.com/images/...
+  * .jpg, .png, .webp URLs
+  * cdn URLs, product photos
+- If no image is explicitly mentioned or found, set image_url to null (DO NOT make up URLs)
+- Detect category from keywords (console, laptop, phone -> electronics, book -> education, etc.)
+- Priority hot: phrases like "очень хочу", "need", "must have", "хочу"
+- Priority medium: phrases like "было бы здорово", "would be nice", "хотелось бы"
+- Priority low: phrases like "мечта", "someday", "just thinking", "мечтаю"
+- Default to medium priority if unclear
+- Return null for missing optional fields (description, price, link, image_url)
+- Return ONLY JSON, no explanations
+
+Examples:
+Text: "Хочу iPhone 15 Pro 256GB"
+Response: {"name": "iPhone 15 Pro 256GB", "description": null, "price": null, "category": "electronics", "priority": "hot", "link": null, "image_url": null}
+
+Text: "https://example.com/product/phone-with-image.jpg"
+Response: {"name": "Phone", "description": null, "price": null, "category": "electronics", "priority": "medium", "link": "https://example.com/product/phone-with-image.jpg", "image_url": "https://example.com/product/phone-with-image.jpg"}`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response.text().trim();
+
+    // Clean up response (remove markdown code blocks if present)
+    const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error('Failed to parse Gemini response:', cleanedResponse);
+      return res.status(500).json({ error: 'Failed to parse AI response' });
+    }
+
+    // Validate and sanitize response
+    const validCategories = ['electronics', 'home', 'accessories', 'education', 'games', 'clothing', 'sports', 'creativity'];
+    const validPriorities = ['hot', 'medium', 'low'];
+
+    if (!parsedData.name) {
+      return res.status(500).json({ error: 'AI could not extract gift name' });
+    }
+
+    // Ensure category is valid, default to 'electronics'
+    if (!parsedData.category || !validCategories.includes(parsedData.category)) {
+      parsedData.category = 'electronics';
+    }
+
+    // Ensure priority is valid, default to 'medium'
+    if (!parsedData.priority || !validPriorities.includes(parsedData.priority)) {
+      parsedData.priority = 'medium';
+    }
+
+    // If AI didn't find an image but we extracted one from metadata, use it
+    if ((!parsedData.image_url || parsedData.image_url === null) && metadata.image) {
+      parsedData.image_url = metadata.image;
+    }
+
+    res.json(parsedData);
+  } catch (error) {
+    console.error('Gemini API error:', error);
+    res.status(500).json({ error: 'Failed to process gift with AI' });
+  }
 });
 
 // 404 handler for undefined /api/* routes

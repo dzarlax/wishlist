@@ -4,6 +4,7 @@
   import { toasts } from './stores/toasts.js';
   import { validators } from './utils/validation.js';
   import { t } from './utils/i18n.js';
+  import { parseGift, getAdminPassword } from './utils/api.js';
 
   const dispatch = createEventDispatcher();
 
@@ -14,9 +15,12 @@
   let price = '';
   let link = '';
   let imageUrl = '';
-  let adminPassword = '';
   let loading = false;
   let errors = {};
+
+  // AI autofill
+  let aiText = '';
+  let aiLoading = false;
 
   $: categories = [
     { code: 'electronics', name: $t('categories.electronics') },
@@ -53,9 +57,6 @@
     const imageError = validators.imageUrl(imageUrl);
     if (imageError) errors.imageUrl = imageError;
 
-    const passwordError = validators.adminPassword(adminPassword);
-    if (passwordError) errors.adminPassword = passwordError;
-
     return Object.keys(errors).length === 0;
   }
 
@@ -63,6 +64,14 @@
     errors = {};
 
     if (!validateForm()) {
+      return;
+    }
+
+    // Get admin password from localStorage
+    const adminPassword = getAdminPassword();
+    if (!adminPassword) {
+      toasts.error('Сначала войдите в систему');
+      dispatch('close');
       return;
     }
 
@@ -103,7 +112,6 @@
       price = '';
       link = '';
       imageUrl = '';
-      adminPassword = '';
 
       toasts.success($t('toasts.added'));
       dispatch('saved');
@@ -125,6 +133,38 @@
       dispatch('close');
     }
   }
+
+  async function handleAIFill() {
+    if (!aiText.trim()) {
+      toasts.error($t('validation.required'));
+      return;
+    }
+
+    aiLoading = true;
+    errors = {};
+
+    try {
+      const result = await parseGift(aiText.trim());
+
+      // Fill form with AI results
+      if (result.name) name = result.name;
+      if (result.description) description = result.description;
+      if (result.category) category = result.category;
+      if (result.priority) priority = result.priority;
+      if (result.price) price = result.price;
+      if (result.link) link = result.link;
+      if (result.image_url) imageUrl = result.image_url;
+
+      // Clear AI input
+      aiText = '';
+
+      toasts.success($t('toasts.added') + ' AI!');
+    } catch (err) {
+      toasts.error($t('modals.add.aiError') + ': ' + err.message);
+    } finally {
+      aiLoading = false;
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -133,7 +173,6 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
-  aria-hidden="true"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
@@ -152,9 +191,26 @@
 
     <!-- Body -->
     <div class="p-8 space-y-6">
-      <!-- Password Hint -->
-      <div class="bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3 text-sm text-indigo-300">
-        🔒 {$t('validation.adminPassword')} {$t('validation.required').toLowerCase()}
+      <!-- AI Autofill Section -->
+      <div class="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-4">
+        <h3 class="text-sm font-semibold text-purple-300 mb-3">{$t('modals.add.aiSection')}</h3>
+        <div class="flex gap-2">
+          <input
+            type="text"
+            bind:value={aiText}
+            placeholder={$t('modals.add.aiInputPlaceholder')}
+            disabled={aiLoading}
+            on:keydown={(e) => e.key === 'Enter' && handleAIFill()}
+            class="flex-1 px-4 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50"
+          />
+          <button
+            on:click={handleAIFill}
+            disabled={aiLoading || !aiText.trim()}
+            class="px-4 py-2 rounded-lg font-semibold text-sm bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {aiLoading ? $t('modals.add.aiFillButtonLoading') : $t('modals.add.aiFillButton')}
+          </button>
+        </div>
       </div>
 
       <!-- Name -->
@@ -261,22 +317,6 @@
         />
         {#if errors.imageUrl}
           <p class="mt-1 text-sm text-red-400">{errors.imageUrl}</p>
-        {/if}
-      </div>
-
-      <!-- Admin Password -->
-      <div>
-        <label for="admin-password" class="block text-sm font-semibold text-slate-300 mb-2">🔒 {$t('validation.adminPassword')} *</label>
-        <input
-          id="admin-password"
-          type="password"
-          bind:value={adminPassword}
-          placeholder="••••••••"
-          class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-          class:border-red-500={errors.adminPassword}
-        />
-        {#if errors.adminPassword}
-          <p class="mt-1 text-sm text-red-400">{errors.adminPassword}</p>
         {/if}
       </div>
     </div>

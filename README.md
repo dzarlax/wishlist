@@ -7,11 +7,12 @@ Minimalist design, dark/light theme support, multi-language interface (Russian, 
 ## ✨ Features
 
 - ➕ Add gifts with category, priority, description, price, and link
+- 🤖 **AI-powered autofill**: Paste a link or describe a gift — AI extracts name, price, category, priority, and image
 - 🏷️ **Categories**: Electronics, Smart Home, Accessories, Education, and more
 - ⭐ **Priorities**: Really want, Would be nice, Just a dream
 - 🔒 **Anonymous reservation** with secret codes from gift givers
 - ✅ **Statuses**: Available → Reserved → Purchased
-- 🖼️ Image support (via URL)
+- 🖼️ Image support (auto-extracted from product URLs via Open Graph metadata)
 - 🗑️ Delete gifts
 - 📱 Fully responsive design
 - 💾 SQLite storage (all data in `wishlist.db`)
@@ -19,6 +20,7 @@ Minimalist design, dark/light theme support, multi-language interface (Russian, 
 - 🌙 **Theme toggle** (light/dark) with preference persistence
 - 🔔 **Toast notifications** for user feedback
 - 🌍 **Multi-language support**: Russian, English, Serbian
+- 🔐 **Persistent admin authentication** (saved in browser, no need to re-enter password)
 
 ## 🚀 Installation
 
@@ -34,13 +36,22 @@ npm install
 # 2. Install frontend dependencies
 cd frontend && npm install && cd ..
 
-# 3. Run in development mode (backend + frontend)
+# 3. Configure environment variables
+cp .env.example .env
+# Edit .env and add your GEMINI_API_KEY
+
+# 4. Run in development mode (backend + frontend)
 npm run dev
 ```
 
 The app will be available at:
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:3000
+
+**Important**: To use AI-powered gift autofill, get a free Gemini API key at https://makersuite.google.com/app/apikey and add it to your `.env` file:
+```bash
+GEMINI_API_KEY=your_api_key_here
+```
 
 ### Production
 
@@ -74,6 +85,9 @@ ADMIN_PASSWORD="your_password" npm start
 - ➕ Adding gifts
 - ✏️ Editing gifts
 - 🗑️ Deleting gifts
+- 🤖 Using AI autofill
+
+**Note**: The admin password is saved in your browser's localStorage, so you only need to enter it once per session.
 
 ## 🌍 Languages
 
@@ -95,6 +109,9 @@ Language preference is saved in localStorage and persists across sessions. The a
 ### Backend
 - **Express.js** — REST API
 - **sql.js** — SQLite in pure JavaScript (no native compilation)
+- **Google Generative AI (Gemini)** — AI-powered gift parsing from natural language or URLs
+- **cheerio** — Open Graph metadata extraction from product pages
+- **node-fetch** — HTTP client for metadata extraction
 - **dotenv** — environment variables
 - **express-rate-limit** — rate limiting protection
 
@@ -128,7 +145,8 @@ wishlist/
 │   │   ├── app.css                # Global styles with Tailwind
 │   │   └── lib/
 │   │       ├── GiftCard.svelte     # Gift card component
-│   │       ├── AddGiftModal.svelte # Add gift modal
+│   │       ├── PasswordModal.svelte # Admin authentication modal
+│   │       ├── AddGiftModal.svelte # Add gift modal with AI autofill
 │   │       ├── EditGiftModal.svelte # Edit gift modal
 │   │       ├── ReserveModal.svelte # Reserve modal
 │   │       ├── DeleteModal.svelte  # Delete modal
@@ -261,6 +279,51 @@ Delete a gift
 }
 ```
 
+### POST /api/parse-gift
+Parse gift information from text or URL using AI
+```json
+{
+  "text": "iPhone 15 Pro 256GB"
+}
+```
+
+**Response:**
+```json
+{
+  "name": "iPhone 15 Pro 256GB",
+  "description": null,
+  "price": null,
+  "category": "electronics",
+  "priority": "hot",
+  "link": null,
+  "image_url": null
+}
+```
+
+**Supported inputs:**
+- Natural language: "Хочу iPhone 15 Pro", "I really want a PS5"
+- Product URLs: Automatically extracts name, price, image via Open Graph metadata
+- Category detection: Auto-detects from keywords (laptop → electronics, book → education)
+- Priority detection: Analyzes phrases like "very want" → hot, "would be nice" → medium
+
+### POST /api/extract-metadata
+Extract Open Graph metadata from a URL
+```json
+{
+  "url": "https://example.com/product"
+}
+```
+
+**Response:**
+```json
+{
+  "title": "Product Name",
+  "description": "Product description",
+  "image": "https://example.com/image.jpg",
+  "url": "https://example.com/product"
+}
+```
+
 ## 🔒 CORS Configuration
 
 ### Development
@@ -326,14 +389,15 @@ docker run -d \
 
 ## 💡 Tips
 
-- You can use product links for images
-- Database is created automatically on first run
-- All data is saved in `wishlist.db`
-- Gifts are sorted by priority (🔥 > ⭐ > 💭)
-- Prices are stored as text - supports custom formats like "15000 ₽ + доставка", "$100", etc.
-- Language preference is saved automatically and persists across sessions
-- Press ESC to close any modal
-- All modals support keyboard navigation
+- **AI Autofill**: Paste any product link or describe a gift in plain language — AI will extract all details automatically
+- **Image Extraction**: When pasting product URLs, the app automatically extracts images via Open Graph metadata
+- **Persistent Authentication**: Enter admin password once per browser — it's saved in localStorage
+- **Database**: Created automatically on first run, all data saved in `wishlist.db`
+- **Gift Sorting**: By priority (🔥 > ⭐ > 💭), then by creation date
+- **Price Format**: Stored as text — supports custom formats like "15000 ₽ + доставка", "$100 + shipping", etc.
+- **Language Preference**: Auto-detected from browser, saved in localStorage
+- **Keyboard Shortcuts**: Press ESC to close any modal, Enter to submit forms
+- **Accessibility**: All modals support keyboard navigation and screen readers
 
 ## 📝 License
 

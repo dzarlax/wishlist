@@ -20,6 +20,10 @@ const config = {
   // Admin
   adminPassword: process.env.ADMIN_PASSWORD || 'wishlist2025',
 
+  // Gemini API
+  geminiApiKey: process.env.GEMINI_API_KEY || null,
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+
   // CORS - allow all origins in production, or specific ones via env var
   allowedOrigins: process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')

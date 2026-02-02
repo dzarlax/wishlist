@@ -62,7 +62,12 @@
       "imagePlaceholder": "https://...",
       "price": "Price",
       "pricePlaceholder": "15000",
-      "optional": "(optional)"
+      "optional": "(optional)",
+      "aiSection": "🤖 AI Autofill",
+      "aiInputPlaceholder": "Paste a link or describe the gift (e.g.: I want PlayStation 5 for $500 from Amazon)",
+      "aiFillButton": "Fill with AI",
+      "aiFillButtonLoading": "Analyzing...",
+      "aiError": "AI Error"
     },
     "edit": {
       "title": "Edit gift"

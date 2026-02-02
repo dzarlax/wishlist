@@ -68,7 +68,6 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
-  aria-hidden="true"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-lg"

@@ -62,7 +62,12 @@
       "imagePlaceholder": "https://...",
       "price": "Цена",
       "pricePlaceholder": "15000",
-      "optional": "(необязательно)"
+      "optional": "(необязательно)",
+      "aiSection": "🤖 Автозаполнение через AI",
+      "aiInputPlaceholder": "Вставьте ссылку или опишите подарок (например: Хочу PlayStation 5 за 50000₽ из DNS)",
+      "aiFillButton": "Заполнить через AI",
+      "aiFillButtonLoading": "Анализирую...",
+      "aiError": "Ошибка AI"
     },
     "edit": {
       "title": "Редактирование подарка"

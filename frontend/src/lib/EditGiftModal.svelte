@@ -2,6 +2,8 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { t } from './utils/i18n.js';
+  import { getAdminPassword } from './utils/api.js';
+  import { toasts } from './stores/toasts.js';
 
   export let gift;
 
@@ -14,7 +16,6 @@
   let price = '';
   let link = '';
   let imageUrl = '';
-  let adminPassword = '';
   let loading = false;
   let error = '';
 
@@ -71,8 +72,11 @@
       return;
     }
 
+    // Get admin password from localStorage
+    const adminPassword = getAdminPassword();
     if (!adminPassword) {
-      error = 'Введите пароль администратора';
+      toasts.error('Сначала войдите в систему');
+      dispatch('close');
       return;
     }
 
@@ -132,7 +136,6 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
   transition:fade={{ duration: 200 }}
   on:click={handleClickOutside}
-  aria-hidden="true"
 >
   <div
     class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
@@ -241,18 +244,6 @@
           type="url"
           bind:value={imageUrl}
           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-        />
-      </div>
-
-      <!-- Admin Password -->
-      <div>
-        <label for="edit-admin-password" class="block text-sm font-semibold text-slate-300 mb-2">🔒 {$t('validation.adminPassword')} *</label>
-        <input
-          id="edit-admin-password"
-          type="password"
-          bind:value={adminPassword}
-          placeholder="••••••••"
-          class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
         />
       </div>
     </div>
