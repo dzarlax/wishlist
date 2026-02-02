@@ -121,15 +121,13 @@
     : 'bg-slate-100 dark:bg-slate-900/80 border-slate-300 dark:border-slate-800/50 opacity-75'}"
   on:mouseenter={() => (hovered = true)}
   on:mouseleave={() => (hovered = false)}
-  on:click={handleCardClick}
   in:fly={{ y: 50, opacity: 0, duration: 400, delay: index * 50, easing: quintOut }}
 >
-  <!-- Clickable area -->
-  <div class="flex-1 cursor-pointer">
-    <!-- Image -->
-    <div
-      class="relative h-40 overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 flex-shrink-0"
-    >
+  <!-- Image (clickable) -->
+  <div
+    class="relative h-40 overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 flex-shrink-0 cursor-pointer"
+    on:click={() => dispatch('view')}
+  >
     {#if gift.image_url && !imageError}
       <img
         src={gift.image_url}
@@ -170,10 +168,10 @@
   </div>
 
   <!-- Content (clickable) -->
-  <div class="p-4 space-y-3 flex flex-col flex-1 backdrop-blur-sm">
+  <div class="p-4 flex flex-col flex-1 backdrop-blur-sm cursor-pointer gap-3" on:click={() => dispatch('view')}>
     {#if error}
       <div
-        class="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 text-xs text-red-600 dark:text-red-300 flex items-center gap-2"
+        class="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 text-xs text-red-600 dark:text-red-300 flex items-center gap-2 flex-shrink-0"
         transition:fade={{ duration: 200 }}
       >
         <span>⚠️</span>
@@ -181,7 +179,7 @@
       </div>
     {/if}
 
-    <div class="flex gap-2 flex-wrap">
+    <div class="flex gap-2 flex-wrap flex-shrink-0">
       {#if gift.category_code}
         <span
           class="px-2.5 py-1 rounded-lg text-xs text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/50 backdrop-blur-sm"
@@ -201,43 +199,38 @@
     </div>
 
     <h3
-      class="text-base font-semibold text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors duration-200"
+      class="text-base font-semibold text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors duration-200 flex-shrink-0"
     >
       {gift.name}
     </h3>
 
     {#if gift.description}
-      <p class="text-slate-600 dark:text-slate-400 text-sm line-clamp-2 leading-relaxed">
+      <p class="text-slate-600 dark:text-slate-400 text-sm line-clamp-2 leading-relaxed flex-shrink-0">
         {gift.description}
       </p>
     {/if}
 
-    <div class="flex-1"></div>
-
-    <!-- Price (inside clickable area) -->
-
-    {#if gift.price}
-      <div class="flex items-center pt-2 border-t border-slate-300 dark:border-slate-700/50">
-        <span
-          class="text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent"
-        >
-          {$formatPrice(gift.price)}
-        </span>
-      </div>
-    {/if}
+    <!-- Spacer to push content to top -->
+    <div class="flex-1 min-h-0"></div>
   </div>
   <!-- End clickable area -->
 
-  <!-- Action buttons (outside clickable area) -->
-  <div
-    class="flex items-center justify-between px-4 pb-4 {gift.price
-      ? ''
-      : 'pt-2 border-t border-slate-300 dark:border-slate-700/50'}"
-  >
-    {#if !gift.price}
-      <span></span>
-    {/if}
+  <!-- Price (if exists, clickable) -->
+  {#if gift.price}
+    <div
+      class="px-4 pt-2 pb-2 border-t border-slate-300 dark:border-slate-700/50 cursor-pointer"
+      on:click={() => dispatch('view')}
+    >
+      <span
+        class="text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent"
+      >
+        {$formatPrice(gift.price)}
+      </span>
+    </div>
+  {/if}
 
+  <!-- Action buttons (outside clickable area) -->
+  <div class="flex items-center justify-between px-4 py-2 border-t border-slate-300 dark:border-slate-700/50">
     <div class="flex gap-2 ml-auto">
       {#if gift.link}
         <a
@@ -268,7 +261,7 @@
   </div>
 
   {#if gift.status === 'available'}
-    <div class="px-4 pb-4">
+    <div class="px-4 pt-2 pb-4">
       <button
         on:click={handleReserve}
         disabled={loading}
@@ -285,7 +278,7 @@
       </button>
     </div>
   {:else if gift.status === 'reserved'}
-    <div class="px-4 pb-4">
+    <div class="px-4 pt-2 pb-4">
       <div class="flex gap-2">
         <button
           on:click={handleReserve}
@@ -318,7 +311,7 @@
       </div>
     </div>
   {:else if gift.status === 'purchased'}
-    <div class="px-4 pb-4">
+    <div class="px-4 pt-2 pb-4">
       <button
         on:click={handleUnreserve}
         disabled={loading}
