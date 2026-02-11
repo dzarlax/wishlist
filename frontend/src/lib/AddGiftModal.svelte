@@ -1,11 +1,13 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { fade, fly } from 'svelte/transition';
+  import { fade, fly, scale } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
   import { toasts } from './stores/toasts.js';
   import { locale } from './stores/locale.js';
   import { validators } from './utils/validation.js';
   import { t } from './utils/i18n.js';
   import { parseGift, getAdminPassword } from './utils/api.js';
+  import { designSystem } from './utils/design-system.js';
 
   const dispatch = createEventDispatcher();
 
@@ -178,8 +180,8 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div
-  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-  transition:fade={{ duration: 200 }}
+  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+  transition:scale={{ duration: 200, start: 0.95, end: 1, opacity: 1, easing: quintOut }}
   on:click={handleClickOutside}
   on:keydown={handleBackdropKeydown}
   role="button"
@@ -187,7 +189,7 @@
   aria-label="Close modal"
 >
   <div
-    class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+    class="bg-ivory dark:bg-dark-bg backdrop-blur-xl rounded-modal shadow-raised border border-black/[0.08] dark:border-white/[0.08] w-full max-w-[var(--width-modal-lg)] max-h-[90vh] overflow-y-auto scrollbar-hide"
     transition:fly={{ y: 50, opacity: 0, duration: 300 }}
     role="dialog"
     aria-modal="true"
@@ -196,23 +198,32 @@
   >
     <!-- Header -->
     <div
-      class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur-xl px-8 py-6 border-b border-slate-700/50"
+      class="relative sticky top-0 z-10 bg-ivory/95 dark:bg-dark-bg/95 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] px-7 py-5"
     >
-      <h2
-        id="modal-title"
-        class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent"
-      >
-        ➕ {$t('modals.add.title')}
-      </h2>
+      <div class="flex items-center justify-between">
+        <h2
+          id="modal-title"
+          class="{designSystem.text['2xl']} {designSystem.text.weight.medium} {designSystem.text.tracking.tighter} text-graphite dark:text-dark-text"
+        >
+          {$t('modals.add.title')}
+        </h2>
+        <button
+          on:click={() => dispatch('close')}
+          class="w-8 h-8 rounded-full {designSystem.color.neutral.background.surface} {designSystem.color.neutral.background.surfaceDark} hover:bg-red-100 dark:hover:bg-red-900/30 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] hover:border-red-400 dark:hover:border-red-700/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      </div>
     </div>
 
     <!-- Body -->
-    <div class="p-8 space-y-6">
+    <div class="p-7 space-y-5">
       <!-- AI Autofill Section -->
       <div
-        class="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-4"
+        class="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200/50 dark:border-indigo-700/30 rounded-[4px] p-4"
       >
-        <h3 class="text-sm font-semibold text-purple-300 mb-3">{$t('modals.add.aiSection')}</h3>
+        <h3 class="{designSystem.text.xs} {designSystem.text.weight.semibold} {designSystem.text.tracking.widest} uppercase text-indigo-700 dark:text-indigo-300 mb-3">{$t('modals.add.aiSection')}</h3>
         <div class="flex gap-2">
           <input
             type="text"
@@ -220,12 +231,12 @@
             placeholder={$t('modals.add.aiInputPlaceholder')}
             disabled={aiLoading}
             on:keydown={(e) => e.key === 'Enter' && handleAIFill()}
-            class="flex-1 px-4 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50"
+            class="flex-1 px-4 py-2 bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 {designSystem.text.sm} focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all disabled:opacity-50"
           />
           <button
             on:click={handleAIFill}
             disabled={aiLoading || !aiText.trim()}
-            class="px-4 py-2 rounded-lg font-semibold text-sm bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            class="{designSystem.text.spacing.button} rounded-none {designSystem.text.weight.medium} {designSystem.text.tracking.tighter} {designSystem.text.sm} bg-graphite dark:bg-black hover:bg-black dark:hover:bg-black text-white shadow-editorial transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {aiLoading ? $t('modals.add.aiFillButtonLoading') : $t('modals.add.aiFillButton')}
           </button>
@@ -234,7 +245,7 @@
 
       <!-- Name -->
       <div>
-        <label for="gift-name" class="block text-sm font-semibold text-slate-300 mb-2"
+        <label for="gift-name" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-2"
           >{$t('modals.add.name')} *</label
         >
         <input
@@ -242,7 +253,7 @@
           type="text"
           bind:value={name}
           placeholder={$t('modals.add.namePlaceholder')}
-          class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
           class:border-red-500={errors.name}
         />
         {#if errors.name}
@@ -253,13 +264,13 @@
       <!-- Category & Priority -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label for="gift-category" class="block text-sm font-semibold text-slate-300 mb-2"
+          <label for="gift-category" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
             >{$t('modals.add.category')}</label
           >
           <select
             id="gift-category"
             bind:value={category}
-            class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
           >
             <option value="">{$t('modals.add.category')}</option>
             {#each categories as cat (cat.code)}
@@ -269,13 +280,13 @@
         </div>
 
         <div>
-          <label for="gift-priority" class="block text-sm font-semibold text-slate-300 mb-2"
+          <label for="gift-priority" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
             >{$t('modals.add.priority')}</label
           >
           <select
             id="gift-priority"
             bind:value={priority}
-            class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
           >
             {#each priorities as prio (prio.code)}
               <option value={prio.code}>{prio.name}</option>
@@ -286,7 +297,7 @@
 
       <!-- Description -->
       <div>
-        <label for="gift-description" class="block text-sm font-semibold text-slate-300 mb-2"
+        <label for="gift-description" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
           >{$t('modals.add.description')}</label
         >
         <textarea
@@ -294,7 +305,7 @@
           bind:value={description}
           rows="3"
           placeholder={$t('modals.add.descriptionPlaceholder')}
-          class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all resize-none"
           class:border-red-500={errors.description}
         ></textarea>
         {#if errors.description}
@@ -305,7 +316,7 @@
       <!-- Price & Link -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label for="gift-price" class="block text-sm font-semibold text-slate-300 mb-2"
+          <label for="gift-price" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
             >{$t('modals.add.price')}</label
           >
           <input
@@ -313,12 +324,12 @@
             type="text"
             bind:value={price}
             placeholder={$t('modals.add.pricePlaceholder')}
-            class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
           />
         </div>
 
         <div>
-          <label for="gift-link" class="block text-sm font-semibold text-slate-300 mb-2"
+          <label for="gift-link" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
             >{$t('modals.add.link')}</label
           >
           <input
@@ -326,7 +337,7 @@
             type="url"
             bind:value={link}
             placeholder={$t('modals.add.linkPlaceholder')}
-            class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
             class:border-red-500={errors.link}
           />
           {#if errors.link}
@@ -337,7 +348,7 @@
 
       <!-- Image URL -->
       <div>
-        <label for="gift-image" class="block text-sm font-semibold text-slate-300 mb-2"
+        <label for="gift-image" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
           >{$t('modals.add.image')}</label
         >
         <input
@@ -345,7 +356,7 @@
           type="url"
           bind:value={imageUrl}
           placeholder={$t('modals.add.imagePlaceholder')}
-          class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
           class:border-red-500={errors.imageUrl}
         />
         {#if errors.imageUrl}
@@ -356,18 +367,18 @@
 
     <!-- Footer -->
     <div
-      class="sticky bottom-0 bg-slate-800/95 backdrop-blur-xl px-8 py-6 border-t border-slate-700/50 flex gap-3 justify-end"
+      class="sticky bottom-0 bg-ivory/95 dark:bg-dark-bg/95 backdrop-blur-xl px-7 py-5 border-t {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] flex gap-3 justify-end"
     >
       <button
         on:click={() => dispatch('close')}
-        class="px-6 py-3 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 transition-all duration-300"
+        class="h-10 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} transition-all duration-200"
       >
         {$t('actions.cancel')}
       </button>
       <button
         on:click={handleSubmit}
         disabled={loading}
-        class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        class="h-10 px-4 rounded-full font-medium {designSystem.color.primary.bg} {designSystem.color.primary.bgDark} {designSystem.color.primary.text} {designSystem.color.primary.textDark} {designSystem.color.primary.hover} {designSystem.color.primary.hoverDark} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? $t('app.loading') : $t('actions.save')}
       </button>

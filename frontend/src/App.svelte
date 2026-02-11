@@ -38,6 +38,7 @@
   let selectedStatus = '';
   let selectedPriority = '';
   let sortBy = 'priority'; // 'priority', 'name', 'created_at'
+  let showAllFilters = false; // Progressive disclosure for filters
 
   onMount(async () => {
     await loadGifts();
@@ -80,6 +81,20 @@
     // Fallback to old priority text mapping
     const priorityMapping = $t('priorityMapping');
     return priorityMapping[gift.priority] || 'medium';
+  }
+
+  // Get grid span based on priority (Bento Grid logic)
+  function getCardSpan(gift) {
+    const priority = getPriorityCode(gift);
+    // Hot priority items span 2 columns on larger screens
+    // Mobile: always 1 column (col-span-1 is default)
+    // Desktop (lg+): hot items get 2 columns for visual hierarchy
+    const isLarge = priority === 'hot';
+
+    return {
+      isLarge,
+      colSpan: isLarge ? 'lg:col-span-2' : ''
+    };
   }
 
   // Priority order for sorting
@@ -192,19 +207,15 @@
   }
 </script>
 
-<div
-  class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300"
->
+<div class="min-h-screen bg-ivory dark:bg-dark-bg transition-colors duration-300">
   <!-- Toast Container -->
   <ToastContainer />
 
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+  <div class="px-6 sm:px-7 py-6 sm:py-7">
     <!-- Header -->
-    <header class="flex items-center justify-between mb-6 sm:mb-8">
+    <header class="flex items-center justify-between mb-6 sm:mb-7">
       <div class="flex items-center gap-3">
-        <h1
-          class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent"
-        >
+        <h1 class="text-2xl sm:text-3xl font-medium tracking-tighter text-graphite dark:text-dark-text" style="letter-spacing: -0.02em;">
           🎁 Wishlist
         </h1>
       </div>
@@ -213,7 +224,7 @@
         <!-- Theme Toggle -->
         <button
           on:click={() => theme.set(currentTheme === 'dark' ? 'light' : 'dark')}
-          class="px-3 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-all duration-200 flex items-center justify-center gap-2 text-slate-700 dark:text-slate-300 hover:scale-105 active:scale-95"
+          class="px-4 py-2 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center justify-center gap-2 text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
           title={$t(`theme.${currentTheme === 'dark' ? 'light' : 'dark'}Theme`)}
         >
           <span class="text-xl">{currentTheme === 'dark' ? '☀️' : '🌙'}</span>
@@ -225,7 +236,7 @@
         <!-- Add Button -->
         <button
           on:click={openAddModal}
-          class="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-3 sm:px-4 py-2.5 rounded-xl border border-indigo-500/50 shadow-lg shadow-indigo-500/20 transition-all duration-200 text-sm font-semibold hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5 active:translate-y-0"
+          class="flex items-center gap-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-500 dark:hover:bg-indigo-400 text-white px-4 sm:px-5 py-2 rounded-full shadow-editorial transition-all duration-200 text-sm font-medium tracking-tighter hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
         >
           <span class="text-base">+</span>
           <span class="hidden sm:inline">{$t('app.addButton')}</span>
@@ -234,86 +245,83 @@
     </header>
 
     <!-- Search and Filters -->
-    <div class="mb-6 sm:mb-8 space-y-4">
+    <div class="mb-6 sm:mb-7 space-y-4">
       <!-- Search Bar -->
       <div class="relative">
         <input
           type="text"
           bind:value={searchQuery}
           placeholder={$t('app.filterPlaceholder')}
-          class="w-full px-4 py-3 pl-11 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all shadow-lg"
+          class="w-full px-5 py-3 pl-11 bg-white/80 dark:bg-dark-bg/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all shadow-editorial"
         />
       </div>
 
-      <!-- Filters Row -->
-      <div class="flex flex-wrap gap-2">
-        <!-- Category Filter -->
-        <div class="flex-1 min-w-[140px] sm:min-w-[160px]">
-          <select
-            bind:value={selectedCategory}
-            class="w-full px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
-          >
-            <option value="">{$t('filters.allCategories')}</option>
-            {#each categoriesList as cat (cat.code)}
-              <option value={cat.code}>{cat.name}</option>
-            {/each}
-          </select>
-        </div>
+      <!-- Filters Row - Compact single row -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Category Dropdown -->
+        <select
+          bind:value={selectedCategory}
+          class="px-3 py-2 bg-white dark:bg-dark-bg border border-black/[0.08] dark:border-white/[0.08] rounded-full text-xs text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer"
+        >
+          <option value="">{$t('filters.allCategories')}</option>
+          {#each categoriesList as cat (cat.code)}
+            <option value={cat.code}>{cat.name}</option>
+          {/each}
+        </select>
 
-        <!-- Status Filter -->
-        <div class="flex-1 min-w-[140px] sm:min-w-[160px]">
-          <select
-            bind:value={selectedStatus}
-            class="w-full px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
-          >
-            <option value="">{$t('filters.allStatuses')}</option>
-            <option value="available">✨ {$t('status.available')}</option>
-            <option value="reserved">🔒 {$t('status.reserved')}</option>
-            <option value="purchased">✅ {$t('status.purchased')}</option>
-          </select>
-        </div>
-
-        <!-- Priority Filter -->
-        <div class="flex-1 min-w-[140px] sm:min-w-[160px]">
-          <select
-            bind:value={selectedPriority}
-            class="w-full px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
-          >
-            <option value="">{$t('filters.allPriorities')}</option>
-            {#each prioritiesList as prio (prio.code)}
-              <option value={prio.code}>{prio.name}</option>
-            {/each}
-          </select>
-        </div>
-
-        <!-- Sort By -->
-        <div class="flex-1 min-w-[140px] sm:min-w-[160px]">
-          <select
-            bind:value={sortBy}
-            class="w-full px-4 py-2 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border border-slate-300 dark:border-slate-700/50 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all hover:border-slate-400 dark:hover:border-slate-600/50"
-          >
-            <option value="priority">🔥 {$t('filters.sortByPriority')}</option>
-            <option value="name">🔤 {$t('filters.sortByName')}</option>
-            <option value="created_at">📅 {$t('filters.sortByDate')}</option>
-          </select>
-        </div>
-
-        <!-- Clear Filters Button -->
-        {#if searchQuery || selectedCategory || selectedStatus || selectedPriority || sortBy !== 'priority'}
-          <div class="flex-1 min-w-[140px] sm:min-w-[160px]">
+        <!-- Status & Priority Chips -->
+        <div class="flex gap-2 flex-wrap items-center">
+          {#each ['available', 'reserved', 'purchased'] as status}
             <button
-              on:click={clearFilters}
-              class="w-full px-4 py-2 bg-slate-200 dark:bg-slate-800/80 hover:bg-slate-300 dark:hover:bg-slate-700/80 backdrop-blur-sm text-slate-700 dark:text-slate-300 text-sm rounded-lg border border-slate-300 dark:border-slate-700/50 transition-all hover:scale-105 active:scale-95"
+              on:click={() => selectedStatus = selectedStatus === status ? '' : status}
+              class:font-medium={selectedStatus === status}
+              class="whitespace-nowrap px-3 py-1.5 rounded-full text-xs transition-all {selectedStatus === status
+                ? 'bg-graphite text-white'
+                : 'bg-transparent border border-black/10 dark:border-white/10 text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'}"
             >
-              ✕ {$t('actions.cancel')}
+              {status === 'available' ? '✨' : status === 'reserved' ? '🔒' : '✅'} {$t('status.' + status)}
             </button>
-          </div>
+          {/each}
+
+          <div class="w-px h-4 bg-black/10 dark:bg-white/10 mx-1"></div>
+
+          {#each prioritiesList as prio (prio.code)}
+            <button
+              on:click={() => selectedPriority = selectedPriority === prio.code ? '' : prio.code}
+              class:font-medium={selectedPriority === prio.code}
+              class="whitespace-nowrap px-3 py-1.5 rounded-full text-xs transition-all {selectedPriority === prio.code
+                ? 'bg-graphite text-white'
+                : 'bg-transparent border border-black/10 dark:border-white/10 text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'}"
+            >
+              {prio.name}
+            </button>
+          {/each}
+        </div>
+
+        <!-- Sort Dropdown -->
+        <select
+          bind:value={sortBy}
+          class="px-3 py-2 bg-white dark:bg-dark-bg border border-black/[0.08] dark:border-white/[0.08] rounded-full text-xs text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer"
+        >
+          <option value="priority">🔥 {$t('filters.sortByPriority')}</option>
+          <option value="name">🔤 {$t('filters.sortByName')}</option>
+          <option value="created_at">📅 {$t('filters.sortByDate')}</option>
+        </select>
+
+        <!-- Clear Filters -->
+        {#if searchQuery || selectedCategory || selectedStatus || selectedPriority || sortBy !== 'priority'}
+          <button
+            on:click={clearFilters}
+            class="px-3 py-1.5 rounded-full text-xs bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+          >
+            ✕ {$t('actions.cancel')}
+          </button>
         {/if}
       </div>
 
       <!-- Results Count -->
       {#if filteredGifts.length !== gifts.length}
-        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
+        <p class="text-xs sm:text-sm text-black/60 dark:text-white/60 flex items-center gap-2">
           <span class="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
           {$t('filters.resultsCount', { count: sortedGifts.length, total: gifts.length })}
         </p>
@@ -322,45 +330,50 @@
 
     <!-- Loading State -->
     {#if loading}
-      <div class="flex items-center justify-center py-32">
+      <div class="flex items-center justify-center py-14">
         <div class="text-center">
           <div
-            class="inline-block animate-spin rounded-full h-12 w-12 border-3 border-indigo-500 border-t-transparent mb-4"
+            class="inline-block animate-spin rounded-full h-12 w-12 border-[3px] border-indigo-500 border-t-transparent mb-4"
           ></div>
-          <p class="text-slate-400">{$t('app.loading')}</p>
+          <p class="text-black/40 dark:text-white/40">{$t('app.loading')}</p>
         </div>
       </div>
     {:else if gifts.length === 0}
       <!-- Empty State -->
-      <div class="flex items-center justify-center py-32">
+      <div class="flex items-center justify-center py-14">
         <div class="text-center">
           <div class="text-6xl mb-4 opacity-20">🎁</div>
-          <h3 class="text-xl font-semibold text-slate-300 mb-2">{$t('app.noGifts')}</h3>
-          <p class="text-slate-500 text-sm">{$t('app.noGiftsDescription')}</p>
+          <h3 class="text-xl font-medium tracking-tighter text-black/30 dark:text-white/30 mb-2">{$t('app.noGifts')}</h3>
+          <p class="text-black/50 dark:text-white/50 text-sm">{$t('app.noGiftsDescription')}</p>
         </div>
       </div>
     {:else if sortedGifts.length === 0}
       <!-- No Results -->
-      <div class="flex items-center justify-center py-32">
+      <div class="flex items-center justify-center py-14">
         <div class="text-center">
           <div class="text-6xl mb-4 opacity-20">🔍</div>
-          <h3 class="text-xl font-semibold text-slate-300 mb-2">{$t('app.noGifts')}</h3>
-          <p class="text-slate-500 text-sm">{$t('app.noGiftsDescription')}</p>
+          <h3 class="text-xl font-medium tracking-tighter text-black/30 dark:text-white/30 mb-2">{$t('app.noGifts')}</h3>
+          <p class="text-black/50 dark:text-white/50 text-sm">{$t('app.noGiftsDescription')}</p>
         </div>
       </div>
     {:else}
       <!-- Gifts Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+      <!-- Bento: lg has 3 cols, important items span 2. This creates rhythm. -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5">
         {#each sortedGifts as gift, index (gift.id + gift.status)}
-          <GiftCard
-            {gift}
-            {index}
-            on:view={() => openViewModal(gift)}
-            on:edit={() => openEditModal(gift)}
-            on:reserve={() => openReserveModal(gift)}
-            on:delete={() => openDeleteModal(gift)}
-            on:refresh={loadGifts}
-          />
+          {@const cardSpan = getCardSpan(gift)}
+          <div class={cardSpan.colSpan}>
+            <GiftCard
+              {gift}
+              {index}
+              isLarge={cardSpan.isLarge}
+              on:view={() => openViewModal(gift)}
+              on:edit={() => openEditModal(gift)}
+              on:reserve={() => openReserveModal(gift)}
+              on:delete={() => openDeleteModal(gift)}
+              on:refresh={loadGifts}
+            />
+          </div>
         {/each}
       </div>
     {/if}
@@ -407,5 +420,24 @@
   <ViewGiftModal
     gift={selectedGift}
     on:close={() => (showViewModal = false)}
+    on:reserve={(e) => {
+      showViewModal = false;
+      openReserveModal(selectedGift);
+    }}
+    on:purchased={(e) => {
+      showViewModal = false;
+      openReserveModal(selectedGift);
+    }}
   />
 {/if}
+
+<style>
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+</style>

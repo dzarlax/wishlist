@@ -1,8 +1,10 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { fade, fly } from 'svelte/transition';
+  import { fade, fly, scale } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
   import { toasts } from './stores/toasts.js';
   import { t } from './utils/i18n.js';
+  import { designSystem } from './utils/design-system.js';
 
   export let gift;
 
@@ -78,8 +80,8 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div
-  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-  transition:fade={{ duration: 200 }}
+  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+  transition:fade|global={{ duration: 200 }}
   on:click={handleClickOutside}
   on:keydown={handleBackdropKeydown}
   role="button"
@@ -87,36 +89,36 @@
   aria-label="Close modal"
 >
   <div
-    class="bg-slate-800 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 w-full max-w-lg"
-    transition:fly={{ y: 50, opacity: 0, duration: 300 }}
+    class="bg-ivory dark:bg-dark-bg rounded-modal shadow-raised border border-black/[0.08] dark:border-white/[0.08] w-full max-w-[var(--width-modal)] max-h-[90vh] overflow-y-auto scrollbar-hide"
+    transition:scale|global={{ duration: 200, start: 0.95, easing: quintOut }}
     role="dialog"
     aria-modal="true"
     aria-labelledby="reserve-modal-title"
     tabindex="-1"
   >
     <!-- Header -->
-    <div class="px-8 py-6 border-b border-slate-700/50">
+    <div class="relative px-7 py-5 border-b {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08]">
       <h2
         id="reserve-modal-title"
-        class="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent"
+        class="{designSystem.text['2xl']} {designSystem.text.weight.medium} {designSystem.text.tracking.tighter} text-graphite dark:text-dark-text"
       >
         🔒 {$t('modals.reserve.title')}
       </h2>
     </div>
 
     <!-- Body -->
-    <div class="p-8 space-y-6">
+    <div class="p-7 space-y-5">
       <!-- Error Message -->
       {#if error}
         <div
-          class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300"
+          class="bg-red-500/10 border border-red-500/30 rounded-[4px] px-4 py-3 text-sm text-red-300"
         >
           {error}
         </div>
       {/if}
 
       <div>
-        <label for="reserve-name" class="block text-sm font-semibold text-slate-300 mb-2"
+        <label for="reserve-name" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-2"
           >{$t('modals.reserve.yourName')} {$t('modals.add.optional')}</label
         >
         <input
@@ -124,12 +126,12 @@
           type="text"
           bind:value={reservedBy}
           placeholder={$t('modals.reserve.yourNamePlaceholder')}
-          class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
         />
       </div>
 
       <div>
-        <label for="reserve-secret-code" class="block text-sm font-semibold text-slate-300 mb-2"
+        <label for="reserve-secret-code" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
           >🔑 {$t('modals.reserve.secretCode')} *</label
         >
         <input
@@ -137,29 +139,40 @@
           type="text"
           bind:value={secretCode}
           placeholder={$t('modals.reserve.secretCodePlaceholder')}
-          class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
         />
-        <p class="mt-2 text-sm text-slate-400">
+        <p class="mt-2 text-sm {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark}">
           ⚠️ {$t('modals.reserve.secretCodeHint')}
         </p>
       </div>
     </div>
 
     <!-- Footer -->
-    <div class="px-8 py-6 border-t border-slate-700/50 flex gap-3 justify-end">
+    <div class="px-7 py-5 border-t {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] flex gap-3 justify-end">
       <button
         on:click={() => dispatch('close')}
-        class="px-6 py-3 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 transition-all duration-300"
+        class="h-10 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} transition-all duration-200"
       >
         {$t('actions.cancel')}
       </button>
       <button
         on:click={handleSubmit}
         disabled={loading}
-        class="px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        class="h-10 px-4 rounded-full font-medium {designSystem.color.primary.bg} {designSystem.color.primary.bgDark} {designSystem.color.primary.text} {designSystem.color.primary.textDark} {designSystem.color.primary.hover} {designSystem.color.primary.hoverDark} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? $t('app.loading') : $t('actions.reserve')}
       </button>
     </div>
   </div>
 </div>
+
+<style>
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+</style>

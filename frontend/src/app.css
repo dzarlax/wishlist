@@ -3,6 +3,52 @@
 /* Configure class-based dark mode for Tailwind v4 */
 @variant dark (&:where(.dark, .dark *));
 
+/* Editorial typography for headings */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.02em;
+};
+
+@theme {
+  /* Colors */
+  --color-ivory: #FCFAF7;
+  --color-graphite: #1A1A1E;
+  --color-dark-bg: #0D0D0F;
+  --color-dark-text: #F5F5F5;
+  --color-surface: #E8E6E3;
+  --color-surface-dark: #1A1D21;
+  --color-surface-hover: #F5F5F3;
+  --color-surface-hover-dark: #25282D;
+
+  /* Shadows - multi-layered for "soft landing" effect */
+  --shadow-editorial: 0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.06);
+  --shadow-editorial-lg: 0_8px_30px_rgb(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06);
+  --shadow-raised: 0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.06);
+
+  /* Spacing scale */
+  --spacing-input: 17px;
+  --spacing-modal: 28px;
+  --spacing-xs: 7px;
+  --spacing-sm: 9px;
+  --spacing-md: 16px;
+  --spacing-lg: 19px;
+  --spacing-xl: 23px;
+
+  /* Border radius */
+  --radius-modal: 12px;
+  --radius-btn-icon: 9999px;
+
+  /* Component widths */
+  --width-modal: 448px;
+  --width-modal-lg: 672px;
+
+  /* Opacity */
+  --opacity-text-muted: 0.6;
+  --opacity-text-label: 0.7;
+  --opacity-border: 0.08;
+  --opacity-border-hover: 0.12;
+  --opacity-bg: 0.8;
+}
+
 body {
   margin: 0;
   min-height: 100vh;

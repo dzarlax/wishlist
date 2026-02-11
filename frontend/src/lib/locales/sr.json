@@ -17,9 +17,11 @@
     "reserved": "Rezervisano",
     "purchased": "Kupljeno",
     "resultsCount": "Prikazano {count} od {total}",
+    "sortBy": "Sortiraj",
     "sortByPriority": "Po prioritetu",
     "sortByName": "Po imenu",
-    "sortByDate": "Po datumu"
+    "sortByDate": "Po datumu",
+    "more": "Još..."
   },
   "priorities": {
     "hot": "🔥 Baš hoću",
@@ -38,8 +40,8 @@
   },
   "actions": {
     "reserve": "Rezerviši",
-    "unreserve": "Otkaži rezervaciju",
-    "markPurchased": "Označi kao kupljeno",
+    "unreserve": "Otkaži",
+    "markPurchased": "Kupljeno",
     "edit": "Uredi",
     "delete": "Obriši",
     "cancel": "Otkaži",

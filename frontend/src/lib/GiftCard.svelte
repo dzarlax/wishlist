@@ -3,9 +3,11 @@
   import { fade, fly } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { t, formatPrice } from './utils/i18n.js';
+  import { designSystem, getPriorityColors } from './utils/design-system.js';
 
   export let gift;
   export let index = 0;
+  export let isLarge = false;
 
   const dispatch = createEventDispatcher();
 
@@ -28,6 +30,9 @@
     const priorityMapping = $t('priorityMapping');
     return priorityMapping[gift.priority] || 'medium';
   })();
+
+  // Get priority colors from centralized helper
+  $: priorityColorClasses = getPriorityColors(currentPriorityCode);
 
   async function handleReserve() {
     error = '';
@@ -101,45 +106,51 @@
       case 'reserved':
         return {
           text: `🔒 ${$t('status.reserved')}`,
-          class: 'bg-amber-500/90 text-white border-amber-400 shadow-lg shadow-amber-500/20',
+          dotClass: 'bg-amber-500',
+          textClass: 'text-amber-700 dark:text-amber-300',
+          bgClass: 'bg-amber-500/10',
+          borderClass: 'border-amber-500/30'
         };
       case 'purchased':
         return {
           text: `✅ ${$t('status.purchased')}`,
-          class: 'bg-emerald-600/90 text-white border-emerald-500 shadow-lg shadow-emerald-500/20',
+          dotClass: 'bg-emerald-500',
+          textClass: 'text-emerald-700 dark:text-emerald-300',
+          bgClass: 'bg-emerald-500/10',
+          borderClass: 'border-emerald-500/30'
         };
       default:
-        return { text: '', class: '' };
+        return { text: '', dotClass: '', textClass: '', bgClass: '', borderClass: '' };
     }
   })();
 </script>
 
 <article
-  class="gift-card group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-300 ease-out {gift.status ===
+  class="gift-card group relative flex flex-col rounded-[12px] overflow-hidden border transition-all duration-300 ease-out {gift.status ===
   'available'
-    ? 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/95 dark:to-slate-800/95 border-slate-300 dark:border-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1'
-    : 'bg-slate-100 dark:bg-slate-900/80 border-slate-300 dark:border-slate-800/50 opacity-75'}"
+    ? 'bg-ivory dark:bg-dark-bg border-black/[0.08] dark:border-white/[0.08] hover:border-indigo-400/50 dark:hover:border-indigo-500/30 hover:shadow-editorial-lg hover:-translate-y-1 ring-1 ring-inset ring-black/5 dark:ring-white/5'
+    : 'bg-surface-hover dark:bg-[#15171A] border-black/[0.06] dark:border-white/[0.06] opacity-75'}"
   on:mouseenter={() => (hovered = true)}
   on:mouseleave={() => (hovered = false)}
   in:fly={{ y: 50, opacity: 0, duration: 400, delay: index * 50, easing: quintOut }}
 >
   <!-- Image (clickable) -->
   <div
-    class="relative h-40 overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 flex-shrink-0 cursor-pointer"
+    class="relative {isLarge ? 'h-56' : 'h-40'} overflow-hidden bg-[#f4f4f5] dark:bg-white/5 flex-shrink-0 cursor-pointer"
     on:click={() => dispatch('view')}
   >
     {#if gift.image_url && !imageError}
       <img
         src={gift.image_url}
         alt={gift.name}
-        class="w-full h-full object-cover transition-transform duration-500 ease-out {hovered
+        class="w-full h-full object-contain transition-transform duration-500 ease-out {hovered
           ? 'scale-110'
           : 'scale-100'}"
         on:error={() => (imageError = true)}
       />
     {:else}
       <div
-        class="w-full h-full flex items-center justify-center text-5xl opacity-30 transition-transform duration-500 ease-out {hovered
+        class="w-full h-full flex items-center justify-center {designSystem.text['4xl']} opacity-30 transition-transform duration-500 ease-out {hovered
           ? 'scale-110 rotate-5'
           : 'scale-100'}"
       >
@@ -149,13 +160,16 @@
 
     {#if status.text}
       <div
-        class="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-md transition-opacity duration-300"
+        class="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300"
         transition:fade={{ duration: 200 }}
       >
         <div
-          class="px-4 py-2 rounded-lg text-base font-bold border-2 {status.class} transform transition-transform duration-300 hover:scale-105"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg {designSystem.text.sm} {designSystem.text.weight.medium} border-2 {status.bgClass} {status.borderClass} transform transition-transform duration-300 hover:scale-105"
         >
-          {status.text}
+          {#if status.dotClass}
+            <span class="w-1.5 h-1.5 rounded-full {status.dotClass}"></span>
+          {/if}
+          <span class="{status.textClass}">{status.text}</span>
         </div>
       </div>
     {/if}
@@ -168,10 +182,10 @@
   </div>
 
   <!-- Content (clickable) -->
-  <div class="p-4 flex flex-col flex-1 backdrop-blur-sm cursor-pointer gap-3" on:click={() => dispatch('view')}>
+  <div class="p-5 flex flex-col flex-1 backdrop-blur-sm cursor-pointer gap-3 {gift.status !== 'available' ? 'grayscale opacity-80' : ''}" on:click={() => dispatch('view')}>
     {#if error}
       <div
-        class="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 text-xs text-red-600 dark:text-red-300 flex items-center gap-2 flex-shrink-0"
+        class="bg-red-500/10 border border-red-500/20 rounded-none px-3 py-2 {designSystem.text.xs} text-red-600 dark:text-red-300 flex items-center gap-2 flex-shrink-0"
         transition:fade={{ duration: 200 }}
       >
         <span>⚠️</span>
@@ -182,30 +196,26 @@
     <div class="flex gap-2 flex-wrap flex-shrink-0">
       {#if gift.category_code}
         <span
-          class="px-2.5 py-1 rounded-lg text-xs text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/50 backdrop-blur-sm"
-        >
-          {$t(`categories.${gift.category_code}`)}
-        </span>
+        class="px-3 py-1 rounded-none {designSystem.text.xs} {designSystem.badge.category}"
+      >
+        {$t(`categories.${gift.category_code}`)}
+      </span>
       {/if}
       <span
-        class="px-2.5 py-1 rounded-lg text-xs {currentPriorityCode === 'hot'
-          ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800/50'
-          : currentPriorityCode === 'medium'
-            ? 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800/50'
-            : 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/50'} backdrop-blur-sm"
+        class="px-3 py-1 rounded-none {designSystem.badge.priority} {priorityColorClasses.bg} {priorityColorClasses.bgDark} {priorityColorClasses.text} {priorityColorClasses.textDark} border {priorityColorClasses.border} {priorityColorClasses.borderDark}"
       >
         {$t(`priorities.${currentPriorityCode}`)}
       </span>
     </div>
 
     <h3
-      class="text-base font-semibold text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors duration-200 flex-shrink-0"
+      class="{isLarge ? designSystem.text.xl : designSystem.text.base} text-graphite dark:text-dark-text leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 flex-shrink-0"
     >
       {gift.name}
     </h3>
 
     {#if gift.description}
-      <p class="text-slate-600 dark:text-slate-400 text-sm line-clamp-2 leading-relaxed flex-shrink-0">
+      <p class="{designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark} {designSystem.text.base} line-clamp-2 {designSystem.text.leading.relaxed} flex-shrink-0">
         {gift.description}
       </p>
     {/if}
@@ -218,11 +228,11 @@
   <!-- Price (if exists, clickable) -->
   {#if gift.price}
     <div
-      class="px-4 pt-2 pb-2 border-t border-slate-300 dark:border-slate-700/50 cursor-pointer"
+      class="px-5 pt-3 pb-2 border-t border-black/[0.08] dark:border-white/[0.08] cursor-pointer"
       on:click={() => dispatch('view')}
     >
       <span
-        class="text-lg font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent"
+        class="font-mono {designSystem.text.lg} {designSystem.color.status.available.text} {designSystem.color.status.available.textDark}"
       >
         {$formatPrice(gift.price)}
       </span>
@@ -230,14 +240,14 @@
   {/if}
 
   <!-- Action buttons (outside clickable area) -->
-  <div class="flex items-center justify-between px-4 py-2 border-t border-slate-300 dark:border-slate-700/50">
-    <div class="flex gap-2 ml-auto">
+  <div class="flex items-center justify-end px-5 py-2 border-t border-black/[0.08] dark:border-white/[0.08]">
+    <div class="flex gap-2">
       {#if gift.link}
         <a
           href={gift.link}
           target="_blank"
           rel="noopener noreferrer"
-          class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+          class="w-11 h-11 min-w-[fit-content] rounded-full bg-transparent border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark} hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/20 dark:hover:border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
           title="Открыть ссылку"
         >
           🔗
@@ -245,14 +255,14 @@
       {/if}
       <button
         on:click={() => dispatch('edit')}
-        class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-amber-100 dark:hover:bg-amber-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-amber-400 dark:hover:border-amber-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+        class="w-11 h-11 min-w-[fit-content] rounded-full bg-transparent border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark} hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/20 dark:hover:border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
         title={$t('actions.edit')}
       >
         ✏️
       </button>
       <button
         on:click={() => dispatch('delete')}
-        class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800/80 hover:bg-red-100 dark:hover:bg-red-600/80 border border-slate-300 dark:border-slate-700/50 hover:border-red-400 dark:hover:border-red-500/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+        class="w-11 h-11 min-w-[fit-content] rounded-full bg-transparent border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark} hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/20 dark:hover:border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
         title={$t('actions.delete')}
       >
         🗑️
@@ -261,11 +271,11 @@
   </div>
 
   {#if gift.status === 'available'}
-    <div class="px-4 pt-2 pb-4">
+    <div class="px-5 pt-3 pb-5">
       <button
         on:click={handleReserve}
         disabled={loading}
-        class="w-full py-2 px-4 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border border-indigo-500/50 shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-0.5 active:translate-y-0"
+        class="w-full min-w-[fit-content] whitespace-nowrap py-2.5 px-4 rounded-full font-medium {designSystem.color.primary.bg} {designSystem.color.primary.bgDark} {designSystem.color.primary.text} {designSystem.color.primary.textDark} {designSystem.color.primary.hover} {designSystem.color.primary.hoverDark} shadow-editorial disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
       >
         {#if loading}
           <span class="flex items-center justify-center gap-2">
@@ -280,19 +290,20 @@
       </button>
     </div>
   {:else if gift.status === 'reserved'}
-    <div class="px-4 pt-2 pb-4">
+    <div class="px-5 pt-3 pb-5">
       <div class="flex gap-2">
         <button
           on:click={handleReserve}
           disabled={loading}
-          class="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/50 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0"
+          class="min-w-[fit-content] whitespace-nowrap py-2 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] shadow-editorial disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
         >
           {#if loading}
-            <span class="flex items-center justify-center gap-1">
+            <span class="flex items-center justify-center gap-2">
               <span class="animate-spin">⏳</span>
+              <span>{$t('app.loading')}</span>
             </span>
           {:else}
-            <span class="flex items-center justify-center gap-1">
+            <span class="flex items-center justify-center gap-2">
               ✅ {$t('actions.markPurchased')}
             </span>
           {/if}
@@ -300,14 +311,15 @@
         <button
           on:click={handleUnreserve}
           disabled={loading}
-          class="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/50 border border-red-300 dark:border-red-900/50 hover:border-red-400 dark:hover:border-red-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+          class="min-w-[fit-content] whitespace-nowrap py-2 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
         >
           {#if loading}
-            <span class="flex items-center justify-center gap-1">
+            <span class="flex items-center justify-center gap-2">
               <span class="animate-spin">⏳</span>
+              <span>{$t('app.loading')}</span>
             </span>
           {:else}
-            <span class="flex items-center justify-center gap-1">
+            <span class="flex items-center justify-center gap-2">
               🚫 {$t('actions.unreserve')}
             </span>
           {/if}
@@ -315,11 +327,11 @@
       </div>
     </div>
   {:else if gift.status === 'purchased'}
-    <div class="px-4 pt-2 pb-4">
+    <div class="px-5 pt-3 pb-5">
       <button
         on:click={handleUnreserve}
         disabled={loading}
-        class="w-full py-2 px-4 rounded-lg text-sm font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/50 border border-amber-300 dark:border-amber-900/50 hover:border-amber-400 dark:hover:border-amber-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+        class="w-full min-w-[fit-content] whitespace-nowrap py-2 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
       >
         {#if loading}
           <span class="flex items-center justify-center gap-2">
@@ -357,29 +369,5 @@
       opacity: 1;
       transform: translateY(0) scale(1);
     }
-  }
-
-  .gift-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
-    -webkit-mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-  }
-
-  .gift-card:hover::before {
-    opacity: 1;
   }
 </style>

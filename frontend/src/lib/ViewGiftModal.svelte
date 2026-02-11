@@ -1,11 +1,17 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { fade, fly } from 'svelte/transition';
+  import { fade, fly, scale } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
   import { t, formatPrice, formatDate } from './utils/i18n.js';
+  import { getPriorityColors, getStatusColors } from './utils/tagColors.js';
 
   export let gift;
 
   const dispatch = createEventDispatcher();
+
+  // Get colors from centralized helpers
+  $: priorityColors = gift.priority_code ? getPriorityColors(gift.priority_code) : null;
+  $: statusColors = gift.status !== 'available' ? getStatusColors(gift.status) : null;
 
   function handleKeydown(e) {
     if (e.key === 'Escape') {
@@ -29,8 +35,8 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div
-  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-  transition:fade={{ duration: 200 }}
+  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+  transition:scale={{ duration: 200, start: 0.95, end: 1, opacity: 1, easing: quintOut }}
   on:click={handleClickOutside}
   on:keydown={handleBackdropKeydown}
   role="button"
@@ -38,7 +44,7 @@
   aria-label="Close modal"
 >
   <div
-    class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700/50 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+    class="bg-ivory dark:bg-dark-bg rounded-modal shadow-raised border border-black/[0.08] dark:border-white/[0.08] w-full max-w-[var(--width-modal-lg)] max-h-[90vh] overflow-y-auto scrollbar-hide"
     transition:fly={{ y: 50, opacity: 0, duration: 300 }}
     role="dialog"
     aria-modal="true"
@@ -46,17 +52,18 @@
     tabindex="-1"
   >
     <!-- Header -->
-    <div class="sticky top-0 z-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-700/50 px-6 py-4">
+    <div class="relative sticky top-0 z-10 bg-ivory/95 dark:bg-dark-bg/95 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] px-7 py-5">
       <div class="flex items-center justify-between">
         <h2
           id="modal-title"
-          class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2"
+          class="text-2xl font-medium tracking-tighter text-graphite dark:text-dark-text flex items-center gap-2"
+          style="letter-spacing: -0.02em;"
         >
           🎁 {$t('modals.view.title')}
         </h2>
         <button
           on:click={() => dispatch('close')}
-          class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700/50 hover:bg-red-100 dark:hover:bg-red-900/30 border border-slate-300 dark:border-slate-600/50 hover:border-red-400 dark:hover:border-red-700/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+          class="w-8 h-8 rounded-full bg-surface dark:bg-surface-dark hover:bg-red-100 dark:hover:bg-red-900/30 border border-black/[0.08] dark:border-white/[0.08] hover:border-red-400 dark:hover:border-red-700/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
           aria-label="Close"
         >
           ✕
@@ -65,10 +72,10 @@
     </div>
 
     <!-- Content -->
-    <div class="p-6 space-y-6">
+    <div class="p-7 space-y-5">
       <!-- Image -->
       {#if gift.image_url}
-        <div class="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700/50">
+        <div class="rounded-modal overflow-hidden border border-black/[0.08] dark:border-white/[0.08]">
           <img
             src={gift.image_url}
             alt={gift.name}
@@ -78,36 +85,26 @@
       {/if}
 
       <!-- Title -->
-      <h3 class="text-2xl font-bold text-slate-900 dark:text-white leading-tight">
+      <h3 class="text-2xl font-medium tracking-tighter text-graphite dark:text-dark-text leading-tight">
         {gift.name}
       </h3>
 
       <!-- Badges -->
       <div class="flex gap-2 flex-wrap">
         {#if gift.category_code}
-          <span class="px-3 py-1.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/50">
+          <span class="px-3 py-1.5 rounded-[4px] text-sm text-black/70 dark:text-white/70 bg-surface dark:bg-surface-dark border border-black/[0.08] dark:border-white/[0.08]">
             {$t(`categories.${gift.category_code}`)}
           </span>
         {/if}
 
         {#if gift.priority_code}
-          <span
-            class="px-3 py-1.5 rounded-lg text-sm {gift.priority_code === 'hot'
-              ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800/50'
-              : gift.priority_code === 'medium'
-                ? 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800/50'
-                : 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/50'} border"
-          >
+          <span class="px-3 py-1.5 rounded-[4px] text-sm {priorityColors.bg} {priorityColors.text} {priorityColors.border} border">
             {$t(`priorities.${gift.priority_code}`)}
           </span>
         {/if}
 
         {#if gift.status !== 'available'}
-          <span
-            class="px-3 py-1.5 rounded-lg text-sm {gift.status === 'reserved'
-              ? 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800/50'
-              : 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800/50'} border"
-          >
+          <span class="px-3 py-1.5 rounded-[4px] text-sm {statusColors.bg} {statusColors.text} {statusColors.border} border">
             {$t(`status.${gift.status}`)}
           </span>
         {/if}
@@ -116,10 +113,10 @@
       <!-- Description -->
       {#if gift.description}
         <div class="space-y-2">
-          <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+          <h4 class="text-xs font-semibold tracking-widest uppercase text-black/70 dark:text-white/70">
             {$t('modals.view.description')}
           </h4>
-          <p class="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+          <p class="text-graphite dark:text-dark-text leading-relaxed whitespace-pre-wrap">
             {gift.description}
           </p>
         </div>
@@ -128,11 +125,11 @@
       <!-- Price -->
       {#if gift.price}
         <div class="space-y-2">
-          <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+          <h4 class="text-xs font-semibold tracking-widest uppercase text-black/70 dark:text-white/70">
             {$t('modals.view.price')}
           </h4>
           <p
-            class="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent"
+            class="font-mono text-2xl font-medium tracking-tight text-emerald-600 dark:text-emerald-400"
           >
             {$formatPrice(gift.price)}
           </p>
@@ -142,14 +139,14 @@
       <!-- Link -->
       {#if gift.link}
         <div class="space-y-2">
-          <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+          <h4 class="text-xs font-semibold tracking-widest uppercase text-black/70 dark:text-white/70">
             {$t('modals.view.link')}
           </h4>
           <a
             href={gift.link}
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-indigo-600 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 border border-indigo-300 dark:border-indigo-700/50 transition-all duration-200 hover:scale-105"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-[4px] text-sm font-semibold text-indigo-600 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 border border-indigo-300 dark:border-indigo-700/50 transition-all duration-200 hover:scale-105"
           >
             🔗 {$t('modals.view.openLink')}
           </a>
@@ -158,27 +155,21 @@
 
       <!-- Reservation Info -->
       {#if gift.status === 'reserved' || gift.status === 'purchased'}
-        <div class="space-y-3 p-4 rounded-xl {gift.status === 'reserved'
+        <div class="space-y-3 p-4 rounded-modal {gift.status === 'reserved'
           ? 'bg-amber-100 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700/50'
           : 'bg-emerald-100 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700/50'} border">
           <h4
-            class="text-sm font-semibold {gift.status === 'reserved'
-              ? 'text-amber-800 dark:text-amber-200'
-              : 'text-emerald-800 dark:text-emerald-200'} uppercase tracking-wide"
+            class="text-sm font-semibold {statusColors.text} uppercase tracking-wide"
           >
             {$t(`status.${gift.status}`)}
           </h4>
           {#if gift.reserved_by}
-            <p class="text-sm {gift.status === 'reserved'
-              ? 'text-amber-700 dark:text-amber-300'
-              : 'text-emerald-700 dark:text-emerald-300'}">
+            <p class="text-sm {statusColors.text}">
               {$t('modals.view.reservedBy')}: {gift.reserved_by}
             </p>
           {/if}
           {#if gift.reserved_at}
-            <p class="text-sm {gift.status === 'reserved'
-              ? 'text-amber-700 dark:text-amber-300'
-              : 'text-emerald-700 dark:text-emerald-300'}">
+            <p class="text-sm {statusColors.text}">
               {$t('modals.view.reservedAt')}: {$formatDate(gift.reserved_at)}
             </p>
           {/if}
@@ -187,11 +178,30 @@
 
       <!-- Created Date -->
       {#if gift.created_at}
-        <div class="pt-4 border-t border-slate-200 dark:border-slate-700/50">
-          <p class="text-xs text-slate-500 dark:text-slate-400">
+        <div class="pt-4 border-t border-black/[0.08] dark:border-white/[0.08]">
+          <p class="text-xs text-black/60 dark:text-white/60">
             {$t('modals.view.createdAt')}: {$formatDate(gift.created_at)}
           </p>
         </div>
+      {/if}
+    </div>
+
+    <!-- Footer -->
+    <div class="px-7 py-5 border-t border-black/[0.08] dark:border-white/[0.08]">
+      {#if gift.status === 'available'}
+        <button
+          on:click={() => dispatch('reserve')}
+          class="w-full min-w-[fit-content] whitespace-nowrap py-2.5 px-4 rounded-full text-[13px] font-semibold tracking-tight text-white bg-[#18181b] dark:bg-white dark:text-graphite hover:bg-[#27272a] dark:hover:bg-white/90 shadow-editorial transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
+        >
+          🎁 {$t('actions.reserve')}
+        </button>
+      {:else if gift.status === 'reserved'}
+        <button
+          on:click={() => dispatch('purchased')}
+          class="w-full min-w-[fit-content] whitespace-nowrap py-2.5 px-4 rounded-full text-[13px] font-semibold tracking-tight text-white bg-[#18181b] dark:bg-white dark:text-graphite hover:bg-[#27272a] dark:hover:bg-white/90 shadow-editorial transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
+        >
+          ✅ {$t('actions.markPurchased')}
+        </button>
       {/if}
     </div>
   </div>

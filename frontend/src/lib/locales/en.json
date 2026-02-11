@@ -17,9 +17,11 @@
     "reserved": "Reserved",
     "purchased": "Purchased",
     "resultsCount": "Showing {count} of {total}",
+    "sortBy": "Sort by",
     "sortByPriority": "By priority",
     "sortByName": "By name",
-    "sortByDate": "By date"
+    "sortByDate": "By date",
+    "more": "More..."
   },
   "priorities": {
     "hot": "🔥 Really want",
@@ -38,8 +40,8 @@
   },
   "actions": {
     "reserve": "Reserve",
-    "unreserve": "Unreserve",
-    "markPurchased": "Mark as purchased",
+    "unreserve": "Cancel",
+    "markPurchased": "Purchased",
     "edit": "Edit",
     "delete": "Delete",
     "cancel": "Cancel",

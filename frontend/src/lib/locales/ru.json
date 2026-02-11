@@ -17,9 +17,11 @@
     "reserved": "Забронированные",
     "purchased": "Купленные",
     "resultsCount": "Показано {count} из {total}",
+    "sortBy": "Сортировка",
     "sortByPriority": "По приоритету",
     "sortByName": "По названию",
-    "sortByDate": "По дате"
+    "sortByDate": "По дате",
+    "more": "Ещё..."
   },
   "priorities": {
     "hot": "🔥 Очень хочу",
@@ -38,8 +40,8 @@
   },
   "actions": {
     "reserve": "Забронировать",
-    "unreserve": "Отменить бронь",
-    "markPurchased": "Отметить купленным",
+    "unreserve": "Отменить",
+    "markPurchased": "Куплено",
     "edit": "Редактировать",
     "delete": "Удалить",
     "cancel": "Отмена",
