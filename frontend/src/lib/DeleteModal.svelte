@@ -5,6 +5,9 @@
   import { t } from './utils/i18n.js';
   import { designSystem } from './utils/design-system.js';
 
+  // @ts-ignore - Ignore svelteHTML type errors from node_modules
+  import { colors, typography } from './utils/design-system.js';
+
   export let gift;
 
   const dispatch = createEventDispatcher();
@@ -75,7 +78,7 @@
 
 <div
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-  transition:scale={{ duration: 200, start: 0.95, end: 1, opacity: 1, easing: quintOut }}
+  transition:scale={{ duration: 200, start: 0.95, easing: quintOut }}
   on:click={handleClickOutside}
   on:keydown={handleBackdropKeydown}
   role="button"

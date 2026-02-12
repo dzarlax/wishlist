@@ -6,6 +6,9 @@
   import { t } from './utils/i18n.js';
   import { designSystem } from './utils/design-system.js';
 
+  // @ts-ignore - Ignore svelteHTML type errors from node_modules
+  import { colors, typography } from './utils/design-system.js';
+
   export let gift;
 
   const dispatch = createEventDispatcher();

@@ -3,7 +3,7 @@
   import { fade, fly, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { t, formatPrice, formatDate } from './utils/i18n.js';
-  import { getPriorityColors, getStatusColors } from './utils/tagColors.js';
+  import { getPriorityColors, getStatusColors } from './utils/design-system.js';
 
   export let gift;
 
@@ -36,7 +36,7 @@
 
 <div
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-  transition:scale={{ duration: 200, start: 0.95, end: 1, opacity: 1, easing: quintOut }}
+  transition:scale={{ duration: 200, start: 0.95, easing: quintOut }}
   on:click={handleClickOutside}
   on:keydown={handleBackdropKeydown}
   role="button"
@@ -72,7 +72,7 @@
     </div>
 
     <!-- Content -->
-    <div class="p-7 space-y-5">
+    <div class="px-7 py-5 pb-16 space-y-5">
       <!-- Image -->
       {#if gift.image_url}
         <div class="rounded-modal overflow-hidden border border-black/[0.08] dark:border-white/[0.08]">

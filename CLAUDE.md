@@ -196,6 +196,64 @@ environment:
   - ALLOWED_ORIGINS=https://mysite.com,https://app.mysite.com
 ```
 
+### Design System
+
+**Centralized Design Tokens (`lib/utils/design-system.js`):**
+- Re-exports `colors` from `colors.js`
+- Re-exports `typography` from `typography.js`
+- Provides helper functions: `getPriorityColors()`, `getStatusColors()`
+- Single `designSystem` object for common patterns
+
+**Colors (`lib/utils/colors.js`):**
+
+All colors support light/dark variants with consistent naming:
+- `primary` - Brand colors (buttons, actions)
+- `secondary` - Ghost buttons, secondary actions
+- `status` - available/reserved/purchased states
+- `priority` - hot/medium/low priority badges
+- `neutral` - Text, backgrounds, borders
+
+Each color object has: `text/textDark`, `bg/bgDark`, `border/borderDark`, `hover/hoverDark`
+
+**Typography (`lib/utils/typography.js`):**
+- `size` - xs, sm, base, lg, xl, 2xl, 3xl, 4xl
+- `weight` - normal, medium, semibold, bold
+- `tracking` - normal, tight, tighter, widest
+- `leading` - none, tight, normal, relaxed, loose
+- `combinations` - Predefined styles (label, button, modalTitle, etc.)
+- `spacing` - Input/button padding presets
+
+**Usage in Components:**
+```svelte
+<script>
+  import { designSystem, getPriorityColors } from './lib/utils/design-system.js';
+  // @ts-ignore
+  import { colors, typography } from './lib/utils/design-system.js';
+</script>
+
+<!-- Typography -->
+<h1 class="{designSystem.text['2xl']} {designSystem.text.weight.medium}">
+  Title
+</h1>
+
+<!-- Colors -->
+<div class="{designSystem.color.neutral.text.DEFAULT} {designSystem.color.neutral.text.dark}">
+  Text
+</div>
+
+<!-- Priority badge -->
+<span class="{getPriorityColors('hot').bg} {getPriorityColors('hot').text}">
+  🔥 {$t('priorities.hot')}
+</span>
+```
+
+**Theme Tokens (from app.css `@theme`):**
+- Colors: `--color-ivory`, `--color-graphite`, `--color-dark-bg`, `--color-dark-text`
+- Shadows: `--shadow-editorial`, `--shadow-editorial-lg`, `--shadow-raised`
+- Spacing: `--spacing-input`, `--spacing-modal`, etc.
+- Radius: `--radius-modal`, `--radius-btn-icon`
+- Widths: `--width-modal`, `--width-modal-lg`
+
 ### Dark Mode
 
 **Tailwind 4 Configuration:**
@@ -240,7 +298,14 @@ This enables class-based dark mode where the `dark` class on `<html>` element ac
 
 **Gift Card:**
 - Uses semantic `<article>` element instead of `<div>`
-- Proper ARIA attributes for interactive elements
+- All clickable areas have proper ARIA attributes: `role="button"`, `tabindex="0"`, `aria-label`
+- Keyboard navigation support with Enter/Space key handlers
+- Separate interactive areas: image, content, price (each dispatches 'view' event)
+
+**Svelte Transitions:**
+- Use `transition:scale={{ duration, start, easing }}` (note: no `end` or `opacity` params)
+- Use `transition:fly` for directional animations
+- Use `transition:fade` for opacity transitions
 
 ### Code Conventions
 
@@ -255,6 +320,17 @@ This enables class-based dark mode where the `dark` class on `<html>` element ac
 - **Form Validation**: Use validation utilities from `lib/utils/validation.js`
 - **Reactive Translations**: Use reactive statements (`$:`) for translations that need to update on locale change
 - **Price as Text**: Always store and display prices as text (supports custom formats like "+ delivery")
+- **CSS Vendor Prefixes**: When using webkit-specific properties, also include standard properties (e.g., `-webkit-line-clamp` + `line-clamp`)
+
+### TypeScript Configuration
+
+**frontend/tsconfig.json:**
+- `noEmit: true` - TypeScript only for type checking, Vite handles compilation
+- `checkJs: true` - Type checking for .js files
+- No `extends` - Standalone config for Svelte + Vite (not SvelteKit)
+- `types: ["vite/client", "svelte"]` - Vite and Svelte type definitions
+
+**Note:** VS Code CSS validation is disabled in `.vscode/settings.json` due to Tailwind v4's `@variant` and `@theme` at-rules not being recognized by the CSS language server.
 
 ### Environment Variables
 

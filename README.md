@@ -184,8 +184,27 @@ wishlist/
 - ⚡ **Minimalist interface** without unnecessary effects
 - 💫 **Smooth transitions** and hover effects
 - 📱 **Responsive design** for all devices
-- 🎨 **Slate palette** in Tailwind CSS 4
+- 🎨 **Centralized design system** with tokens for colors, typography, spacing
 - ♿ **Accessible**: Proper ARIA labels, keyboard navigation, semantic HTML
+
+### Design System Architecture
+
+**Color Palette:**
+- Primary brand colors with light/dark variants
+- Semantic colors: available (emerald), reserved (amber), purchased (emerald)
+- Priority colors: hot (red), medium (amber), low (blue)
+- Neutral grays for text, borders, backgrounds
+
+**Typography Scale:**
+- Sizes: xs (12px) → 4xl (36px)
+- Weights: normal, medium, semibold, bold
+- Tracking: normal, tight, tighter, widest
+- Predefined combinations for common elements (labels, buttons, modals)
+
+**Tokens:**
+- Spacing: input, modal, xs, sm, md, lg, xl
+- Shadows: editorial, editorial-lg, raised
+- Radius: modal (12px), button (4px), card (12px)
 
 ## 🎭 How Anonymity Works
 

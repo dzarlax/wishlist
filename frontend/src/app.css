@@ -1,7 +1,18 @@
 @import "tailwindcss";
 
 /* Configure class-based dark mode for Tailwind v4 */
+/* eslint-disable-next-line css-syntax-no-unknown */
 @variant dark (&:where(.dark, .dark *));
+
+/* Hide scrollbar for modals */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
 
 /* Editorial typography for headings */
 h1, h2, h3, h4, h5, h6 {

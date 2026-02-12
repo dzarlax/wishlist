@@ -57,5 +57,24 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    {
+      plugin: ({ addBase, addComponents }) => {
+        addBase({
+          ...addComponents({
+            scrollbarHide: '.scrollbar-hide',
+          })
+        );
+      }),
+    },
+    {
+      plugin: ({ addBase, addComponents }) => {
+        addBase({
+          ...addComponents({
+            scrollbarHide: '.scrollbar-hide',
+          })
+        );
+      }),
+    },
+  ],
 };

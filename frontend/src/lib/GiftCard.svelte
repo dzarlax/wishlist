@@ -34,6 +34,13 @@
   // Get priority colors from centralized helper
   $: priorityColorClasses = getPriorityColors(currentPriorityCode);
 
+  function handleKeydown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      dispatch('view');
+    }
+  }
+
   async function handleReserve() {
     error = '';
     loading = true;
@@ -136,8 +143,12 @@
 >
   <!-- Image (clickable) -->
   <div
+    role="button"
+    tabindex="0"
     class="relative {isLarge ? 'h-56' : 'h-40'} overflow-hidden bg-[#f4f4f5] dark:bg-white/5 flex-shrink-0 cursor-pointer"
     on:click={() => dispatch('view')}
+    on:keydown={handleKeydown}
+    aria-label="View details for {gift.name}"
   >
     {#if gift.image_url && !imageError}
       <img
@@ -182,7 +193,14 @@
   </div>
 
   <!-- Content (clickable) -->
-  <div class="p-5 flex flex-col flex-1 backdrop-blur-sm cursor-pointer gap-3 {gift.status !== 'available' ? 'grayscale opacity-80' : ''}" on:click={() => dispatch('view')}>
+  <div
+    role="button"
+    tabindex="0"
+    class="p-5 flex flex-col flex-1 backdrop-blur-sm cursor-pointer gap-3 {gift.status !== 'available' ? 'grayscale opacity-80' : ''}"
+    on:click={() => dispatch('view')}
+    on:keydown={handleKeydown}
+    aria-label="View details for {gift.name}"
+  >
     {#if error}
       <div
         class="bg-red-500/10 border border-red-500/20 rounded-none px-3 py-2 {designSystem.text.xs} text-red-600 dark:text-red-300 flex items-center gap-2 flex-shrink-0"
@@ -228,8 +246,12 @@
   <!-- Price (if exists, clickable) -->
   {#if gift.price}
     <div
+      role="button"
+      tabindex="0"
       class="px-5 pt-3 pb-2 border-t border-black/[0.08] dark:border-white/[0.08] cursor-pointer"
       on:click={() => dispatch('view')}
+      on:keydown={handleKeydown}
+      aria-label="View details for {gift.name}"
     >
       <span
         class="font-mono {designSystem.text.lg} {designSystem.color.status.available.text} {designSystem.color.status.available.textDark}"
@@ -352,6 +374,7 @@
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
