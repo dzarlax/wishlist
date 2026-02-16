@@ -67,6 +67,14 @@
   }
 
   function handleBackdropKeydown(event) {
+    // Don't close if focus is on an input element
+    const target = event.target;
+    const isInput = target.tagName === 'INPUT' ||
+                    target.tagName === 'TEXTAREA' ||
+                    target.tagName === 'SELECT' ||
+                    target.isContentEditable;
+    if (isInput) return;
+
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       dispatch('close');

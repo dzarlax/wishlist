@@ -26,6 +26,14 @@
   }
 
   function handleBackdropKeydown(e) {
+    // Don't close if focus is on an input element
+    const target = e.target;
+    const isInput = target.tagName === 'INPUT' ||
+                    target.tagName === 'TEXTAREA' ||
+                    target.tagName === 'SELECT' ||
+                    target.isContentEditable;
+    if (isInput) return;
+
     if (e.key === 'Enter' || e.key === ' ') {
       dispatch('close');
     }
