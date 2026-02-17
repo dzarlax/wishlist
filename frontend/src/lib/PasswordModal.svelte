@@ -29,7 +29,21 @@
     loading = true;
 
     try {
-      // Simply save the password - will be verified when actually creating a gift
+      // Verify password with server
+      const response = await fetch('/api/verify-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Password': password
+        }
+      });
+
+      if (!response.ok) {
+        toasts.error('Неверный пароль');
+        return;
+      }
+
+      // Password is valid - save it
       setAdminPassword(password);
       toasts.success('Пароль сохранен');
       dispatch('authenticated', { password });

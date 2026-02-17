@@ -120,6 +120,15 @@ app.get('/health', (req, res) => {
   }
 });
 
+// Verify admin password
+app.post('/api/verify-password', adminAuthLimiter, (req, res) => {
+  const adminPassword = req.get('X-Admin-Password');
+  if (!adminPassword || adminPassword !== ADMIN_PASSWORD) {
+    return res.status(403).json({ error: 'Invalid password' });
+  }
+  res.json({ success: true });
+});
+
 // API Routes
 app.get('/api/gifts', (req, res) => {
   const gifts = Gift.findAll().map(gift => Gift.sanitizeGift(gift));
