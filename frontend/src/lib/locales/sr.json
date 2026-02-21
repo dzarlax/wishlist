@@ -16,6 +16,7 @@
     "available": "Dostupno",
     "reserved": "Rezervisano",
     "purchased": "Kupljeno",
+    "purchasedSection": "Kupljeni pokloni",
     "resultsCount": "Prikazano {count} od {total}",
     "sortBy": "Sortiraj",
     "sortByPriority": "Po prioritetu",

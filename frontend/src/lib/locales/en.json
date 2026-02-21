@@ -16,6 +16,7 @@
     "available": "Available",
     "reserved": "Reserved",
     "purchased": "Purchased",
+    "purchasedSection": "Purchased gifts",
     "resultsCount": "Showing {count} of {total}",
     "sortBy": "Sort by",
     "sortByPriority": "By priority",

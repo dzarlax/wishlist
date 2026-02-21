@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { slide } from 'svelte/transition';
   import { toasts } from './lib/stores/toasts.js';
   import { theme } from './lib/stores/theme.js';
   import { getAdminPassword } from './lib/utils/api.js';
@@ -39,6 +40,7 @@
   let selectedPriority = '';
   let sortBy = 'priority'; // 'priority', 'name', 'created_at'
   let showAllFilters = false; // Progressive disclosure for filters
+  let showPurchased = false; // Toggle for purchased gifts section
 
   onMount(async () => {
     await loadGifts();
@@ -103,8 +105,19 @@
     return order[priorityCode] || order['medium'] || 2;
   }
 
-  // Filter gifts based on search and filters
-  $: filteredGifts = gifts.filter((gift) => {
+  // Split gifts into active and purchased
+  $: activeGifts = gifts.filter((gift) => gift.status !== 'purchased');
+  $: purchasedGifts = gifts.filter((gift) => gift.status === 'purchased');
+
+  // Sort purchased gifts by reserved_at or created_at descending
+  $: sortedPurchasedGifts = [...purchasedGifts].sort((a, b) => {
+    const dateA = new Date(a.reserved_at || a.created_at).getTime();
+    const dateB = new Date(b.reserved_at || b.created_at).getTime();
+    return dateB - dateA;
+  });
+
+  // Filter active gifts based on search and filters
+  $: filteredGifts = activeGifts.filter((gift) => {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -271,7 +284,7 @@
 
         <!-- Status & Priority Chips -->
         <div class="flex gap-2 flex-wrap items-center">
-          {#each ['available', 'reserved', 'purchased'] as status}
+          {#each ['available', 'reserved'] as status}
             <button
               on:click={() => selectedStatus = selectedStatus === status ? '' : status}
               class:font-medium={selectedStatus === status}
@@ -320,10 +333,10 @@
       </div>
 
       <!-- Results Count -->
-      {#if filteredGifts.length !== gifts.length}
+      {#if filteredGifts.length !== activeGifts.length}
         <p class="text-xs sm:text-sm text-black/60 dark:text-white/60 flex items-center gap-2">
           <span class="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-          {$t('filters.resultsCount', { count: sortedGifts.length, total: gifts.length })}
+          {$t('filters.resultsCount', { count: sortedGifts.length, total: activeGifts.length })}
         </p>
       {/if}
     </div>
@@ -375,6 +388,41 @@
             />
           </div>
         {/each}
+      </div>
+    {/if}
+
+    <!-- Purchased Gifts Section -->
+    {#if sortedPurchasedGifts.length > 0}
+      <div class="mt-8 sm:mt-10">
+        <button
+          on:click={() => showPurchased = !showPurchased}
+          class="flex items-center gap-2 text-sm text-black/50 dark:text-white/50 hover:text-black/70 dark:hover:text-white/70 transition-colors duration-200 mb-4"
+        >
+          <span class="text-xs transition-transform duration-200" class:rotate-90={showPurchased}>&#9654;</span>
+          <span>{$t('filters.purchasedSection')}</span>
+          <span class="px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5 text-xs">{sortedPurchasedGifts.length}</span>
+        </button>
+
+        {#if showPurchased}
+          <div transition:slide={{ duration: 300 }}>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 opacity-75">
+              {#each sortedPurchasedGifts as gift, index (gift.id)}
+                <div>
+                  <GiftCard
+                    {gift}
+                    {index}
+                    isLarge={false}
+                    on:view={() => openViewModal(gift)}
+                    on:edit={() => openEditModal(gift)}
+                    on:reserve={() => openReserveModal(gift)}
+                    on:delete={() => openDeleteModal(gift)}
+                    on:refresh={loadGifts}
+                  />
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
       </div>
     {/if}
   </div>

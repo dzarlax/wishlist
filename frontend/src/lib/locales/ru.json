@@ -16,6 +16,7 @@
     "available": "Доступные",
     "reserved": "Забронированные",
     "purchased": "Купленные",
+    "purchasedSection": "Купленные подарки",
     "resultsCount": "Показано {count} из {total}",
     "sortBy": "Сортировка",
     "sortByPriority": "По приоритету",
