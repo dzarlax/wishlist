@@ -1,8 +1,9 @@
 // Gift Model - Encapsulates all gift-related database operations
 
 class GiftModel {
-  constructor(db) {
+  constructor(db, onMutation) {
     this.db = db;
+    this._onMutation = onMutation || null;
   }
 
   // Category code to Russian name mapping (for backward compatibility)
@@ -57,11 +58,12 @@ class GiftModel {
   }
 
   /**
-   * Escape SQL string
+   * Save DB to disk after a mutation
    */
-  escapeString(str) {
-    if (str === null || str === undefined) return 'NULL';
-    return `'${String(str).replace(/'/g, "''")}'`;
+  _afterMutation() {
+    if (this._onMutation) {
+      this._onMutation();
+    }
   }
 
   /**
@@ -88,9 +90,14 @@ class GiftModel {
    * Find gift by ID
    */
   findById(id) {
-    const results = this.db.exec(`SELECT * FROM gifts WHERE id = ${id}`);
-    if (!results[0] || !results[0].values[0]) return null;
-    return this.mapRowToGift(results[0].values[0]);
+    const stmt = this.db.prepare('SELECT * FROM gifts WHERE id = ?');
+    try {
+      stmt.bind([id]);
+      if (!stmt.step()) return null;
+      return this.mapRowToGift(stmt.get());
+    } finally {
+      stmt.free();
+    }
   }
 
   /**
@@ -116,20 +123,12 @@ class GiftModel {
       ) || 'medium';
     }
 
-    const query = `
-      INSERT INTO gifts (name, description, category_code, priority_code, link, image_url, price)
-      VALUES (
-        ${this.escapeString(name)},
-        ${this.escapeString(description)},
-        ${this.escapeString(categoryCode)},
-        ${this.escapeString(priorityCode)},
-        ${this.escapeString(link)},
-        ${this.escapeString(image_url)},
-        ${this.escapeString(price)}
-      )
-    `;
-
-    this.db.run(query);
+    this.db.run(
+      `INSERT INTO gifts (name, description, category_code, priority_code, link, image_url, price)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [name || null, description || null, categoryCode || null, priorityCode || null, link || null, image_url || null, price || null]
+    );
+    this._afterMutation();
 
     const lastId = this.db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
     return this.findById(lastId);
@@ -158,19 +157,14 @@ class GiftModel {
       ) || 'medium';
     }
 
-    const query = `
-      UPDATE gifts
-      SET name = ${this.escapeString(name)},
-          description = ${this.escapeString(description)},
-          category_code = ${this.escapeString(categoryCode)},
-          priority_code = ${this.escapeString(priorityCode)},
-          link = ${this.escapeString(link)},
-          image_url = ${this.escapeString(image_url)},
-          price = ${this.escapeString(price)}
-      WHERE id = ${id}
-    `;
+    this.db.run(
+      `UPDATE gifts
+       SET name = ?, description = ?, category_code = ?, priority_code = ?, link = ?, image_url = ?, price = ?
+       WHERE id = ?`,
+      [name || null, description || null, categoryCode || null, priorityCode || null, link || null, image_url || null, price || null, id]
+    );
+    this._afterMutation();
 
-    this.db.run(query);
     return this.findById(id);
   }
 
@@ -178,24 +172,22 @@ class GiftModel {
    * Delete gift
    */
   delete(id) {
-    this.db.run(`DELETE FROM gifts WHERE id = ${id}`);
+    this.db.run('DELETE FROM gifts WHERE id = ?', [id]);
+    this._afterMutation();
   }
 
   /**
    * Reserve a gift
    */
   reserve(id, secretCode, reservedBy) {
-    const query = `
-      UPDATE gifts
-      SET reserved = 1,
-          secret_code = ${this.escapeString(secretCode)},
-          reserved_by = ${this.escapeString(reservedBy || 'Аноним')},
-          reserved_at = CURRENT_TIMESTAMP,
-          status = 'reserved'
-      WHERE id = ${id}
-    `;
+    this.db.run(
+      `UPDATE gifts
+       SET reserved = 1, secret_code = ?, reserved_by = ?, reserved_at = CURRENT_TIMESTAMP, status = 'reserved'
+       WHERE id = ?`,
+      [secretCode, reservedBy || 'Аноним', id]
+    );
+    this._afterMutation();
 
-    this.db.run(query);
     return this.findById(id);
   }
 
@@ -203,17 +195,14 @@ class GiftModel {
    * Unreserve a gift
    */
   unreserve(id) {
-    const query = `
-      UPDATE gifts
-      SET reserved = 0,
-          secret_code = NULL,
-          reserved_by = NULL,
-          reserved_at = NULL,
-          status = 'available'
-      WHERE id = ${id}
-    `;
+    this.db.run(
+      `UPDATE gifts
+       SET reserved = 0, secret_code = NULL, reserved_by = NULL, reserved_at = NULL, status = 'available'
+       WHERE id = ?`,
+      [id]
+    );
+    this._afterMutation();
 
-    this.db.run(query);
     return this.findById(id);
   }
 
@@ -221,7 +210,9 @@ class GiftModel {
    * Mark gift as purchased
    */
   markPurchased(id) {
-    this.db.run(`UPDATE gifts SET status = 'purchased' WHERE id = ${id}`);
+    this.db.run("UPDATE gifts SET status = 'purchased' WHERE id = ?", [id]);
+    this._afterMutation();
+
     return this.findById(id);
   }
 }

@@ -49,11 +49,11 @@ async function initDB() {
   const migrationManager = new MigrationManager(db, path.join(__dirname, 'server/migrations'));
   await migrationManager.migrate();
 
-  // Initialize Gift model
-  Gift = new GiftModel(db);
+  // Initialize Gift model with save-after-mutation callback
+  Gift = new GiftModel(db, saveDB);
 
-  // Auto-save every 5 seconds
-  setInterval(saveDB, 5000);
+  // Auto-save every 30 seconds (safety fallback)
+  setInterval(saveDB, 30000);
 }
 
 function saveDB() {

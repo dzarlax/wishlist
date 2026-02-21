@@ -93,7 +93,7 @@ class MigrationManager {
     migration.up(this.db);
 
     // Record migration
-    this.db.run(`INSERT INTO schema_migrations (version) VALUES (${version})`);
+    this.db.run('INSERT INTO schema_migrations (version) VALUES (?)', [version]);
 
     console.log(`  ✓ Migration ${version} completed`);
   }
