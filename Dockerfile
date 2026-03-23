@@ -31,5 +31,7 @@ EXPOSE 3000
 
 ENV ADMIN_PASSWORD=wishlist2025
 ENV PORT=3000
+# Multi-user setup: USERS="slug:Name:password:emoji,slug:Name:password:emoji"
+# ENV USERS="dima:Dima:password1:🎮,anna:Anna:password2:💅"
 
 CMD ["node", "server.js"]

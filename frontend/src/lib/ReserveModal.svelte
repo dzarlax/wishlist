@@ -10,6 +10,7 @@
   import { colors, typography } from './utils/design-system.js';
 
   export let gift;
+  export let userSlug = null;
 
   const dispatch = createEventDispatcher();
 
@@ -29,7 +30,11 @@
     loading = true;
 
     try {
-      const response = await fetch(`/api/gifts/${gift.id}/reserve`, {
+      const apiUrl = userSlug
+        ? `/api/users/${userSlug}/gifts/${gift.id}/reserve`
+        : `/api/gifts/${gift.id}/reserve`;
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -158,6 +158,14 @@
     "sports": "🏃 Sport",
     "creativity": "🎨 Kreativnost"
   },
+  "users": {
+    "title": "Čija lista želja?",
+    "subtitle": "Izaberite čiju listu želja želite da vidite",
+    "noUsers": "Nema korisnika",
+    "noUsersDescription": "Dodajte korisnike preko promenljive okruženja USERS",
+    "backToUsers": "Sve liste želja",
+    "wishlistOf": "Lista želja: {name}"
+  },
   "categoryMapping": {
     "🔧 Электроника и гаджеты": "electronics",
     "🏠 Умный дом": "home",

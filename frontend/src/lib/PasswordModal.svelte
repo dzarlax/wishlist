@@ -4,9 +4,11 @@
   import { quintOut } from 'svelte/easing';
   import { onMount } from 'svelte';
   import { toasts } from './stores/toasts.js';
-  import { getAdminPassword, setAdminPassword } from './utils/api.js';
+  import { getAdminPassword, setAdminPassword, verifyUserPassword } from './utils/api.js';
   import { t } from './utils/i18n.js';
   import { designSystem } from './utils/design-system.js';
+
+  export let userSlug = null;
 
   const dispatch = createEventDispatcher();
 
@@ -14,7 +16,7 @@
   let loading = false;
 
   onMount(() => {
-    const saved = getAdminPassword();
+    const saved = getAdminPassword(userSlug);
     if (saved) {
       password = saved;
     }
@@ -29,26 +31,30 @@
     loading = true;
 
     try {
-      // Verify password with server
-      const response = await fetch('/api/verify-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Password': password
+      if (userSlug) {
+        // Verify per-user password
+        await verifyUserPassword(userSlug, password);
+      } else {
+        // Legacy: verify global password
+        const response = await fetch('/api/verify-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Password': password
+          }
+        });
+        if (!response.ok) {
+          toasts.error('Неверный пароль');
+          return;
         }
-      });
-
-      if (!response.ok) {
-        toasts.error('Неверный пароль');
-        return;
       }
 
       // Password is valid - save it
-      setAdminPassword(password);
+      setAdminPassword(password, userSlug);
       toasts.success('Пароль сохранен');
       dispatch('authenticated', { password });
     } catch {
-      toasts.error($t('toasts.error'));
+      toasts.error('Неверный пароль');
     } finally {
       loading = false;
     }

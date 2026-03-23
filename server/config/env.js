@@ -30,6 +30,9 @@ const config = {
     ? ['*']  // Allow all origins in production (frontend served from same origin)
     : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:3000'],
 
+  // Users - format: "slug:Name:password:emoji,slug:Name:password:emoji"
+  defaultUsers: process.env.USERS || null,
+
   // Logging
   skipMorganInTest: process.env.NODE_ENV === 'test'
 };

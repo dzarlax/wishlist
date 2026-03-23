@@ -6,6 +6,7 @@
   import { getPriorityColors, getStatusColors } from './utils/design-system.js';
 
   export let gift;
+  export let userSlug = null;
 
   const dispatch = createEventDispatcher();
 

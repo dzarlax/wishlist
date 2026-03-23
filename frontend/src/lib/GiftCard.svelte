@@ -8,6 +8,7 @@
   export let gift;
   export let index = 0;
   export let isLarge = false;
+  export let userSlug = null;
 
   const dispatch = createEventDispatcher();
 
@@ -56,7 +57,10 @@
       }
 
       try {
-        const response = await fetch(`/api/gifts/${gift.id}/purchased`, {
+        const purchasedUrl = userSlug
+          ? `/api/users/${userSlug}/gifts/${gift.id}/purchased`
+          : `/api/gifts/${gift.id}/purchased`;
+        const response = await fetch(purchasedUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ secret_code: secretCode }),
@@ -88,7 +92,10 @@
     }
 
     try {
-      const response = await fetch(`/api/gifts/${gift.id}/unreserve`, {
+      const unreserveUrl = userSlug
+        ? `/api/users/${userSlug}/gifts/${gift.id}/unreserve`
+        : `/api/gifts/${gift.id}/unreserve`;
+      const response = await fetch(unreserveUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ secret_code: secretCode }),

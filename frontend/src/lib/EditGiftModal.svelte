@@ -3,7 +3,7 @@
   import { fade, fly, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { t } from './utils/i18n.js';
-  import { getAdminPassword } from './utils/api.js';
+  import { getAdminPassword, updateUserGift } from './utils/api.js';
   import { toasts } from './stores/toasts.js';
   import { designSystem } from './utils/design-system.js';
 
@@ -11,6 +11,7 @@
   import { colors, typography } from './utils/design-system.js';
 
   export let gift;
+  export let userSlug = null;
 
   const dispatch = createEventDispatcher();
 
@@ -78,7 +79,7 @@
     }
 
     // Get admin password from localStorage
-    const adminPassword = getAdminPassword();
+    const adminPassword = getAdminPassword(userSlug);
     if (!adminPassword) {
       toasts.error('Сначала войдите в систему');
       dispatch('close');
@@ -99,24 +100,28 @@
       if (link.trim()) payload.link = link.trim();
       if (imageUrl.trim()) payload.image_url = imageUrl.trim();
 
-      const response = await fetch(`/api/gifts/${gift.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Password': adminPassword,
-        },
-        body: JSON.stringify(payload),
-      });
+      if (userSlug) {
+        await updateUserGift(userSlug, gift.id, payload);
+      } else {
+        const response = await fetch(`/api/gifts/${gift.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Password': adminPassword,
+          },
+          body: JSON.stringify(payload),
+        });
 
-      if (!response.ok) {
-        const err = await response.json();
-        error = err.error || $t('toasts.error');
-        return;
+        if (!response.ok) {
+          const err = await response.json();
+          error = err.error || $t('toasts.error');
+          return;
+        }
       }
 
       dispatch('saved');
-    } catch {
-      error = $t('toasts.error');
+    } catch (e) {
+      error = e.message || $t('toasts.error');
     } finally {
       loading = false;
     }
