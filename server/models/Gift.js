@@ -43,7 +43,8 @@ class GiftModel {
       reserved_by: row[10],
       reserved_at: row[11],
       status: row[12],
-      created_at: row[13]
+      created_at: row[13],
+      user_id: row[14] || null
     };
   }
 
@@ -69,8 +70,33 @@ class GiftModel {
   /**
    * Get all gifts with proper priority sorting
    * Priority order: hot > medium > low
+   * @param {number|null} userId - Filter by user ID (null = all gifts)
    */
-  findAll() {
+  findAll(userId = null) {
+    if (userId !== null) {
+      const stmt = this.db.prepare(`
+        SELECT * FROM gifts WHERE user_id = ?
+        ORDER BY
+          CASE priority_code
+            WHEN 'hot' THEN 1
+            WHEN 'medium' THEN 2
+            WHEN 'low' THEN 3
+            ELSE 4
+          END,
+          created_at DESC
+      `);
+      try {
+        stmt.bind([userId]);
+        const results = [];
+        while (stmt.step()) {
+          results.push(this.mapRowToGift(stmt.getAsObject ? stmt.get() : stmt.get()));
+        }
+        return results;
+      } finally {
+        stmt.free();
+      }
+    }
+
     const results = this.db.exec(`
       SELECT * FROM gifts
       ORDER BY
@@ -104,7 +130,7 @@ class GiftModel {
    * Create new gift
    */
   create(data) {
-    const { name, description, category_code, priority_code, link, image_url, price } = data;
+    const { name, description, category_code, priority_code, link, image_url, price, user_id } = data;
 
     // Map old text format to codes if needed (for backward compatibility)
     let categoryCode = category_code;
@@ -124,9 +150,9 @@ class GiftModel {
     }
 
     this.db.run(
-      `INSERT INTO gifts (name, description, category_code, priority_code, link, image_url, price)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [name || null, description || null, categoryCode || null, priorityCode || null, link || null, image_url || null, price || null]
+      `INSERT INTO gifts (name, description, category_code, priority_code, link, image_url, price, user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name || null, description || null, categoryCode || null, priorityCode || null, link || null, image_url || null, price || null, user_id || null]
     );
     this._afterMutation();
 

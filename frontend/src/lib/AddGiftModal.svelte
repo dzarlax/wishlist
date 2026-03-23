@@ -6,11 +6,13 @@
   import { locale } from './stores/locale.js';
   import { validators } from './utils/validation.js';
   import { t } from './utils/i18n.js';
-  import { parseGift, getAdminPassword } from './utils/api.js';
+  import { parseGift, getAdminPassword, createUserGift } from './utils/api.js';
   import { designSystem } from './utils/design-system.js';
 
   // @ts-ignore - Ignore svelteHTML type errors from node_modules
   import { colors, typography } from './utils/design-system.js';
+
+  export let userSlug = null;
 
   const dispatch = createEventDispatcher();
 
@@ -74,7 +76,7 @@
     }
 
     // Get admin password from localStorage
-    const adminPassword = getAdminPassword();
+    const adminPassword = getAdminPassword(userSlug);
     if (!adminPassword) {
       toasts.error('Сначала войдите в систему');
       dispatch('close');
@@ -95,19 +97,23 @@
       if (link.trim()) payload.link = link.trim();
       if (imageUrl.trim()) payload.image_url = imageUrl.trim();
 
-      const response = await fetch('/api/gifts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Password': adminPassword,
-        },
-        body: JSON.stringify(payload),
-      });
+      if (userSlug) {
+        await createUserGift(userSlug, payload);
+      } else {
+        const response = await fetch('/api/gifts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Password': adminPassword,
+          },
+          body: JSON.stringify(payload),
+        });
 
-      if (!response.ok) {
-        const err = await response.json();
-        toasts.error(err.error || $t('toasts.error'));
-        return;
+        if (!response.ok) {
+          const err = await response.json();
+          toasts.error(err.error || $t('toasts.error'));
+          return;
+        }
       }
 
       // Reset form
@@ -121,8 +127,8 @@
 
       toasts.success($t('toasts.added'));
       dispatch('saved');
-    } catch {
-      toasts.error($t('toasts.error'));
+    } catch (e) {
+      toasts.error(e.message || $t('toasts.error'));
     } finally {
       loading = false;
     }

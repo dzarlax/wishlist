@@ -157,6 +157,14 @@
     "sports": "🏃 Sports",
     "creativity": "🎨 Creativity"
   },
+  "users": {
+    "title": "Whose wishlist?",
+    "subtitle": "Choose whose wishlist you'd like to view",
+    "noUsers": "No users",
+    "noUsersDescription": "Add users via the USERS environment variable",
+    "backToUsers": "All wishlists",
+    "wishlistOf": "Wishlist: {name}"
+  },
   "categoryMapping": {
     "🔧 Электроника и гаджеты": "electronics",
     "🏠 Умный дом": "home",

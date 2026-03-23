@@ -19,6 +19,7 @@ const {
   validatePurchased
 } = require('./server/middleware/validation');
 const GiftModel = require('./server/models/Gift');
+const UserModel = require('./server/models/User');
 const MigrationManager = require('./server/migrations/migrationManager');
 const { config, validateConfig } = require('./server/config/env');
 
@@ -31,6 +32,7 @@ const ADMIN_PASSWORD = config.adminPassword;
 
 let db;
 let Gift;
+let User;
 const startTime = Date.now();
 
 // Initialize database
@@ -49,11 +51,55 @@ async function initDB() {
   const migrationManager = new MigrationManager(db, path.join(__dirname, 'server/migrations'));
   await migrationManager.migrate();
 
-  // Initialize Gift model with save-after-mutation callback
+  // Initialize models with save-after-mutation callback
   Gift = new GiftModel(db, saveDB);
+  User = new UserModel(db, saveDB);
+
+  // Seed users from USERS env var: "slug:Name:password:emoji,slug:Name:password:emoji"
+  seedUsers();
+
+  // Assign orphan gifts (with no user_id) to the first user
+  assignOrphanGifts();
 
   // Auto-save every 30 seconds (safety fallback)
   setInterval(saveDB, 30000);
+}
+
+function seedUsers() {
+  const usersEnv = process.env.USERS || config.defaultUsers;
+  if (!usersEnv) return;
+
+  const userEntries = usersEnv.split(',').map(entry => entry.trim()).filter(Boolean);
+  for (const entry of userEntries) {
+    const parts = entry.split(':');
+    if (parts.length < 3) {
+      console.warn(`⚠️ Invalid user entry: ${entry} (expected slug:name:password[:emoji])`);
+      continue;
+    }
+    const [slug, name, password, emoji] = parts;
+    User.upsert({
+      slug: slug.trim(),
+      name: name.trim(),
+      admin_password: password.trim(),
+      avatar_emoji: emoji ? emoji.trim() : '🎁'
+    });
+    console.log(`👤 User "${name.trim()}" (/${slug.trim()}) ready`);
+  }
+}
+
+function assignOrphanGifts() {
+  const users = User.findAll();
+  if (users.length === 0) return;
+
+  const result = db.exec('SELECT COUNT(*) FROM gifts WHERE user_id IS NULL');
+  const orphanCount = result[0]?.values[0]?.[0] || 0;
+
+  if (orphanCount > 0) {
+    const firstUser = users[0];
+    db.run('UPDATE gifts SET user_id = ? WHERE user_id IS NULL', [firstUser.id]);
+    saveDB();
+    console.log(`📦 Assigned ${orphanCount} existing gift(s) to "${firstUser.name}"`);
+  }
 }
 
 function saveDB() {
@@ -87,10 +133,32 @@ if (!config.skipMorganInTest) {
 app.use(express.json());
 app.use(express.static('public'));
 
-// Middleware to verify admin password from header
+// Middleware to verify admin password from header (global)
 function requireAdminAuth(req, res, next) {
   const adminPassword = req.get('X-Admin-Password');
   if (!adminPassword || adminPassword !== ADMIN_PASSWORD) {
+    return res.status(403).json({ error: 'Unauthorized: Invalid admin password' });
+  }
+  next();
+}
+
+// Middleware to resolve user from :slug param
+function resolveUser(req, res, next) {
+  const user = User.findBySlug(req.params.slug);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  req.wishlistUser = user;
+  next();
+}
+
+// Middleware to verify per-user admin password
+function requireUserAuth(req, res, next) {
+  const adminPassword = req.get('X-Admin-Password');
+  if (!req.wishlistUser) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  if (!adminPassword || adminPassword !== req.wishlistUser.admin_password) {
     return res.status(403).json({ error: 'Unauthorized: Invalid admin password' });
   }
   next();
@@ -120,7 +188,7 @@ app.get('/health', (req, res) => {
   }
 });
 
-// Verify admin password
+// Verify admin password (global - backward compatible)
 app.post('/api/verify-password', adminAuthLimiter, (req, res) => {
   const adminPassword = req.get('X-Admin-Password');
   if (!adminPassword || adminPassword !== ADMIN_PASSWORD) {
@@ -128,6 +196,122 @@ app.post('/api/verify-password', adminAuthLimiter, (req, res) => {
   }
   res.json({ success: true });
 });
+
+// ==================== USER ROUTES ====================
+
+// List all users (public)
+app.get('/api/users', (req, res) => {
+  const users = User.findAll().map(u => User.sanitizeUser(u));
+  res.json(users);
+});
+
+// Get user by slug (public)
+app.get('/api/users/:slug', resolveUser, (req, res) => {
+  res.json(User.sanitizeUser(req.wishlistUser));
+});
+
+// Verify per-user admin password
+app.post('/api/users/:slug/verify-password', adminAuthLimiter, resolveUser, (req, res) => {
+  const adminPassword = req.get('X-Admin-Password');
+  if (!adminPassword || adminPassword !== req.wishlistUser.admin_password) {
+    return res.status(403).json({ error: 'Invalid password' });
+  }
+  res.json({ success: true });
+});
+
+// ==================== USER-SCOPED GIFT ROUTES ====================
+
+// List gifts for a user
+app.get('/api/users/:slug/gifts', resolveUser, (req, res) => {
+  const gifts = Gift.findAll(req.wishlistUser.id).map(gift => Gift.sanitizeGift(gift));
+  res.json(gifts);
+});
+
+// Get single gift for a user
+app.get('/api/users/:slug/gifts/:id', resolveUser, validateGiftId, (req, res) => {
+  const gift = Gift.findById(parseInt(req.params.id));
+  if (!gift || gift.user_id !== req.wishlistUser.id) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  res.json(Gift.sanitizeGift(gift));
+});
+
+// Create gift for a user
+app.post('/api/users/:slug/gifts', adminAuthLimiter, resolveUser, requireUserAuth, validateGiftCreate, (req, res) => {
+  const gift = Gift.create({ ...req.body, user_id: req.wishlistUser.id });
+  res.json(Gift.sanitizeGift(gift));
+});
+
+// Update gift for a user
+app.put('/api/users/:slug/gifts/:id', adminAuthLimiter, resolveUser, requireUserAuth, validateGiftUpdate, (req, res) => {
+  const id = parseInt(req.params.id);
+  const gift = Gift.findById(id);
+  if (!gift || gift.user_id !== req.wishlistUser.id) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  const updated = Gift.update(id, req.body);
+  res.json(Gift.sanitizeGift(updated));
+});
+
+// Delete gift for a user
+app.delete('/api/users/:slug/gifts/:id', adminAuthLimiter, resolveUser, requireUserAuth, (req, res) => {
+  const id = parseInt(req.params.id);
+  const gift = Gift.findById(id);
+  if (!gift || gift.user_id !== req.wishlistUser.id) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  Gift.delete(id);
+  res.status(204).send();
+});
+
+// Reserve gift for a user
+app.post('/api/users/:slug/gifts/:id/reserve', reservationLimiter, resolveUser, validateReserve, (req, res) => {
+  const { secret_code, reserved_by } = req.body;
+  const id = parseInt(req.params.id);
+
+  const gift = Gift.findById(id);
+  if (!gift || gift.user_id !== req.wishlistUser.id) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  if (gift.reserved) return res.status(400).json({ error: 'Already reserved' });
+
+  const updated = Gift.reserve(id, secret_code, reserved_by);
+  res.json(Gift.sanitizeGift(updated));
+});
+
+// Unreserve gift for a user
+app.post('/api/users/:slug/gifts/:id/unreserve', reservationLimiter, resolveUser, validateUnreserve, (req, res) => {
+  const { secret_code } = req.body;
+  const id = parseInt(req.params.id);
+
+  const gift = Gift.findById(id);
+  if (!gift || gift.user_id !== req.wishlistUser.id) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  if (!gift.reserved) return res.status(400).json({ error: 'Not reserved' });
+  if (gift.secret_code !== secret_code) return res.status(403).json({ error: 'Unauthorized' });
+
+  const updated = Gift.unreserve(id);
+  res.json(Gift.sanitizeGift(updated));
+});
+
+// Mark gift as purchased for a user
+app.post('/api/users/:slug/gifts/:id/purchased', reservationLimiter, resolveUser, validatePurchased, (req, res) => {
+  const { secret_code } = req.body;
+  const id = parseInt(req.params.id);
+
+  const gift = Gift.findById(id);
+  if (!gift || gift.user_id !== req.wishlistUser.id) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  if (!gift.reserved) return res.status(400).json({ error: 'Not reserved' });
+  if (gift.secret_code !== secret_code) return res.status(403).json({ error: 'Unauthorized' });
+
+  const updated = Gift.markPurchased(id);
+  res.json(Gift.sanitizeGift(updated));
+});
+
+// ==================== LEGACY GIFT ROUTES (backward compatible) ====================
 
 // API Routes
 app.get('/api/gifts', (req, res) => {
@@ -470,6 +654,7 @@ app.use((err, req, res, _next) => {
 // Serve static files from public directory in production
 if (process.env.NODE_ENV !== 'development') {
   app.use(express.static(path.join(__dirname, 'public')));
+  // SPA fallback - serve index.html for all non-API routes
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   });

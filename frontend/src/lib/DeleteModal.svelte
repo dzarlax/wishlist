@@ -3,12 +3,14 @@
   import { fade, fly, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { t } from './utils/i18n.js';
+  import { deleteUserGift, setAdminPassword } from './utils/api.js';
   import { designSystem } from './utils/design-system.js';
 
   // @ts-ignore - Ignore svelteHTML type errors from node_modules
   import { colors, typography } from './utils/design-system.js';
 
   export let gift;
+  export let userSlug = null;
 
   const dispatch = createEventDispatcher();
 
@@ -32,23 +34,29 @@
     loading = true;
 
     try {
-      const response = await fetch(`/api/gifts/${gift.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Password': adminPassword,
-        },
-      });
+      if (userSlug) {
+        // Set password for the API call
+        setAdminPassword(adminPassword, userSlug);
+        await deleteUserGift(userSlug, gift.id);
+      } else {
+        const response = await fetch(`/api/gifts/${gift.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Password': adminPassword,
+          },
+        });
 
-      if (!response.ok) {
-        const err = await response.json();
-        error = err.error || $t('toasts.error');
-        return;
+        if (!response.ok) {
+          const err = await response.json();
+          error = err.error || $t('toasts.error');
+          return;
+        }
       }
 
       dispatch('deleted');
-    } catch {
-      error = $t('toasts.error');
+    } catch (e) {
+      error = e.message || $t('toasts.error');
     } finally {
       loading = false;
     }
