@@ -68,11 +68,15 @@ export async function apiRequest(url, options = {}, userSlug = null) {
     const data = await response.json();
 
     if (!response.ok) {
+      if (response.status === 403) {
+        // If we have a userSlug context, clear its password so UI re-prompts
+        if (userSlug) {
+          clearAdminPassword(userSlug);
+        }
+        throw new Error(data.error || 'Требуется пароль администратора');
+      }
       if (data.error) {
         throw new Error(data.error);
-      }
-      if (response.status === 403) {
-        throw new Error('Неверный пароль администратора');
       }
       if (response.status === 404) {
         throw new Error('Подарок не найден');

@@ -235,23 +235,41 @@
 
   function openAddModal() {
     if (!currentUser) return;
-    // Check if admin password is already saved for this user
     const savedPassword = getAdminPassword(currentUser.slug);
     if (savedPassword) {
       showAddModal = true;
     } else {
+      pendingAction = 'add';
       showPasswordModal = true;
     }
   }
 
   function onPasswordAuthenticated() {
     showPasswordModal = false;
-    showAddModal = true;
+    if (pendingAction === 'edit') {
+      pendingAction = null;
+      showEditModal = true;
+    } else if (pendingAction === 'delete') {
+      pendingAction = null;
+      showDeleteModal = true;
+    } else {
+      showAddModal = true;
+    }
   }
 
+  let pendingAction = null;
+
   function openEditModal(gift) {
-    selectedGift = gift;
-    showEditModal = true;
+    if (!currentUser) return;
+    const savedPassword = getAdminPassword(currentUser.slug);
+    if (savedPassword) {
+      selectedGift = gift;
+      showEditModal = true;
+    } else {
+      selectedGift = gift;
+      pendingAction = 'edit';
+      showPasswordModal = true;
+    }
   }
 
   function openReserveModal(gift) {
@@ -260,8 +278,16 @@
   }
 
   function openDeleteModal(gift) {
-    selectedGift = gift;
-    showDeleteModal = true;
+    if (!currentUser) return;
+    const savedPassword = getAdminPassword(currentUser.slug);
+    if (savedPassword) {
+      selectedGift = gift;
+      showDeleteModal = true;
+    } else {
+      selectedGift = gift;
+      pendingAction = 'delete';
+      showPasswordModal = true;
+    }
   }
 
   function openViewModal(gift) {
