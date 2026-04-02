@@ -360,14 +360,14 @@
             </button>
             <button
               on:click={handleLogout}
-              class="px-4 py-2 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center gap-2 text-sm font-medium text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
+              class="h-[42px] px-4 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center gap-2 text-sm font-medium text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
             >
               {authUser?.name || $t('auth.logout')} ✕
             </button>
           {:else if currentUser}
             <button
               on:click={handleLogin}
-              class="px-4 py-2 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center gap-2 text-sm font-medium text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
+              class="h-[42px] px-4 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center gap-2 text-sm font-medium text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
             >
               🔒 {$t('auth.login')}
             </button>
