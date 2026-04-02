@@ -33,9 +33,7 @@
   }
 
   function handleSsoLogin() {
-    if (ssoConfig.ssoUrl) {
-      window.location.href = ssoConfig.ssoUrl;
-    }
+    window.location.href = '/api/auth/sso/redirect';
   }
 
   function handleClickOutside(event) {

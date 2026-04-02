@@ -27,6 +27,19 @@ function createAuthStore() {
       // ignore
     }
 
+    // Check for SSO callback token in hash
+    if (isBrowser) {
+      const hash = window.location.hash;
+      const ssoMatch = hash.match(/sso-complete\?token=([^&]+)/);
+      if (ssoMatch) {
+        const ssoToken = decodeURIComponent(ssoMatch[1]);
+        localStorage.setItem(TOKEN_KEY, ssoToken);
+        token.set(ssoToken);
+        // Clean up hash
+        window.location.hash = '';
+      }
+    }
+
     // Validate existing token
     let currentToken;
     token.subscribe(v => currentToken = v)();

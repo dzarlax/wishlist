@@ -167,28 +167,78 @@ app.post('/api/auth/login', adminAuthLimiter, async (req, res) => {
   }
 });
 
-// SSO login — called when Authentik headers are present
-app.post('/api/auth/sso', async (req, res) => {
+// SSO: redirect to Authentik authorization page
+app.get('/api/auth/sso/redirect', (req, res) => {
+  if (!config.authentikEnabled) {
+    return res.status(404).json({ error: 'SSO not enabled' });
+  }
+  const params = new URLSearchParams({
+    client_id: config.authentikClientId,
+    response_type: 'code',
+    redirect_uri: `${config.appUrl}/api/auth/sso/callback`,
+    scope: 'openid email profile',
+  });
+  res.redirect(`${config.authentikUrl}/application/o/authorize/?${params}`);
+});
+
+// SSO: callback from Authentik with authorization code
+app.get('/api/auth/sso/callback', async (req, res) => {
   try {
-    if (!config.authentikEnabled) {
-      return res.status(404).json({ error: 'SSO not enabled' });
+    const { code } = req.query;
+    if (!code) {
+      return res.redirect('/#/login-error?error=no_code');
     }
 
-    const email = req.get('X-Authentik-Email');
+    // Exchange code for tokens
+    const tokenUrl = `${config.authentikUrl}/application/o/token/`;
+    const fetch = (await import('node-fetch')).default;
+    const tokenRes = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: `${config.appUrl}/api/auth/sso/callback`,
+        client_id: config.authentikClientId,
+        client_secret: config.authentikClientSecret,
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      console.error('SSO token exchange failed:', await tokenRes.text());
+      return res.redirect('/#/login-error?error=token_exchange');
+    }
+
+    const tokens = await tokenRes.json();
+
+    // Get user info from Authentik
+    const userInfoRes = await fetch(`${config.authentikUrl}/application/o/userinfo/`, {
+      headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+    });
+
+    if (!userInfoRes.ok) {
+      return res.redirect('/#/login-error?error=userinfo');
+    }
+
+    const userInfo = await userInfoRes.json();
+    const email = userInfo.email;
+
     if (!email) {
-      return res.status(401).json({ error: 'No SSO headers' });
+      return res.redirect('/#/login-error?error=no_email');
     }
 
+    // Find wishlist user by email
     const user = await User.findByEmail(email);
     if (!user) {
-      return res.status(403).json({ error: 'No wishlist account linked to this email' });
+      return res.redirect(`/#/login-error?error=no_account&email=${encodeURIComponent(email)}`);
     }
 
-    const token = generateToken(user);
-    res.json({ token, user: User.sanitizeUser(user) });
+    // Generate our JWT and redirect to frontend with token
+    const jwt = generateToken(user);
+    res.redirect(`/#/sso-complete?token=${jwt}`);
   } catch (error) {
-    console.error('SSO login error:', error);
-    res.status(500).json({ error: 'SSO login failed' });
+    console.error('SSO callback error:', error);
+    res.redirect('/#/login-error?error=server');
   }
 });
 

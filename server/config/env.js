@@ -24,9 +24,12 @@ const config = {
   jwtSecret: process.env.JWT_SECRET || 'wishlist-dev-secret-change-me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
 
-  // Authentik SSO
+  // Authentik SSO (OAuth2/OIDC)
   authentikEnabled: process.env.AUTHENTIK_ENABLED === 'true',
   authentikUrl: process.env.AUTHENTIK_URL || null,
+  authentikClientId: process.env.AUTHENTIK_CLIENT_ID || null,
+  authentikClientSecret: process.env.AUTHENTIK_CLIENT_SECRET || null,
+  appUrl: process.env.APP_URL || 'https://wishlist.dzarlax.dev',
 
   // Gemini API
   geminiApiKey: process.env.GEMINI_API_KEY || null,
