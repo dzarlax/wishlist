@@ -210,6 +210,31 @@
     }
   }
 
+  async function moveItem(type, code, direction) {
+    const list = type === 'category' ? categories : priorities;
+    const idx = list.findIndex(i => i.code === code);
+    if (idx < 0) return;
+
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= list.length) return;
+
+    const item = list[idx];
+    const swap = list[swapIdx];
+
+    // Swap sort_order values
+    const updateFn = type === 'category' ? updateCategory : updatePriority;
+    try {
+      await Promise.all([
+        updateFn(item.code, { ...item, sort_order: swap.sort_order }),
+        updateFn(swap.code, { ...swap, sort_order: item.sort_order })
+      ]);
+      await loadData();
+      dispatch('updated');
+    } catch (e) {
+      toasts.error(e.message);
+    }
+  }
+
   $: currentList = activeTab === 'categories' ? categories : priorities;
   $: currentType = activeTab === 'categories' ? 'category' : 'priority';
 </script>
@@ -436,12 +461,25 @@
       {:else}
         <!-- List -->
         <div class="space-y-2">
-          {#each currentList as item (item.code)}
+          {#each currentList as item, idx (item.code)}
             <div class="flex items-center gap-3 px-4 py-3 bg-white/50 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] rounded-lg group">
+              <!-- Reorder buttons -->
+              <div class="flex flex-col gap-0.5">
+                <button
+                  on:click={() => moveItem(currentType, item.code, 'up')}
+                  disabled={idx === 0}
+                  class="w-6 h-5 flex items-center justify-center text-xs text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white disabled:opacity-20 disabled:cursor-default transition-colors"
+                >▲</button>
+                <button
+                  on:click={() => moveItem(currentType, item.code, 'down')}
+                  disabled={idx === currentList.length - 1}
+                  class="w-6 h-5 flex items-center justify-center text-xs text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white disabled:opacity-20 disabled:cursor-default transition-colors"
+                >▼</button>
+              </div>
               <span class="text-xl w-8 text-center">{item.emoji}</span>
               <div class="flex-1 min-w-0">
                 <div class="text-sm font-medium text-graphite dark:text-dark-text truncate">{item.name}</div>
-                <div class="text-xs text-black/40 dark:text-white/40">{item.code} · #{item.sort_order}</div>
+                <div class="text-xs text-black/40 dark:text-white/40">{item.code}</div>
               </div>
               <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
