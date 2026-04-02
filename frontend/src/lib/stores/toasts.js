@@ -3,13 +3,22 @@ import { writable } from 'svelte/store';
 function createToastStore() {
   const { subscribe, update } = writable([]);
 
-  // Add a new toast
+  // Add a new toast (deduplicates identical messages)
   function add(message, options = {}) {
+    let isDuplicate = false;
+    update((existing) => {
+      if (existing.some((t) => t.message === message && t.type === (options.type || 'info'))) {
+        isDuplicate = true;
+      }
+      return existing;
+    });
+    if (isDuplicate) return;
+
     const id = Date.now() + Math.random();
     const toast = {
       id,
       message,
-      type: options.type || 'info', // 'success', 'error', 'info'
+      type: options.type || 'info',
       duration: options.duration || 3000,
       ...options,
     };
