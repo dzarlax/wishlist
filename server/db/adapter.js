@@ -114,23 +114,46 @@ class PgAdapter {
     this.pool = pool;
   }
 
+  /**
+   * Convert ? placeholders to $1, $2, ... for PostgreSQL.
+   * Skips ? inside single-quoted strings.
+   */
+  _toPgParams(sql) {
+    let idx = 0;
+    let inString = false;
+    let result = '';
+    for (let i = 0; i < sql.length; i++) {
+      const ch = sql[i];
+      if (ch === "'" && sql[i - 1] !== '\\') {
+        inString = !inString;
+        result += ch;
+      } else if (ch === '?' && !inString) {
+        idx++;
+        result += `$${idx}`;
+      } else {
+        result += ch;
+      }
+    }
+    return result;
+  }
+
   async query(sql, params = []) {
-    const result = await this.pool.query(sql, params);
+    const result = await this.pool.query(this._toPgParams(sql), params);
     return { rows: result.rows };
   }
 
   async run(sql, params = []) {
-    const result = await this.pool.query(sql, params);
+    const result = await this.pool.query(this._toPgParams(sql), params);
     return { changes: result.rowCount };
   }
 
   async getOne(sql, params = []) {
-    const result = await this.pool.query(sql, params);
+    const result = await this.pool.query(this._toPgParams(sql), params);
     return result.rows[0] || null;
   }
 
   async getAll(sql, params = []) {
-    const result = await this.pool.query(sql, params);
+    const result = await this.pool.query(this._toPgParams(sql), params);
     return result.rows;
   }
 
@@ -143,7 +166,7 @@ class PgAdapter {
     const withReturning = /returning\s/i.test(normalized)
       ? normalized
       : `${normalized} RETURNING id`;
-    const result = await this.pool.query(withReturning, params);
+    const result = await this.pool.query(this._toPgParams(withReturning), params);
     return result.rows[0]?.id;
   }
 
