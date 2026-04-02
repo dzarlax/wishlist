@@ -58,13 +58,6 @@ function createAuthStore() {
       } catch {
         logout();
       }
-    } else {
-      // No token — try silent SSO check (no redirects)
-      let cfg;
-      ssoConfig.subscribe(v => cfg = v)();
-      if (cfg?.sso) {
-        await trySilentSso();
-      }
     }
 
     loading.set(false);
@@ -114,32 +107,7 @@ function createAuthStore() {
     user.set(null);
   }
 
-  /**
-   * Try silent SSO via AJAX — no redirects, no flashing.
-   * Calls /api/auth/sso/check which is behind Authentik ForwardAuth.
-   * If user has Authentik session → returns JWT. If not → returns non-JSON.
-   */
-  async function trySilentSso() {
-    if (!isBrowser) return;
-    try {
-      const res = await fetch('/api/auth/sso/check', {
-        credentials: 'include',
-        redirect: 'follow'
-      });
-      // If ForwardAuth redirected to Authentik login, response won't be JSON
-      const contentType = res.headers.get('content-type') || '';
-      if (res.ok && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (data.token) {
-          setSession(data.token, data.user);
-        }
-      }
-    } catch {
-      // CORS error or network issue — not logged in, stay as guest
-    }
-  }
-
-  /**
+/**
    * Get the current token synchronously (for API calls).
    */
   function getToken() {
