@@ -30,13 +30,14 @@ function createAuthStore() {
     // Check for SSO callback token in hash
     if (isBrowser) {
       const hash = window.location.hash;
-      const ssoMatch = hash.match(/sso-complete\?token=([^&]+)/);
+      const ssoMatch = hash.match(/sso-complete\?token=([^&]+)(?:&slug=([^&]+))?/);
       if (ssoMatch) {
         const ssoToken = decodeURIComponent(ssoMatch[1]);
+        const slug = ssoMatch[2] ? decodeURIComponent(ssoMatch[2]) : null;
         localStorage.setItem(TOKEN_KEY, ssoToken);
         token.set(ssoToken);
-        // Clean up hash
-        window.location.hash = '';
+        // Navigate to user's wishlist or home
+        window.location.hash = slug ? `#/${slug}` : '';
       }
     }
 

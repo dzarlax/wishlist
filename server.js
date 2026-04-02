@@ -233,9 +233,9 @@ app.get('/api/auth/sso/callback', async (req, res) => {
       return res.redirect(`/#/login-error?error=no_account&email=${encodeURIComponent(email)}`);
     }
 
-    // Generate our JWT and redirect to frontend with token
+    // Generate our JWT and redirect to frontend with token + slug
     const jwt = generateToken(user);
-    res.redirect(`/#/sso-complete?token=${jwt}`);
+    res.redirect(`/#/sso-complete?token=${jwt}&slug=${user.slug}`);
   } catch (error) {
     console.error('SSO callback error:', error);
     res.redirect('/#/login-error?error=server');
