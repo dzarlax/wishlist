@@ -122,15 +122,20 @@ function createAuthStore() {
   async function trySilentSso() {
     if (!isBrowser) return;
     try {
-      const res = await fetch('/api/auth/sso/check', { credentials: 'include' });
-      if (res.ok) {
+      const res = await fetch('/api/auth/sso/check', {
+        credentials: 'include',
+        redirect: 'follow'
+      });
+      // If ForwardAuth redirected to Authentik login, response won't be JSON
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
         if (data.token) {
           setSession(data.token, data.user);
         }
       }
     } catch {
-      // Not logged in via SSO — stay as guest
+      // CORS error or network issue — not logged in, stay as guest
     }
   }
 

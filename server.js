@@ -247,20 +247,47 @@ app.get('/api/auth/sso/callback', async (req, res) => {
   }
 });
 
-// SSO check — behind Authentik ForwardAuth in Traefik.
-// If user has Authentik session, ForwardAuth passes request with X-Authentik-Email.
-// If not, ForwardAuth returns redirect to login (never reaches this handler).
+// SSO check — backend calls Authentik ForwardAuth internally,
+// forwarding the client's cookies. No Traefik middleware needed.
 app.get('/api/auth/sso/check', async (req, res) => {
-  const email = req.get('X-Authentik-Email');
-  if (!email) {
-    return res.status(401).json({ error: 'No SSO session' });
+  if (!config.authentikEnabled) {
+    return res.status(404).json({ error: 'SSO not enabled' });
   }
-  const user = await User.findByEmail(email);
-  if (!user) {
-    return res.status(403).json({ error: 'No wishlist account for this email' });
+
+  try {
+    const fetch = (await import('node-fetch')).default;
+    // Call Authentik outpost's ForwardAuth endpoint, forwarding client cookies
+    const forwardAuthUrl = 'http://authentik-proxy:9000/outpost.goauthentik.io/auth/traefik';
+    const checkRes = await fetch(forwardAuthUrl, {
+      headers: {
+        'Cookie': req.get('Cookie') || '',
+        'X-Forwarded-Host': 'wishlist.dzarlax.dev',
+        'X-Forwarded-Proto': 'https',
+        'X-Forwarded-For': req.ip || '127.0.0.1',
+      },
+      redirect: 'manual',
+    });
+
+    // 2xx = authenticated, outpost returns user headers
+    if (checkRes.status >= 200 && checkRes.status < 300) {
+      const email = checkRes.headers.get('X-authentik-email');
+      if (!email) {
+        return res.status(401).json({ error: 'No email in SSO session' });
+      }
+      const user = await User.findByEmail(email);
+      if (!user) {
+        return res.status(403).json({ error: 'No wishlist account for this email' });
+      }
+      const token = generateToken(user);
+      return res.json({ token, user: User.sanitizeUser(user) });
+    }
+
+    // 302 or other = not authenticated
+    res.status(401).json({ error: 'No SSO session' });
+  } catch (error) {
+    console.error('SSO check error:', error.message);
+    res.status(401).json({ error: 'SSO check failed' });
   }
-  const token = generateToken(user);
-  res.json({ token, user: User.sanitizeUser(user) });
 });
 
 // Get current auth state
