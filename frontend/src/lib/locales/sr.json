@@ -139,6 +139,24 @@
     "reservedBy": "Rezervisao: {name}",
     "reservedAt": "Rezervisano: {date}"
   },
+  "settings": {
+    "title": "Podešavanja",
+    "categories": "Kategorije",
+    "priorities": "Prioriteti",
+    "profile": "Profil",
+    "sortOrder": "Redosled",
+    "translations": "Prevodi",
+    "add": "Dodaj",
+    "empty": "Prazno",
+    "changePassword": "Promeni lozinku",
+    "currentPassword": "Trenutna lozinka",
+    "newPassword": "Nova lozinka",
+    "confirmPassword": "Potvrdi lozinku",
+    "email": "Email",
+    "passwordChanged": "Lozinka promenjena",
+    "profileUpdated": "Profil ažuriran",
+    "passwordMismatch": "Lozinke se ne poklapaju"
+  },
   "auth": {
     "login": "Prijavi se",
     "logout": "Odjavi se",

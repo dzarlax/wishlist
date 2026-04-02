@@ -14,6 +14,7 @@
   import ViewGiftModal from './lib/ViewGiftModal.svelte';
   import LoginModal from './lib/LoginModal.svelte';
   import SecretCodeModal from './lib/SecretCodeModal.svelte';
+  import SettingsModal from './lib/SettingsModal.svelte';
   import UserSelect from './lib/UserSelect.svelte';
   import ToastContainer from './lib/components/ToastContainer.svelte';
   import LanguageSwitcher from './lib/components/LanguageSwitcher.svelte';
@@ -47,6 +48,7 @@
   let showDeleteModal = false;
   let showViewModal = false;
   let showLoginModal = false;
+  let showSettingsModal = false;
 
   // Secret code modal state
   let showSecretCodeModal = false;
@@ -350,15 +352,22 @@
         {#if !authLoading}
           {#if isAuthenticated}
             <button
+              on:click={() => showSettingsModal = true}
+              class="px-4 py-2 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center justify-center text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
+              title={$t('settings.title')}
+            >
+              <span class="text-xl">⚙️</span>
+            </button>
+            <button
               on:click={handleLogout}
-              class="px-4 py-2 rounded-full text-sm font-medium bg-black/5 dark:bg-white/5 text-graphite dark:text-dark-text hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+              class="px-4 py-2 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center gap-2 text-sm font-medium text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
             >
               {authUser?.name || $t('auth.logout')} ✕
             </button>
           {:else if currentUser}
             <button
               on:click={handleLogin}
-              class="px-4 py-2 rounded-full text-sm font-medium bg-black/5 dark:bg-white/5 text-graphite dark:text-dark-text hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+              class="px-4 py-2 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center gap-2 text-sm font-medium text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
             >
               🔒 {$t('auth.login')}
             </button>
@@ -552,6 +561,13 @@
 </div>
 
 <!-- Modals -->
+{#if showSettingsModal && isAuthenticated}
+  <SettingsModal
+    on:close={() => (showSettingsModal = false)}
+    on:updated={loadGifts}
+  />
+{/if}
+
 {#if showLoginModal && currentUser}
   <LoginModal
     userSlug={currentUser.slug}

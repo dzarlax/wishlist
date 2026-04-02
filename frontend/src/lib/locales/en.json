@@ -139,6 +139,24 @@
     "reservedBy": "Reserved by: {name}",
     "reservedAt": "Reserved: {date}"
   },
+  "settings": {
+    "title": "Settings",
+    "categories": "Categories",
+    "priorities": "Priorities",
+    "profile": "Profile",
+    "sortOrder": "Sort order",
+    "translations": "Translations",
+    "add": "Add",
+    "empty": "No items",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "email": "Email",
+    "passwordChanged": "Password changed",
+    "profileUpdated": "Profile updated",
+    "passwordMismatch": "Passwords don't match"
+  },
   "auth": {
     "login": "Login",
     "logout": "Logout",

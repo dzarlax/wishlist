@@ -223,6 +223,52 @@ app.get('/health', async (req, res) => {
 
 // ==================== USER ROUTES ====================
 
+// Update own profile (email, name, emoji)
+app.put('/api/auth/profile', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.authUser.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const { email, name, avatar_emoji } = req.body;
+    await User.updateProfile(user.id, {
+      email: email !== undefined ? email : user.email,
+      name: name !== undefined ? name : user.name,
+      avatar_emoji: avatar_emoji !== undefined ? avatar_emoji : user.avatar_emoji
+    });
+
+    const updated = await User.findById(user.id);
+    res.json(User.sanitizeUser(updated));
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Change own password
+app.post('/api/auth/change-password', requireAuth, async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'current_password and new_password required' });
+    }
+    if (new_password.length < 3) {
+      return res.status(400).json({ error: 'Password must be at least 3 characters' });
+    }
+
+    const user = await User.findById(req.authUser.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const valid = await User.verifyPassword(user, current_password);
+    if (!valid) {
+      return res.status(403).json({ error: 'Current password is incorrect' });
+    }
+
+    await User.changePassword(user.id, new_password);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/users', async (req, res) => {
   const users = (await User.findAll()).map(u => User.sanitizeUser(u));
   res.json(users);

@@ -63,6 +63,22 @@ class UserModel {
     // Legacy plain-text comparison (will be hashed on next seed)
     return user.admin_password === password;
   }
+
+  async updateProfile(id, data) {
+    const { email, name, avatar_emoji } = data;
+    await this.db.run(
+      'UPDATE users SET email = ?, name = ?, avatar_emoji = ? WHERE id = ?',
+      [email || null, name, avatar_emoji, id]
+    );
+  }
+
+  async changePassword(id, newPassword) {
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await this.db.run(
+      'UPDATE users SET admin_password = ? WHERE id = ?',
+      [hashed, id]
+    );
+  }
 }
 
 module.exports = UserModel;

@@ -139,6 +139,24 @@
     "reservedBy": "Забронировал: {name}",
     "reservedAt": "Забронировано: {date}"
   },
+  "settings": {
+    "title": "Настройки",
+    "categories": "Категории",
+    "priorities": "Приоритеты",
+    "profile": "Профиль",
+    "sortOrder": "Порядок",
+    "translations": "Переводы",
+    "add": "Добавить",
+    "empty": "Пусто",
+    "changePassword": "Сменить пароль",
+    "currentPassword": "Текущий пароль",
+    "newPassword": "Новый пароль",
+    "confirmPassword": "Подтвердите пароль",
+    "email": "Email",
+    "passwordChanged": "Пароль изменён",
+    "profileUpdated": "Профиль обновлён",
+    "passwordMismatch": "Пароли не совпадают"
+  },
   "auth": {
     "login": "Войти",
     "logout": "Выйти",

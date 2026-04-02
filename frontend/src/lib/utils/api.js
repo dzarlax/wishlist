@@ -130,6 +130,19 @@ export async function deletePriority(code) {
   return del(`/api/priorities/${code}`);
 }
 
+// ==================== Profile API ====================
+
+export async function updateProfile(data) {
+  return put('/api/auth/profile', data);
+}
+
+export async function changePassword(currentPassword, newPassword) {
+  return post('/api/auth/change-password', {
+    current_password: currentPassword,
+    new_password: newPassword
+  });
+}
+
 // ==================== AI API ====================
 
 export async function parseGift(text, locale = 'ru') {
