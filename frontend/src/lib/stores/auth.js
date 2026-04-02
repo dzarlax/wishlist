@@ -59,11 +59,11 @@ function createAuthStore() {
         logout();
       }
     } else {
-      // No token — try silent SSO if enabled
+      // No token — try silent SSO check (no redirects)
       let cfg;
       ssoConfig.subscribe(v => cfg = v)();
       if (cfg?.sso) {
-        trySilentSso();
+        await trySilentSso();
       }
     }
 
@@ -115,17 +115,23 @@ function createAuthStore() {
   }
 
   /**
-   * Try silent SSO: full redirect with prompt=none.
-   * If Authentik has a session → instant redirect back with token.
-   * If not → Authentik returns error → callback redirects to /#/login-error → we ignore it.
-   * Only attempt once per session to avoid redirect loops.
+   * Try silent SSO via AJAX — no redirects, no flashing.
+   * Calls /api/auth/sso/check which is behind Authentik ForwardAuth.
+   * If user has Authentik session → returns JWT. If not → returns non-JSON.
    */
-  function trySilentSso() {
+  async function trySilentSso() {
     if (!isBrowser) return;
-    const TRIED_KEY = 'sso_silent_tried';
-    if (sessionStorage.getItem(TRIED_KEY)) return;
-    sessionStorage.setItem(TRIED_KEY, '1');
-    window.location.assign('/api/auth/sso/redirect?prompt=none');
+    try {
+      const res = await fetch('/api/auth/sso/check', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          setSession(data.token, data.user);
+        }
+      }
+    } catch {
+      // Not logged in via SSO — stay as guest
+    }
   }
 
   /**

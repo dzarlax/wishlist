@@ -247,6 +247,22 @@ app.get('/api/auth/sso/callback', async (req, res) => {
   }
 });
 
+// SSO check — behind Authentik ForwardAuth in Traefik.
+// If user has Authentik session, ForwardAuth passes request with X-Authentik-Email.
+// If not, ForwardAuth returns redirect to login (never reaches this handler).
+app.get('/api/auth/sso/check', async (req, res) => {
+  const email = req.get('X-Authentik-Email');
+  if (!email) {
+    return res.status(401).json({ error: 'No SSO session' });
+  }
+  const user = await User.findByEmail(email);
+  if (!user) {
+    return res.status(403).json({ error: 'No wishlist account for this email' });
+  }
+  const token = generateToken(user);
+  res.json({ token, user: User.sanitizeUser(user) });
+});
+
 // Get current auth state
 app.get('/api/auth/me', async (req, res) => {
   if (!req.authUser) {
