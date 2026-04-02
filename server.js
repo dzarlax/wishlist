@@ -256,6 +256,8 @@ app.get('/api/auth/sso/check', async (req, res) => {
 
   try {
     const fetch = (await import('node-fetch')).default;
+    const clientCookie = req.headers.cookie || '';
+    console.log('SSO check - cookie present:', clientCookie.length > 0, 'has authentik:', clientCookie.includes('authentik'));
     // Call Authentik outpost's ForwardAuth endpoint, forwarding client cookies
     const forwardAuthUrl = 'http://authentik-proxy:9000/outpost.goauthentik.io/auth/traefik';
     const checkRes = await fetch(forwardAuthUrl, {
