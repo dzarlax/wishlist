@@ -3,12 +3,10 @@
   import { fade, fly, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { t } from './utils/i18n.js';
-  import { getAdminPassword, updateUserGift } from './utils/api.js';
+  import { locale } from './stores/locale.js';
+  import { updateUserGift, fetchCategories, fetchPriorities } from './utils/api.js';
   import { toasts } from './stores/toasts.js';
   import { designSystem } from './utils/design-system.js';
-
-  // @ts-ignore
-  import { colors, typography } from './utils/design-system.js';
 
   export let gift;
   export let userSlug = null;
@@ -25,22 +23,21 @@
   let loading = false;
   let error = '';
 
-  $: categories = [
-    { code: 'electronics', name: $t('categories.electronics') },
-    { code: 'home', name: $t('categories.home') },
-    { code: 'accessories', name: $t('categories.accessories') },
-    { code: 'education', name: $t('categories.education') },
-    { code: 'games', name: $t('categories.games') },
-    { code: 'clothing', name: $t('categories.clothing') },
-    { code: 'sports', name: $t('categories.sports') },
-    { code: 'creativity', name: $t('categories.creativity') },
-  ];
+  let categories = [];
+  let priorities = [];
 
-  $: priorities = [
-    { code: 'hot', name: $t('priorities.hot') },
-    { code: 'medium', name: $t('priorities.medium') },
-    { code: 'low', name: $t('priorities.low') },
-  ];
+  async function loadReferenceData() {
+    try {
+      [categories, priorities] = await Promise.all([
+        fetchCategories($locale),
+        fetchPriorities($locale)
+      ]);
+    } catch {
+      // ignore
+    }
+  }
+
+  $: $locale, loadReferenceData();
 
   onMount(() => {
     name = gift.name;
@@ -78,14 +75,6 @@
       return;
     }
 
-    // Get admin password from localStorage
-    const adminPassword = getAdminPassword(userSlug);
-    if (!adminPassword) {
-      toasts.error('Сначала войдите в систему');
-      dispatch('close');
-      return;
-    }
-
     loading = true;
 
     try {
@@ -100,24 +89,7 @@
       if (link.trim()) payload.link = link.trim();
       if (imageUrl.trim()) payload.image_url = imageUrl.trim();
 
-      if (userSlug) {
-        await updateUserGift(userSlug, gift.id, payload);
-      } else {
-        const response = await fetch(`/api/gifts/${gift.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Admin-Password': adminPassword,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const err = await response.json();
-          error = err.error || $t('toasts.error');
-          return;
-        }
-      }
+      await updateUserGift(userSlug, gift.id, payload);
 
       dispatch('saved');
     } catch (e) {

@@ -3,10 +3,14 @@
  * Creates the gifts table
  */
 
-function up(db) {
-  db.run(`
+async function up(db) {
+  const idType = db.dialect === 'postgres'
+    ? 'SERIAL PRIMARY KEY'
+    : 'INTEGER PRIMARY KEY AUTOINCREMENT';
+
+  await db.run(`
     CREATE TABLE IF NOT EXISTS gifts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id ${idType},
       name TEXT NOT NULL,
       description TEXT,
       category TEXT,
@@ -14,7 +18,7 @@ function up(db) {
       link TEXT,
       image_url TEXT,
       price TEXT,
-      reserved INTEGER DEFAULT 0,
+      reserved ${db.dialect === 'postgres' ? 'BOOLEAN DEFAULT FALSE' : 'INTEGER DEFAULT 0'},
       secret_code TEXT,
       reserved_by TEXT,
       reserved_at TEXT,
@@ -23,21 +27,16 @@ function up(db) {
     )
   `);
 
-  // Create index on status for faster filtering
-  db.run('CREATE INDEX IF NOT EXISTS idx_gifts_status ON gifts(status)');
-
-  // Create index on priority for faster sorting
-  db.run('CREATE INDEX IF NOT EXISTS idx_gifts_priority ON gifts(priority)');
-
-  // Create index on created_at for faster sorting
-  db.run('CREATE INDEX IF NOT EXISTS idx_gifts_created_at ON gifts(created_at)');
+  await db.run('CREATE INDEX IF NOT EXISTS idx_gifts_status ON gifts(status)');
+  await db.run('CREATE INDEX IF NOT EXISTS idx_gifts_priority ON gifts(priority)');
+  await db.run('CREATE INDEX IF NOT EXISTS idx_gifts_created_at ON gifts(created_at)');
 }
 
-function down(db) {
-  db.run('DROP INDEX IF EXISTS idx_gifts_status');
-  db.run('DROP INDEX IF EXISTS idx_gifts_priority');
-  db.run('DROP INDEX IF EXISTS idx_gifts_created_at');
-  db.run('DROP TABLE IF EXISTS gifts');
+async function down(db) {
+  await db.run('DROP INDEX IF EXISTS idx_gifts_status');
+  await db.run('DROP INDEX IF EXISTS idx_gifts_priority');
+  await db.run('DROP INDEX IF EXISTS idx_gifts_created_at');
+  await db.run('DROP TABLE IF EXISTS gifts');
 }
 
 module.exports = { up, down };

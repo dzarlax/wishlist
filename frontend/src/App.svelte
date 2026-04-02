@@ -3,29 +3,40 @@
   import { slide } from 'svelte/transition';
   import { toasts } from './lib/stores/toasts.js';
   import { theme } from './lib/stores/theme.js';
-  import { getAdminPassword, fetchUsers, fetchUserGifts } from './lib/utils/api.js';
+  import { locale } from './lib/stores/locale.js';
+  import { auth } from './lib/stores/auth.js';
+  import { fetchUsers, fetchUserGifts, fetchCategories, fetchPriorities } from './lib/utils/api.js';
   import GiftCard from './lib/GiftCard.svelte';
   import AddGiftModal from './lib/AddGiftModal.svelte';
   import EditGiftModal from './lib/EditGiftModal.svelte';
   import ReserveModal from './lib/ReserveModal.svelte';
   import DeleteModal from './lib/DeleteModal.svelte';
   import ViewGiftModal from './lib/ViewGiftModal.svelte';
-  import PasswordModal from './lib/PasswordModal.svelte';
+  import LoginModal from './lib/LoginModal.svelte';
+  import SecretCodeModal from './lib/SecretCodeModal.svelte';
   import UserSelect from './lib/UserSelect.svelte';
   import ToastContainer from './lib/components/ToastContainer.svelte';
   import LanguageSwitcher from './lib/components/LanguageSwitcher.svelte';
   import { t } from './lib/utils/i18n.js';
 
   let currentTheme = 'dark';
+  theme.subscribe((value) => { currentTheme = value; });
 
-  // Subscribe to theme changes
-  theme.subscribe((value) => {
-    currentTheme = value;
-  });
+  // Auth state — subscribe to individual stores
+  let isAuthenticated = false;
+  let authUser = null;
+  let authLoading = true;
+
+  auth.isAuthenticated.subscribe(val => { isAuthenticated = val; });
+  auth.user.subscribe(val => { authUser = val; });
+  auth.loading.subscribe(val => { authLoading = val; });
+
+  // Check if current user is the owner (authenticated user matches current wishlist user)
+  $: isOwner = isAuthenticated && currentUser && authUser && authUser.id === currentUser.id;
 
   // Multi-user state
   let users = [];
-  let currentUser = null; // { id, slug, name, avatar_emoji }
+  let currentUser = null;
   let usersLoading = true;
 
   let gifts = [];
@@ -35,7 +46,12 @@
   let showReserveModal = false;
   let showDeleteModal = false;
   let showViewModal = false;
-  let showPasswordModal = false;
+  let showLoginModal = false;
+
+  // Secret code modal state
+  let showSecretCodeModal = false;
+  let secretCodeAction = null; // 'purchased' or 'unreserve'
+  let secretCodeGift = null;
 
   let selectedGift = null;
 
@@ -44,14 +60,29 @@
   let selectedCategory = '';
   let selectedStatus = '';
   let selectedPriority = '';
-  let sortBy = 'priority'; // 'priority', 'name', 'created_at'
-  let showAllFilters = false; // Progressive disclosure for filters
-  let showPurchased = false; // Toggle for purchased gifts section
+  let sortBy = 'priority';
+  let showPurchased = false;
+
+  // Reference data from API
+  let categoriesList = [];
+  let prioritiesList = [];
+
+  async function loadReferenceData() {
+    try {
+      [categoriesList, prioritiesList] = await Promise.all([
+        fetchCategories($locale),
+        fetchPriorities($locale)
+      ]);
+    } catch {
+      // Fallback — empty lists, filters won't show
+    }
+  }
+
+  $: $locale, loadReferenceData();
 
   // Hash-based routing
   function getSlugFromHash() {
     const hash = window.location.hash;
-    // Format: #/slug
     const match = hash.match(/^#\/(.+)$/);
     return match ? match[1] : null;
   }
@@ -79,7 +110,9 @@
   }
 
   onMount(async () => {
+    await auth.init();
     await loadUsers();
+    await loadReferenceData();
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
   });
@@ -94,13 +127,11 @@
     usersLoading = true;
     try {
       users = await fetchUsers();
-      // If only one user exists, auto-navigate to their wishlist
       if (users.length === 1 && !getSlugFromHash()) {
         navigateToUser(users[0]);
       }
     } catch (error) {
       console.error('Error loading users:', error);
-      // If no users endpoint (backward compat), fall back to old behavior
       users = [];
     } finally {
       usersLoading = false;
@@ -124,85 +155,47 @@
     }
   }
 
-  // Derived values
-  $: categoriesList = [
-    { code: 'electronics', name: $t('categories.electronics') },
-    { code: 'home', name: $t('categories.home') },
-    { code: 'accessories', name: $t('categories.accessories') },
-    { code: 'education', name: $t('categories.education') },
-    { code: 'games', name: $t('categories.games') },
-    { code: 'clothing', name: $t('categories.clothing') },
-    { code: 'sports', name: $t('categories.sports') },
-    { code: 'creativity', name: $t('categories.creativity') },
-  ];
-
-  $: prioritiesList = [
-    { code: 'hot', name: $t('priorities.hot') },
-    { code: 'medium', name: $t('priorities.medium') },
-    { code: 'low', name: $t('priorities.low') },
-  ];
-
   // Helper to get priority code with fallback
   function getPriorityCode(gift) {
-    if (gift.priority_code) return gift.priority_code;
-    // Fallback to old priority text mapping
-    const priorityMapping = $t('priorityMapping');
-    return priorityMapping[gift.priority] || 'medium';
+    return gift.priority_code || 'medium';
   }
 
   // Get grid span based on priority (Bento Grid logic)
   function getCardSpan(gift) {
     const priority = getPriorityCode(gift);
     const isLarge = priority === 'hot';
-
-    return {
-      isLarge,
-      colSpan: isLarge ? 'lg:col-span-2' : ''
-    };
+    return { isLarge, colSpan: isLarge ? 'lg:col-span-2' : '' };
   }
 
-  // Priority order for sorting
+  // Priority order for sorting (from API sort_order)
   function getPriorityOrder(priorityCode) {
-    const order = { hot: 1, medium: 2, low: 3 };
-    return order[priorityCode] || order['medium'] || 2;
+    const prio = prioritiesList.find(p => p.code === priorityCode);
+    return prio ? prio.sort_order : 99;
   }
 
   // Split gifts into active and purchased
   $: activeGifts = gifts.filter((gift) => gift.status !== 'purchased');
   $: purchasedGifts = gifts.filter((gift) => gift.status === 'purchased');
 
-  // Sort purchased gifts by reserved_at or created_at descending
   $: sortedPurchasedGifts = [...purchasedGifts].sort((a, b) => {
     const dateA = new Date(a.reserved_at || a.created_at).getTime();
     const dateB = new Date(b.reserved_at || b.created_at).getTime();
     return dateB - dateA;
   });
 
-  // Filter active gifts based on search and filters
   $: filteredGifts = activeGifts.filter((gift) => {
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchesName = gift.name?.toLowerCase().includes(query);
       const matchesDesc = gift.description?.toLowerCase().includes(query);
       if (!matchesName && !matchesDesc) return false;
     }
-
-    // Category filter
     if (selectedCategory && gift.category_code !== selectedCategory) return false;
-
-    // Status filter
     if (selectedStatus && gift.status !== selectedStatus) return false;
-
-    // Priority filter
-    if (selectedPriority && getPriorityCode(gift) !== selectedPriority) {
-      return false;
-    }
-
+    if (selectedPriority && getPriorityCode(gift) !== selectedPriority) return false;
     return true;
   });
 
-  // Sort filtered gifts
   $: sortedGifts = [...filteredGifts].sort((a, b) => {
     switch (sortBy) {
       case 'priority': {
@@ -211,15 +204,10 @@
         if (pa !== pb) return pa - pb;
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
-
-      case 'name': {
-        const locale = $theme === 'dark' ? 'ru' : 'en'; // Simplified, should use locale store
-        return a.name.localeCompare(b.name, locale);
-      }
-
+      case 'name':
+        return a.name.localeCompare(b.name);
       case 'created_at':
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-
       default:
         return 0;
     }
@@ -234,42 +222,14 @@
   }
 
   function openAddModal() {
-    if (!currentUser) return;
-    const savedPassword = getAdminPassword(currentUser.slug);
-    if (savedPassword) {
-      showAddModal = true;
-    } else {
-      pendingAction = 'add';
-      showPasswordModal = true;
-    }
+    if (!currentUser || !isOwner) return;
+    showAddModal = true;
   }
-
-  function onPasswordAuthenticated() {
-    showPasswordModal = false;
-    if (pendingAction === 'edit') {
-      pendingAction = null;
-      showEditModal = true;
-    } else if (pendingAction === 'delete') {
-      pendingAction = null;
-      showDeleteModal = true;
-    } else {
-      showAddModal = true;
-    }
-  }
-
-  let pendingAction = null;
 
   function openEditModal(gift) {
-    if (!currentUser) return;
-    const savedPassword = getAdminPassword(currentUser.slug);
-    if (savedPassword) {
-      selectedGift = gift;
-      showEditModal = true;
-    } else {
-      selectedGift = gift;
-      pendingAction = 'edit';
-      showPasswordModal = true;
-    }
+    if (!isOwner) return;
+    selectedGift = gift;
+    showEditModal = true;
   }
 
   function openReserveModal(gift) {
@@ -278,21 +238,48 @@
   }
 
   function openDeleteModal(gift) {
-    if (!currentUser) return;
-    const savedPassword = getAdminPassword(currentUser.slug);
-    if (savedPassword) {
-      selectedGift = gift;
-      showDeleteModal = true;
-    } else {
-      selectedGift = gift;
-      pendingAction = 'delete';
-      showPasswordModal = true;
-    }
+    if (!isOwner) return;
+    selectedGift = gift;
+    showDeleteModal = true;
   }
 
   function openViewModal(gift) {
     selectedGift = gift;
     showViewModal = true;
+  }
+
+  // Secret code actions (replacing browser prompt())
+  function requestSecretCode(gift, action) {
+    secretCodeGift = gift;
+    secretCodeAction = action;
+    showSecretCodeModal = true;
+  }
+
+  async function handleSecretCodeSubmit(event) {
+    const { secretCode } = event.detail;
+    showSecretCodeModal = false;
+
+    if (!secretCodeGift || !secretCodeAction) return;
+
+    try {
+      const giftId = secretCodeGift.id;
+      const slug = currentUser.slug;
+
+      if (secretCodeAction === 'purchased') {
+        const { purchaseUserGift } = await import('./lib/utils/api.js');
+        await purchaseUserGift(slug, giftId, { secret_code: secretCode });
+      } else if (secretCodeAction === 'unreserve') {
+        const { unreserveUserGift } = await import('./lib/utils/api.js');
+        await unreserveUserGift(slug, giftId, { secret_code: secretCode });
+      }
+
+      loadGifts();
+    } catch (error) {
+      toasts.error(error.message || $t('toasts.error'));
+    } finally {
+      secretCodeGift = null;
+      secretCodeAction = null;
+    }
   }
 
   function onGiftSaved() {
@@ -301,14 +288,27 @@
     showReserveModal = false;
     showDeleteModal = false;
     showViewModal = false;
-    showPasswordModal = false;
+    showLoginModal = false;
     selectedGift = null;
     loadGifts();
+  }
+
+  function handleLogin() {
+    showLoginModal = true;
+  }
+
+  function handleLogout() {
+    auth.logout();
+    toasts.success($t('auth.logoutSuccess'));
+  }
+
+  function onAuthenticated() {
+    showLoginModal = false;
+    toasts.success($t('auth.loginSuccess'));
   }
 </script>
 
 <div class="min-h-screen bg-ivory dark:bg-dark-bg transition-colors duration-300">
-  <!-- Toast Container -->
   <ToastContainer />
 
   <div class="px-6 sm:px-7 py-6 sm:py-7">
@@ -346,8 +346,27 @@
         <!-- Language Switcher -->
         <LanguageSwitcher />
 
-        <!-- Add Button (only visible when viewing a user's wishlist) -->
-        {#if currentUser}
+        <!-- Auth: Login/Logout -->
+        {#if !authLoading}
+          {#if isAuthenticated}
+            <button
+              on:click={handleLogout}
+              class="px-4 py-2 rounded-full text-sm font-medium bg-black/5 dark:bg-white/5 text-graphite dark:text-dark-text hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+            >
+              {authUser?.name || $t('auth.logout')} ✕
+            </button>
+          {:else if currentUser}
+            <button
+              on:click={handleLogin}
+              class="px-4 py-2 rounded-full text-sm font-medium bg-black/5 dark:bg-white/5 text-graphite dark:text-dark-text hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+            >
+              🔒 {$t('auth.login')}
+            </button>
+          {/if}
+        {/if}
+
+        <!-- Add Button (only for owner) -->
+        {#if isOwner}
           <button
             on:click={openAddModal}
             class="flex items-center gap-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-500 dark:hover:bg-indigo-400 text-white px-4 sm:px-5 py-2 rounded-full shadow-editorial transition-all duration-200 text-sm font-medium tracking-tighter hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
@@ -360,7 +379,6 @@
     </header>
 
     {#if !currentUser}
-      <!-- User Selection View -->
       <UserSelect
         {users}
         loading={usersLoading}
@@ -369,7 +387,6 @@
     {:else}
       <!-- Search and Filters -->
       <div class="mb-6 sm:mb-7 space-y-4">
-        <!-- Search Bar -->
         <div class="relative">
           <input
             type="text"
@@ -379,20 +396,17 @@
           />
         </div>
 
-        <!-- Filters Row - Compact single row -->
         <div class="flex flex-wrap items-center gap-2">
-          <!-- Category Dropdown -->
           <select
             bind:value={selectedCategory}
             class="px-3 py-2 bg-white dark:bg-dark-bg border border-black/[0.08] dark:border-white/[0.08] rounded-full text-xs text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer"
           >
             <option value="">{$t('filters.allCategories')}</option>
             {#each categoriesList as cat (cat.code)}
-              <option value={cat.code}>{cat.name}</option>
+              <option value={cat.code}>{cat.emoji} {cat.name}</option>
             {/each}
           </select>
 
-          <!-- Status & Priority Chips -->
           <div class="flex gap-2 flex-wrap items-center">
             {#each ['available', 'reserved'] as status}
               <button
@@ -402,7 +416,7 @@
                   ? 'bg-graphite text-white'
                   : 'bg-transparent border border-black/10 dark:border-white/10 text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'}"
               >
-                {status === 'available' ? '✨' : status === 'reserved' ? '🔒' : '✅'} {$t('status.' + status)}
+                {status === 'available' ? '✨' : '🔒'} {$t('status.' + status)}
               </button>
             {/each}
 
@@ -416,12 +430,11 @@
                   ? 'bg-graphite text-white'
                   : 'bg-transparent border border-black/10 dark:border-white/10 text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'}"
               >
-                {prio.name}
+                {prio.emoji} {prio.name}
               </button>
             {/each}
           </div>
 
-          <!-- Sort Dropdown -->
           <select
             bind:value={sortBy}
             class="px-3 py-2 bg-white dark:bg-dark-bg border border-black/[0.08] dark:border-white/[0.08] rounded-full text-xs text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer"
@@ -431,7 +444,6 @@
             <option value="created_at">📅 {$t('filters.sortByDate')}</option>
           </select>
 
-          <!-- Clear Filters -->
           {#if searchQuery || selectedCategory || selectedStatus || selectedPriority || sortBy !== 'priority'}
             <button
               on:click={clearFilters}
@@ -442,7 +454,6 @@
           {/if}
         </div>
 
-        <!-- Results Count -->
         {#if filteredGifts.length !== activeGifts.length}
           <p class="text-xs sm:text-sm text-black/60 dark:text-white/60 flex items-center gap-2">
             <span class="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
@@ -455,14 +466,11 @@
       {#if loading}
         <div class="flex items-center justify-center py-14">
           <div class="text-center">
-            <div
-              class="inline-block animate-spin rounded-full h-12 w-12 border-[3px] border-indigo-500 border-t-transparent mb-4"
-            ></div>
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-[3px] border-indigo-500 border-t-transparent mb-4"></div>
             <p class="text-black/40 dark:text-white/40">{$t('app.loading')}</p>
           </div>
         </div>
       {:else if gifts.length === 0}
-        <!-- Empty State -->
         <div class="flex items-center justify-center py-14">
           <div class="text-center">
             <div class="text-6xl mb-4 opacity-20">🎁</div>
@@ -471,7 +479,6 @@
           </div>
         </div>
       {:else if sortedGifts.length === 0}
-        <!-- No Results -->
         <div class="flex items-center justify-center py-14">
           <div class="text-center">
             <div class="text-6xl mb-4 opacity-20">🔍</div>
@@ -480,7 +487,6 @@
           </div>
         </div>
       {:else}
-        <!-- Gifts Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5">
           {#each sortedGifts as gift, index (gift.id + gift.status)}
             {@const cardSpan = getCardSpan(gift)}
@@ -489,11 +495,14 @@
                 {gift}
                 {index}
                 isLarge={cardSpan.isLarge}
+                {isOwner}
                 userSlug={currentUser?.slug}
                 on:view={() => openViewModal(gift)}
                 on:edit={() => openEditModal(gift)}
                 on:reserve={() => openReserveModal(gift)}
                 on:delete={() => openDeleteModal(gift)}
+                on:purchased={(e) => requestSecretCode(gift, 'purchased')}
+                on:unreserve={(e) => requestSecretCode(gift, 'unreserve')}
                 on:refresh={loadGifts}
               />
             </div>
@@ -522,10 +531,13 @@
                       {gift}
                       {index}
                       isLarge={false}
+                      {isOwner}
+                      userSlug={currentUser?.slug}
                       on:view={() => openViewModal(gift)}
                       on:edit={() => openEditModal(gift)}
                       on:reserve={() => openReserveModal(gift)}
                       on:delete={() => openDeleteModal(gift)}
+                      on:unreserve={(e) => requestSecretCode(gift, 'unreserve')}
                       on:refresh={loadGifts}
                     />
                   </div>
@@ -540,15 +552,15 @@
 </div>
 
 <!-- Modals -->
-{#if showPasswordModal && currentUser}
-  <PasswordModal
+{#if showLoginModal && currentUser}
+  <LoginModal
     userSlug={currentUser.slug}
-    on:close={() => (showPasswordModal = false)}
-    on:authenticated={onPasswordAuthenticated}
+    on:close={() => (showLoginModal = false)}
+    on:authenticated={onAuthenticated}
   />
 {/if}
 
-{#if showAddModal && currentUser}
+{#if showAddModal && currentUser && isOwner}
   <AddGiftModal
     userSlug={currentUser.slug}
     on:close={() => (showAddModal = false)}
@@ -556,7 +568,7 @@
   />
 {/if}
 
-{#if showEditModal && selectedGift && currentUser}
+{#if showEditModal && selectedGift && currentUser && isOwner}
   <EditGiftModal
     gift={selectedGift}
     userSlug={currentUser.slug}
@@ -574,7 +586,7 @@
   />
 {/if}
 
-{#if showDeleteModal && selectedGift && currentUser}
+{#if showDeleteModal && selectedGift && currentUser && isOwner}
   <DeleteModal
     gift={selectedGift}
     userSlug={currentUser.slug}
@@ -594,8 +606,17 @@
     }}
     on:purchased={(e) => {
       showViewModal = false;
-      openReserveModal(selectedGift);
+      requestSecretCode(selectedGift, 'purchased');
     }}
+  />
+{/if}
+
+{#if showSecretCodeModal}
+  <SecretCodeModal
+    title={secretCodeAction === 'purchased' ? $t('modals.markPurchased.title') : $t('modals.unreserve.title')}
+    description={secretCodeAction === 'purchased' ? $t('modals.markPurchased.prompt') : $t('modals.unreserve.prompt')}
+    on:close={() => (showSecretCodeModal = false)}
+    on:submit={handleSecretCodeSubmit}
   />
 {/if}
 
@@ -604,7 +625,6 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }

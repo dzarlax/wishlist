@@ -6,11 +6,8 @@
   import { locale } from './stores/locale.js';
   import { validators } from './utils/validation.js';
   import { t } from './utils/i18n.js';
-  import { parseGift, getAdminPassword, createUserGift } from './utils/api.js';
+  import { parseGift, createUserGift, fetchCategories, fetchPriorities } from './utils/api.js';
   import { designSystem } from './utils/design-system.js';
-
-  // @ts-ignore - Ignore svelteHTML type errors from node_modules
-  import { colors, typography } from './utils/design-system.js';
 
   export let userSlug = null;
 
@@ -30,22 +27,22 @@
   let aiText = '';
   let aiLoading = false;
 
-  $: categories = [
-    { code: 'electronics', name: $t('categories.electronics') },
-    { code: 'home', name: $t('categories.home') },
-    { code: 'accessories', name: $t('categories.accessories') },
-    { code: 'education', name: $t('categories.education') },
-    { code: 'games', name: $t('categories.games') },
-    { code: 'clothing', name: $t('categories.clothing') },
-    { code: 'sports', name: $t('categories.sports') },
-    { code: 'creativity', name: $t('categories.creativity') },
-  ];
+  // Load categories and priorities from API
+  let categories = [];
+  let priorities = [];
 
-  $: priorities = [
-    { code: 'hot', name: $t('priorities.hot') },
-    { code: 'medium', name: $t('priorities.medium') },
-    { code: 'low', name: $t('priorities.low') },
-  ];
+  async function loadReferenceData() {
+    try {
+      [categories, priorities] = await Promise.all([
+        fetchCategories($locale),
+        fetchPriorities($locale)
+      ]);
+    } catch {
+      // Fallback to empty — form still works with manual codes
+    }
+  }
+
+  $: $locale, loadReferenceData();
 
   function validateForm() {
     errors = {};
@@ -75,14 +72,6 @@
       return;
     }
 
-    // Get admin password from localStorage
-    const adminPassword = getAdminPassword(userSlug);
-    if (!adminPassword) {
-      toasts.error('Сначала войдите в систему');
-      dispatch('close');
-      return;
-    }
-
     loading = true;
 
     try {
@@ -97,24 +86,7 @@
       if (link.trim()) payload.link = link.trim();
       if (imageUrl.trim()) payload.image_url = imageUrl.trim();
 
-      if (userSlug) {
-        await createUserGift(userSlug, payload);
-      } else {
-        const response = await fetch('/api/gifts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Admin-Password': adminPassword,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const err = await response.json();
-          toasts.error(err.error || $t('toasts.error'));
-          return;
-        }
-      }
+      await createUserGift(userSlug, payload);
 
       // Reset form
       name = '';

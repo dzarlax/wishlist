@@ -1,59 +1,27 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { fade, fly, scale } from 'svelte/transition';
+  import { fly, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { t } from './utils/i18n.js';
-  import { deleteUserGift, setAdminPassword } from './utils/api.js';
+  import { deleteUserGift } from './utils/api.js';
+  import { toasts } from './stores/toasts.js';
   import { designSystem } from './utils/design-system.js';
-
-  // @ts-ignore - Ignore svelteHTML type errors from node_modules
-  import { colors, typography } from './utils/design-system.js';
 
   export let gift;
   export let userSlug = null;
 
   const dispatch = createEventDispatcher();
 
-  let adminPassword = '';
   let loading = false;
   let error = '';
 
   async function handleDelete() {
     error = '';
-
-    if (!adminPassword) {
-      error = $t('validation.required');
-      return;
-    }
-
-    const confirmMsg = $t('modals.delete.confirm', { name: gift.name });
-    if (!confirm(confirmMsg)) {
-      return;
-    }
-
     loading = true;
 
     try {
-      if (userSlug) {
-        // Set password for the API call
-        setAdminPassword(adminPassword, userSlug);
-        await deleteUserGift(userSlug, gift.id);
-      } else {
-        const response = await fetch(`/api/gifts/${gift.id}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Admin-Password': adminPassword,
-          },
-        });
-
-        if (!response.ok) {
-          const err = await response.json();
-          error = err.error || $t('toasts.error');
-          return;
-        }
-      }
-
+      await deleteUserGift(userSlug, gift.id);
+      toasts.success($t('toasts.deleted'));
       dispatch('deleted');
     } catch (e) {
       error = e.message || $t('toasts.error');
@@ -69,24 +37,7 @@
   }
 
   function handleKeydown(event) {
-    if (event.key === 'Escape') {
-      dispatch('close');
-    }
-  }
-
-  function handleBackdropKeydown(event) {
-    // Don't close if focus is on an input element
-    const target = event.target;
-    const isInput = target.tagName === 'INPUT' ||
-                    target.tagName === 'TEXTAREA' ||
-                    target.tagName === 'SELECT' ||
-                    target.isContentEditable;
-    if (isInput) return;
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      dispatch('close');
-    }
+    if (event.key === 'Escape') dispatch('close');
   }
 </script>
 
@@ -96,20 +47,18 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
   transition:scale={{ duration: 200, start: 0.95, easing: quintOut }}
   on:click={handleClickOutside}
-  on:keydown={handleBackdropKeydown}
   role="button"
   tabindex="-1"
   aria-label="Close modal"
 >
   <div
-    class="bg-ivory dark:bg-dark-bg backdrop-blur-xl rounded-modal shadow-raised border border-black/[0.08] dark:border-white/[0.08] w-full max-w-[var(--width-modal)] scrollbar-hide"
+    class="bg-ivory dark:bg-dark-bg backdrop-blur-xl rounded-modal shadow-raised border border-black/[0.08] dark:border-white/[0.08] w-full max-w-[var(--width-modal)]"
     transition:fly={{ y: 50, opacity: 0, duration: 300 }}
     role="dialog"
     aria-modal="true"
     aria-labelledby="delete-modal-title"
     tabindex="-1"
   >
-    <!-- Header -->
     <div class="relative px-7 py-5 border-b {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08]">
       <h2
         id="delete-modal-title"
@@ -119,13 +68,9 @@
       </h2>
     </div>
 
-    <!-- Body -->
     <div class="p-7 space-y-5">
-      <!-- Error Message -->
       {#if error}
-        <div
-          class="bg-red-500/10 border border-red-500/30 rounded-[4px] px-4 py-3 text-sm text-red-300"
-        >
+        <div class="bg-red-500/10 border border-red-500/30 rounded-[4px] px-4 py-3 text-sm text-red-300">
           {error}
         </div>
       {/if}
@@ -133,22 +78,8 @@
       <p class="text-black/70 dark:text-white/70">
         {$t('modals.delete.confirm', { name: gift.name })}
       </p>
-
-      <div>
-        <label for="delete-admin-password" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-2"
-          >🔒 {$t('validation.adminPassword')} *</label
-        >
-        <input
-          id="delete-admin-password"
-          type="password"
-          bind:value={adminPassword}
-          placeholder="••••••••"
-          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500/30 transition-all"
-        />
-      </div>
     </div>
 
-    <!-- Footer -->
     <div class="px-7 py-5 border-t {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] flex gap-3 justify-end">
       <button
         on:click={() => dispatch('close')}

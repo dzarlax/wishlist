@@ -100,6 +100,9 @@
       "confirm": "Вы уверены, что хотите удалить подарок «{name}»?",
       "success": "Подарок удален!"
     },
+    "secretCode": {
+      "placeholder": "Введите секретный код"
+    },
     "view": {
       "title": "Просмотр подарка",
       "description": "Описание",
@@ -135,6 +138,17 @@
   "giftCard": {
     "reservedBy": "Забронировал: {name}",
     "reservedAt": "Забронировано: {date}"
+  },
+  "auth": {
+    "login": "Войти",
+    "logout": "Выйти",
+    "password": "Пароль",
+    "loginSuccess": "Вы вошли в систему",
+    "logoutSuccess": "Вы вышли из системы",
+    "loginFailed": "Неверный пароль",
+    "loginWithSso": "Войти через SSO",
+    "or": "или",
+    "sessionExpired": "Сессия истекла, войдите снова"
   },
   "language": {
     "switch": "Switch to English",

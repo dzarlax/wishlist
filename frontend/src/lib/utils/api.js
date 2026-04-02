@@ -1,215 +1,141 @@
-const ADMIN_PASSWORD_KEY = 'admin_password';
+import { auth } from '../stores/auth.js';
 
 /**
- * Get the localStorage key for a user-specific admin password
+ * Wrapper for API requests with automatic JWT handling.
  */
-function getUserPasswordKey(userSlug) {
-  return userSlug ? `admin_password_${userSlug}` : ADMIN_PASSWORD_KEY;
-}
-
-/**
- * Set the admin password for subsequent requests
- * Persists to localStorage for future sessions
- */
-export function setAdminPassword(password, userSlug = null) {
-  localStorage.setItem(getUserPasswordKey(userSlug), password);
-}
-
-/**
- * Get the current admin password
- * Retrieves from localStorage if available
- */
-export function getAdminPassword(userSlug = null) {
-  return localStorage.getItem(getUserPasswordKey(userSlug)) || '';
-}
-
-/**
- * Clear the stored admin password
- * Removes from localStorage
- */
-export function clearAdminPassword(userSlug = null) {
-  localStorage.removeItem(getUserPasswordKey(userSlug));
-}
-
-/**
- * Wrapper for API requests with automatic admin password handling
- */
-export async function apiRequest(url, options = {}, userSlug = null) {
+export async function apiRequest(url, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
   };
 
-  // Add admin password header if it's set and this is an admin operation
-  const adminPassword = getAdminPassword(userSlug);
-  if (
-    adminPassword &&
-    (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE')
-  ) {
-    // Check if this URL needs admin auth (not reserve/unreserve/purchased)
-    const needsAdmin =
-      !url.includes('/reserve') && !url.includes('/unreserve') && !url.includes('/purchased');
-    if (needsAdmin) {
-      headers['X-Admin-Password'] = adminPassword;
-    }
+  // Add Bearer token if authenticated
+  const token = auth.getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    const response = await fetch(url, { ...options, headers });
 
-    // Handle 204 No Content (e.g., DELETE)
-    if (response.status === 204) {
-      return null;
-    }
+    if (response.status === 204) return null;
 
     const data = await response.json();
 
     if (!response.ok) {
-      if (response.status === 403) {
-        // If we have a userSlug context, clear its password so UI re-prompts
-        if (userSlug) {
-          clearAdminPassword(userSlug);
-        }
-        throw new Error(data.error || 'Требуется пароль администратора');
+      if (response.status === 401) {
+        // Token expired — logout and let UI handle re-auth
+        auth.logout();
+        throw new Error('Session expired');
       }
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      if (response.status === 404) {
-        throw new Error('Подарок не найден');
-      }
-      if (response.status === 400) {
-        throw new Error(data.error || 'Некорректные данные');
-      }
-      throw new Error('Произошла ошибка');
+      throw new Error(data.error || `Request failed (${response.status})`);
     }
 
     return data;
   } catch (error) {
     if (error.message.includes('Failed to fetch')) {
-      throw new Error('Ошибка соединения с сервером');
+      throw new Error('Server connection error');
     }
     throw error;
   }
 }
 
-/**
- * Convenience method for GET requests
- */
 export async function get(url) {
   return apiRequest(url, { method: 'GET' });
 }
 
-/**
- * Convenience method for POST requests
- */
-export async function post(url, body, userSlug = null) {
+export async function post(url, body) {
   return apiRequest(url, {
     method: 'POST',
     body: JSON.stringify(body),
-  }, userSlug);
+  });
 }
 
-/**
- * Convenience method for PUT requests
- */
-export async function put(url, body, userSlug = null) {
+export async function put(url, body) {
   return apiRequest(url, {
     method: 'PUT',
     body: JSON.stringify(body),
-  }, userSlug);
+  });
 }
 
-/**
- * Convenience method for DELETE requests
- */
-export async function del(url, userSlug = null) {
-  return apiRequest(url, { method: 'DELETE' }, userSlug);
+export async function del(url) {
+  return apiRequest(url, { method: 'DELETE' });
 }
 
-/**
- * Parse gift information from text/link using AI
- */
-export async function parseGift(text, locale = 'ru') {
-  return post('/api/parse-gift', { text, locale });
-}
+// ==================== Gift API ====================
 
-// ==================== User API ====================
-
-/**
- * Fetch all users
- */
 export async function fetchUsers() {
   return get('/api/users');
 }
 
-/**
- * Fetch gifts for a specific user
- */
 export async function fetchUserGifts(userSlug) {
   return get(`/api/users/${userSlug}/gifts`);
 }
 
-/**
- * Create a gift for a specific user
- */
 export async function createUserGift(userSlug, data) {
-  return post(`/api/users/${userSlug}/gifts`, data, userSlug);
+  return post(`/api/users/${userSlug}/gifts`, data);
 }
 
-/**
- * Update a gift for a specific user
- */
 export async function updateUserGift(userSlug, giftId, data) {
-  return put(`/api/users/${userSlug}/gifts/${giftId}`, data, userSlug);
+  return put(`/api/users/${userSlug}/gifts/${giftId}`, data);
 }
 
-/**
- * Delete a gift for a specific user
- */
 export async function deleteUserGift(userSlug, giftId) {
-  return del(`/api/users/${userSlug}/gifts/${giftId}`, userSlug);
+  return del(`/api/users/${userSlug}/gifts/${giftId}`);
 }
 
-/**
- * Reserve a gift for a specific user
- */
 export async function reserveUserGift(userSlug, giftId, data) {
   return post(`/api/users/${userSlug}/gifts/${giftId}/reserve`, data);
 }
 
-/**
- * Unreserve a gift for a specific user
- */
 export async function unreserveUserGift(userSlug, giftId, data) {
   return post(`/api/users/${userSlug}/gifts/${giftId}/unreserve`, data);
 }
 
-/**
- * Mark a gift as purchased for a specific user
- */
 export async function purchaseUserGift(userSlug, giftId, data) {
   return post(`/api/users/${userSlug}/gifts/${giftId}/purchased`, data);
 }
 
-/**
- * Verify per-user admin password
- */
-export async function verifyUserPassword(userSlug, password) {
-  const response = await fetch(`/api/users/${userSlug}/verify-password`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Admin-Password': password,
-    },
-  });
+// ==================== Reference Data API ====================
 
-  if (!response.ok) {
-    throw new Error('Invalid password');
-  }
+export async function fetchCategories(locale = 'ru') {
+  return get(`/api/categories?locale=${locale}`);
+}
 
-  return response.json();
+export async function fetchPriorities(locale = 'ru') {
+  return get(`/api/priorities?locale=${locale}`);
+}
+
+export async function createCategory(data) {
+  return post('/api/categories', data);
+}
+
+export async function updateCategory(code, data) {
+  return put(`/api/categories/${code}`, data);
+}
+
+export async function deleteCategory(code) {
+  return del(`/api/categories/${code}`);
+}
+
+export async function createPriority(data) {
+  return post('/api/priorities', data);
+}
+
+export async function updatePriority(code, data) {
+  return put(`/api/priorities/${code}`, data);
+}
+
+export async function deletePriority(code) {
+  return del(`/api/priorities/${code}`);
+}
+
+// ==================== AI API ====================
+
+export async function parseGift(text, locale = 'ru') {
+  return post('/api/parse-gift', { text, locale });
+}
+
+export async function translateText(text, from, to) {
+  return post('/api/translate', { text, from, to });
 }

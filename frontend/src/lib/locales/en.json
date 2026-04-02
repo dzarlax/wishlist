@@ -100,6 +100,9 @@
       "confirm": "Are you sure you want to delete the gift «{name}»?",
       "success": "Gift deleted!"
     },
+    "secretCode": {
+      "placeholder": "Enter secret code"
+    },
     "view": {
       "title": "View gift",
       "description": "Description",
@@ -135,6 +138,17 @@
   "giftCard": {
     "reservedBy": "Reserved by: {name}",
     "reservedAt": "Reserved: {date}"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "password": "Password",
+    "loginSuccess": "Logged in successfully",
+    "logoutSuccess": "Logged out",
+    "loginFailed": "Invalid password",
+    "loginWithSso": "Login with SSO",
+    "or": "or",
+    "sessionExpired": "Session expired, please log in again"
   },
   "language": {
     "switch": "Переключить на русский",

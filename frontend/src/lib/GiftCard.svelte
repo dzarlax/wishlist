@@ -8,6 +8,7 @@
   export let gift;
   export let index = 0;
   export let isLarge = false;
+  export let isOwner = false;
   export let userSlug = null;
 
   const dispatch = createEventDispatcher();
@@ -18,21 +19,11 @@
   let hovered = false;
 
   function handleCardClick(e) {
-    // Don't trigger if clicking on action buttons
-    if (e.target.closest('button') || e.target.closest('a')) {
-      return;
-    }
+    if (e.target.closest('button') || e.target.closest('a')) return;
     dispatch('view');
   }
 
-  // Get priority code from gift (with fallback)
-  $: currentPriorityCode = (() => {
-    if (gift.priority_code) return gift.priority_code;
-    const priorityMapping = $t('priorityMapping');
-    return priorityMapping[gift.priority] || 'medium';
-  })();
-
-  // Get priority colors from centralized helper
+  $: currentPriorityCode = gift.priority_code || 'medium';
   $: priorityColorClasses = getPriorityColors(currentPriorityCode);
 
   function handleKeydown(event) {
@@ -42,77 +33,18 @@
     }
   }
 
-  async function handleReserve() {
-    error = '';
-    loading = true;
-
+  function handleReserve() {
     if (gift.status === 'available') {
-      loading = false;
       dispatch('reserve');
     } else if (gift.status === 'reserved') {
-      const secretCode = prompt($t('modals.markPurchased.prompt'));
-      if (!secretCode) {
-        loading = false;
-        return;
-      }
-
-      try {
-        const purchasedUrl = userSlug
-          ? `/api/users/${userSlug}/gifts/${gift.id}/purchased`
-          : `/api/gifts/${gift.id}/purchased`;
-        const response = await fetch(purchasedUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ secret_code: secretCode }),
-        });
-
-        if (!response.ok) {
-          const err = await response.json();
-          error = err.error || $t('toasts.error');
-          loading = false;
-          return;
-        }
-
-        dispatch('refresh');
-      } catch {
-        error = $t('toasts.error');
-        loading = false;
-      }
+      // Dispatch event to parent — parent shows SecretCodeModal
+      dispatch('purchased');
     }
   }
 
-  async function handleUnreserve() {
-    error = '';
-    loading = true;
-
-    const secretCode = prompt($t('modals.unreserve.prompt'));
-    if (!secretCode) {
-      loading = false;
-      return;
-    }
-
-    try {
-      const unreserveUrl = userSlug
-        ? `/api/users/${userSlug}/gifts/${gift.id}/unreserve`
-        : `/api/gifts/${gift.id}/unreserve`;
-      const response = await fetch(unreserveUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret_code: secretCode }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        error = err.error || $t('toasts.error');
-        loading = false;
-        return;
-      }
-
-      dispatch('refresh');
-    } catch {
-      error = $t('toasts.error');
-      loading = false;
-    }
+  function handleUnreserve() {
+    // Dispatch event to parent — parent shows SecretCodeModal
+    dispatch('unreserve');
   }
 
   $: status = (() => {
@@ -148,7 +80,7 @@
   on:mouseleave={() => (hovered = false)}
   in:fly={{ y: 50, opacity: 0, duration: 400, delay: index * 50, easing: quintOut }}
 >
-  <!-- Image (clickable) -->
+  <!-- Image -->
   <div
     role="button"
     tabindex="0"
@@ -161,29 +93,18 @@
       <img
         src={gift.image_url}
         alt={gift.name}
-        class="w-full h-full object-contain transition-transform duration-500 ease-out {hovered
-          ? 'scale-110'
-          : 'scale-100'}"
+        class="w-full h-full object-contain transition-transform duration-500 ease-out {hovered ? 'scale-110' : 'scale-100'}"
         on:error={() => (imageError = true)}
       />
     {:else}
-      <div
-        class="w-full h-full flex items-center justify-center {designSystem.text['4xl']} opacity-30 transition-transform duration-500 ease-out {hovered
-          ? 'scale-110 rotate-5'
-          : 'scale-100'}"
-      >
+      <div class="w-full h-full flex items-center justify-center {designSystem.text['4xl']} opacity-30 transition-transform duration-500 ease-out {hovered ? 'scale-110 rotate-5' : 'scale-100'}">
         🎁
       </div>
     {/if}
 
     {#if status.text}
-      <div
-        class="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300"
-        transition:fade={{ duration: 200 }}
-      >
-        <div
-          class="flex items-center gap-2 px-4 py-2 rounded-lg {designSystem.text.sm} {designSystem.text.weight.medium} border-2 {status.bgClass} {status.borderClass} transform transition-transform duration-300 hover:scale-105"
-        >
+      <div class="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300" transition:fade={{ duration: 200 }}>
+        <div class="flex items-center gap-2 px-4 py-2 rounded-lg {designSystem.text.sm} {designSystem.text.weight.medium} border-2 {status.bgClass} {status.borderClass} transform transition-transform duration-300 hover:scale-105">
           {#if status.dotClass}
             <span class="w-1.5 h-1.5 rounded-full {status.dotClass}"></span>
           {/if}
@@ -193,13 +114,11 @@
     {/if}
 
     {#if gift.status === 'available' && currentPriorityCode === 'hot'}
-      <div
-        class="absolute top-2 right-2 w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-lg shadow-red-500/50"
-      ></div>
+      <div class="absolute top-2 right-2 w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-lg shadow-red-500/50"></div>
     {/if}
   </div>
 
-  <!-- Content (clickable) -->
+  <!-- Content -->
   <div
     role="button"
     tabindex="0"
@@ -209,33 +128,23 @@
     aria-label="View details for {gift.name}"
   >
     {#if error}
-      <div
-        class="bg-red-500/10 border border-red-500/20 rounded-none px-3 py-2 {designSystem.text.xs} text-red-600 dark:text-red-300 flex items-center gap-2 flex-shrink-0"
-        transition:fade={{ duration: 200 }}
-      >
-        <span>⚠️</span>
-        <span>{error}</span>
+      <div class="bg-red-500/10 border border-red-500/20 rounded-none px-3 py-2 {designSystem.text.xs} text-red-600 dark:text-red-300 flex items-center gap-2 flex-shrink-0" transition:fade={{ duration: 200 }}>
+        <span>⚠️</span><span>{error}</span>
       </div>
     {/if}
 
     <div class="flex gap-2 flex-wrap flex-shrink-0">
       {#if gift.category_code}
-        <span
-        class="px-3 py-1 rounded-none {designSystem.text.xs} {designSystem.badge.category}"
-      >
-        {$t(`categories.${gift.category_code}`)}
-      </span>
+        <span class="px-3 py-1 rounded-none {designSystem.text.xs} {designSystem.badge.category}">
+          {$t(`categories.${gift.category_code}`)}
+        </span>
       {/if}
-      <span
-        class="px-3 py-1 rounded-none {designSystem.badge.priority} {priorityColorClasses.bg} {priorityColorClasses.bgDark} {priorityColorClasses.text} {priorityColorClasses.textDark} border {priorityColorClasses.border} {priorityColorClasses.borderDark}"
-      >
+      <span class="px-3 py-1 rounded-none {designSystem.badge.priority} {priorityColorClasses.bg} {priorityColorClasses.bgDark} {priorityColorClasses.text} {priorityColorClasses.textDark} border {priorityColorClasses.border} {priorityColorClasses.borderDark}">
         {$t(`priorities.${currentPriorityCode}`)}
       </span>
     </div>
 
-    <h3
-      class="{isLarge ? designSystem.text.xl : designSystem.text.base} text-graphite dark:text-dark-text leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 flex-shrink-0"
-    >
+    <h3 class="{isLarge ? designSystem.text.xl : designSystem.text.base} text-graphite dark:text-dark-text leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200 flex-shrink-0">
       {gift.name}
     </h3>
 
@@ -245,12 +154,10 @@
       </p>
     {/if}
 
-    <!-- Spacer to push content to top -->
     <div class="flex-1 min-h-0"></div>
   </div>
-  <!-- End clickable area -->
 
-  <!-- Price (if exists, clickable) -->
+  <!-- Price -->
   {#if gift.price}
     <div
       role="button"
@@ -260,45 +167,59 @@
       on:keydown={handleKeydown}
       aria-label="View details for {gift.name}"
     >
-      <span
-        class="font-mono {designSystem.text.lg} {designSystem.color.status.available.text} {designSystem.color.status.available.textDark}"
-      >
+      <span class="font-mono {designSystem.text.lg} {designSystem.color.status.available.text} {designSystem.color.status.available.textDark}">
         {$formatPrice(gift.price)}
       </span>
     </div>
   {/if}
 
-  <!-- Action buttons (outside clickable area) -->
-  <div class="flex items-center justify-end px-5 py-2 border-t border-black/[0.08] dark:border-white/[0.08]">
-    <div class="flex gap-2">
-      {#if gift.link}
-        <a
-          href={gift.link}
-          target="_blank"
-          rel="noopener noreferrer"
+  <!-- Action buttons — only for owner -->
+  {#if isOwner}
+    <div class="flex items-center justify-end px-5 py-2 border-t border-black/[0.08] dark:border-white/[0.08]">
+      <div class="flex gap-2">
+        {#if gift.link}
+          <a
+            href={gift.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-11 h-11 min-w-[fit-content] rounded-full bg-transparent border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark} hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/20 dark:hover:border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+            title={$t('actions.openLink')}
+          >
+            🔗
+          </a>
+        {/if}
+        <button
+          on:click={() => dispatch('edit')}
           class="w-11 h-11 min-w-[fit-content] rounded-full bg-transparent border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark} hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/20 dark:hover:border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-          title="Открыть ссылку"
+          title={$t('actions.edit')}
         >
-          🔗
-        </a>
-      {/if}
-      <button
-        on:click={() => dispatch('edit')}
-        class="w-11 h-11 min-w-[fit-content] rounded-full bg-transparent border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark} hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/20 dark:hover:border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-        title={$t('actions.edit')}
-      >
-        ✏️
-      </button>
-      <button
-        on:click={() => dispatch('delete')}
-        class="w-11 h-11 min-w-[fit-content] rounded-full bg-transparent border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark} hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/20 dark:hover:border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-        title={$t('actions.delete')}
-      >
-        🗑️
-      </button>
+          ✏️
+        </button>
+        <button
+          on:click={() => dispatch('delete')}
+          class="w-11 h-11 min-w-[fit-content] rounded-full bg-transparent border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark} hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/20 dark:hover:border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+          title={$t('actions.delete')}
+        >
+          🗑️
+        </button>
+      </div>
     </div>
-  </div>
+  {:else if gift.link}
+    <!-- Guest: only show link button -->
+    <div class="flex items-center justify-end px-5 py-2 border-t border-black/[0.08] dark:border-white/[0.08]">
+      <a
+        href={gift.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="w-11 h-11 min-w-[fit-content] rounded-full bg-transparent border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark} hover:bg-black/5 dark:hover:bg-white/5 hover:border-black/20 dark:hover:border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+        title={$t('actions.openLink')}
+      >
+        🔗
+      </a>
+    </div>
+  {/if}
 
+  <!-- Reserve / Purchased / Unreserve buttons — visible to everyone -->
   {#if gift.status === 'available'}
     <div class="px-5 pt-3 pb-5">
       <button
@@ -306,16 +227,9 @@
         disabled={loading}
         class="w-full min-w-[fit-content] whitespace-nowrap py-2.5 px-4 rounded-full font-medium {designSystem.color.primary.bg} {designSystem.color.primary.bgDark} {designSystem.color.primary.text} {designSystem.color.primary.textDark} {designSystem.color.primary.hover} {designSystem.color.primary.hoverDark} shadow-editorial disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
       >
-        {#if loading}
-          <span class="flex items-center justify-center gap-2">
-            <span class="animate-spin">⏳</span>
-            <span>{$t('app.loading')}</span>
-          </span>
-        {:else}
-          <span class="flex items-center justify-center gap-2">
-            🎁 {$t('actions.reserve')}
-          </span>
-        {/if}
+        <span class="flex items-center justify-center gap-2">
+          🎁 {$t('actions.reserve')}
+        </span>
       </button>
     </div>
   {:else if gift.status === 'reserved'}
@@ -326,32 +240,18 @@
           disabled={loading}
           class="min-w-[fit-content] whitespace-nowrap py-2 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] shadow-editorial disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
         >
-          {#if loading}
-            <span class="flex items-center justify-center gap-2">
-              <span class="animate-spin">⏳</span>
-              <span>{$t('app.loading')}</span>
-            </span>
-          {:else}
-            <span class="flex items-center justify-center gap-2">
-              ✅ {$t('actions.markPurchased')}
-            </span>
-          {/if}
+          <span class="flex items-center justify-center gap-2">
+            ✅ {$t('actions.markPurchased')}
+          </span>
         </button>
         <button
           on:click={handleUnreserve}
           disabled={loading}
           class="min-w-[fit-content] whitespace-nowrap py-2 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
         >
-          {#if loading}
-            <span class="flex items-center justify-center gap-2">
-              <span class="animate-spin">⏳</span>
-              <span>{$t('app.loading')}</span>
-            </span>
-          {:else}
-            <span class="flex items-center justify-center gap-2">
-              🚫 {$t('actions.unreserve')}
-            </span>
-          {/if}
+          <span class="flex items-center justify-center gap-2">
+            🚫 {$t('actions.unreserve')}
+          </span>
         </button>
       </div>
     </div>
@@ -362,16 +262,9 @@
         disabled={loading}
         class="w-full min-w-[fit-content] whitespace-nowrap py-2 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
       >
-        {#if loading}
-          <span class="flex items-center justify-center gap-2">
-            <span class="animate-spin">⏳</span>
-            <span>{$t('app.loading')}</span>
-          </span>
-        {:else}
-          <span class="flex items-center justify-center gap-2">
-            🔄 {$t('actions.unreserve')}
-          </span>
-        {/if}
+        <span class="flex items-center justify-center gap-2">
+          🔄 {$t('actions.unreserve')}
+        </span>
       </button>
     </div>
   {/if}

@@ -2,40 +2,36 @@ const fs = require('fs');
 const path = require('path');
 
 class MigrationManager {
+  /**
+   * @param {import('../db/adapter').SqliteAdapter|import('../db/adapter').PgAdapter} db - Database adapter
+   * @param {string} migrationsDir - Path to migrations directory
+   */
   constructor(db, migrationsDir) {
     this.db = db;
     this.migrationsDir = migrationsDir;
   }
 
-  /**
-   * Initialize migrations table
-   */
-  init() {
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS schema_migrations (
-        version INTEGER PRIMARY KEY,
-        applied_at TEXT DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+  async init() {
+    const createTable = this.db.dialect === 'postgres'
+      ? `CREATE TABLE IF NOT EXISTS schema_migrations (
+           version INTEGER PRIMARY KEY,
+           applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+         )`
+      : `CREATE TABLE IF NOT EXISTS schema_migrations (
+           version INTEGER PRIMARY KEY,
+           applied_at TEXT DEFAULT CURRENT_TIMESTAMP
+         )`;
+    await this.db.run(createTable);
   }
 
-  /**
-   * Get current migration version
-   */
-  getCurrentVersion() {
-    const results = this.db.exec('SELECT MAX(version) as version FROM schema_migrations');
-    if (!results[0] || !results[0].values[0] || !results[0].values[0][0]) {
-      return 0;
-    }
-    return results[0].values[0][0];
+  async getCurrentVersion() {
+    const row = await this.db.getOne('SELECT MAX(version) as version FROM schema_migrations');
+    return row?.version || 0;
   }
 
-  /**
-   * Get all migration files
-   */
   getMigrationFiles() {
     const files = fs.readdirSync(this.migrationsDir)
-      .filter(f => f.endsWith('.js'))
+      .filter(f => f.endsWith('.js') && !f.includes('migrationManager'))
       .sort();
 
     return files.map(f => {
@@ -44,13 +40,10 @@ class MigrationManager {
     }).filter(Boolean);
   }
 
-  /**
-   * Run pending migrations
-   */
   async migrate() {
-    this.init();
+    await this.init();
 
-    const currentVersion = this.getCurrentVersion();
+    const currentVersion = await this.getCurrentVersion();
     const migrationFiles = this.getMigrationFiles();
 
     const pendingMigrations = migrationFiles.filter(v => v > currentVersion);
@@ -69,9 +62,6 @@ class MigrationManager {
     console.log('✅ All migrations completed');
   }
 
-  /**
-   * Run a single migration
-   */
   async runMigration(version) {
     const file = fs.readdirSync(this.migrationsDir)
       .find(f => f.startsWith(`${String(version).padStart(4, '0')}-`));
@@ -89,11 +79,10 @@ class MigrationManager {
       throw new Error(`Migration ${version} must export an 'up' function`);
     }
 
-    // Run migration
-    migration.up(this.db);
+    // Pass db adapter and dialect to migration
+    await migration.up(this.db);
 
-    // Record migration
-    this.db.run('INSERT INTO schema_migrations (version) VALUES (?)', [version]);
+    await this.db.run('INSERT INTO schema_migrations (version) VALUES (?)', [version]);
 
     console.log(`  ✓ Migration ${version} completed`);
   }

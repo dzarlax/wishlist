@@ -14,10 +14,19 @@ const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
 
   // Database
+  databaseUrl: process.env.DATABASE_URL || null,
   dbPath: path.join(__dirname, '../../wishlist.db'),
 
-  // Admin
+  // Admin (legacy fallback)
   adminPassword: process.env.ADMIN_PASSWORD || 'wishlist2025',
+
+  // Auth
+  jwtSecret: process.env.JWT_SECRET || 'wishlist-dev-secret-change-me',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+
+  // Authentik SSO
+  authentikEnabled: process.env.AUTHENTIK_ENABLED === 'true',
+  authentikUrl: process.env.AUTHENTIK_URL || null,
 
   // Gemini API
   geminiApiKey: process.env.GEMINI_API_KEY || null,
@@ -27,10 +36,10 @@ const config = {
   allowedOrigins: process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')
     : process.env.NODE_ENV === 'production'
-    ? ['*']  // Allow all origins in production (frontend served from same origin)
+    ? ['*']
     : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:3000'],
 
-  // Users - format: "slug:Name:password:emoji,slug:Name:password:emoji"
+  // Users - format: "slug:Name:password:emoji:email,slug:Name:password:emoji:email"
   defaultUsers: process.env.USERS || null,
 
   // Logging
@@ -39,23 +48,24 @@ const config = {
 
 // Validate critical configuration
 function validateConfig() {
-  const errors = [];
+  const warnings = [];
 
-  if (!config.adminPassword || config.adminPassword.length < 3) {
-    errors.push('ADMIN_PASSWORD must be at least 3 characters long');
+  if (config.jwtSecret === 'wishlist-dev-secret-change-me' && config.nodeEnv === 'production') {
+    warnings.push('JWT_SECRET is using default value in production — set a secure secret!');
   }
 
-  if (errors.length > 0) {
-    console.error('❌ Configuration errors:');
-    errors.forEach(err => console.error(`  - ${err}`));
-    process.exit(1);
+  if (warnings.length > 0) {
+    console.warn('⚠️  Configuration warnings:');
+    warnings.forEach(w => console.warn(`  - ${w}`));
   }
 
-  // Log configuration info
-  console.log('🔐 Admin password protection enabled');
-  console.log('💡 Set ADMIN_PASSWORD in .env file or Docker environment to change the password');
+  const dbType = config.databaseUrl ? 'PostgreSQL' : 'SQLite';
+  console.log(`🗄️  Database: ${dbType}`);
   console.log(`🌡️  Environment: ${config.nodeEnv}`);
   console.log(`🔗 Allowed origins: ${config.allowedOrigins.join(', ')}`);
+  if (config.authentikEnabled) {
+    console.log(`🔐 Authentik SSO: enabled (${config.authentikUrl})`);
+  }
 }
 
 module.exports = { config, validateConfig };

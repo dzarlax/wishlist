@@ -100,6 +100,9 @@
       "confirm": "Da li ste sigurni da želite da obrišete poklon «{name}»?",
       "success": "Poklon obrisan!"
     },
+    "secretCode": {
+      "placeholder": "Unesite tajni kod"
+    },
     "view": {
       "title": "Pregled poklona",
       "description": "Opis",
@@ -135,6 +138,17 @@
   "giftCard": {
     "reservedBy": "Rezervisao: {name}",
     "reservedAt": "Rezervisano: {date}"
+  },
+  "auth": {
+    "login": "Prijavi se",
+    "logout": "Odjavi se",
+    "password": "Lozinka",
+    "loginSuccess": "Uspešna prijava",
+    "logoutSuccess": "Odjavili ste se",
+    "loginFailed": "Pogrešna lozinka",
+    "loginWithSso": "Prijavi se preko SSO",
+    "or": "ili",
+    "sessionExpired": "Sesija je istekla, prijavite se ponovo"
   },
   "language": {
     "switch": "Пребаци на српски",

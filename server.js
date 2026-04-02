@@ -1,14 +1,10 @@
-// Load environment variables from .env file
 require('dotenv').config();
 
 const express = require('express');
-const initSqlJs = require('sql.js');
-const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 const morgan = require('morgan');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const cheerio = require('cheerio');
 const { adminAuthLimiter, reservationLimiter } = require('./server/middleware/rateLimiter');
 const {
   validateGiftCreate,
@@ -18,54 +14,55 @@ const {
   validateUnreserve,
   validatePurchased
 } = require('./server/middleware/validation');
+const { generateToken, extractAuth, requireAuth, requireOwner, extractSsoUser } = require('./server/middleware/auth');
 const GiftModel = require('./server/models/Gift');
 const UserModel = require('./server/models/User');
+const CategoryModel = require('./server/models/Category');
+const PriorityModel = require('./server/models/Priority');
 const MigrationManager = require('./server/migrations/migrationManager');
+const { initDatabase } = require('./server/db');
 const { config, validateConfig } = require('./server/config/env');
+const { extractMetadata } = require('./server/utils/metadata');
+const { translateText } = require('./server/utils/translate');
 
-// Validate configuration
 validateConfig();
 
 const app = express();
-const DB_FILE = config.dbPath;
-const ADMIN_PASSWORD = config.adminPassword;
 
 let db;
-let Gift;
-let User;
+let Gift, User, Category, Priority;
+let saveDB = null;
 const startTime = Date.now();
 
 // Initialize database
 async function initDB() {
-  const SQL = await initSqlJs();
-
-  // Load existing DB or create new
-  if (fs.existsSync(DB_FILE)) {
-    const buffer = fs.readFileSync(DB_FILE);
-    db = new SQL.Database(buffer);
-  } else {
-    db = new SQL.Database();
-  }
+  const result = await initDatabase({ dbPath: config.dbPath });
+  db = result.db;
+  saveDB = result.saveDB;
 
   // Run migrations
   const migrationManager = new MigrationManager(db, path.join(__dirname, 'server/migrations'));
   await migrationManager.migrate();
 
-  // Initialize models with save-after-mutation callback
-  Gift = new GiftModel(db, saveDB);
-  User = new UserModel(db, saveDB);
+  // Initialize models
+  Gift = new GiftModel(db);
+  User = new UserModel(db);
+  Category = new CategoryModel(db);
+  Priority = new PriorityModel(db);
 
-  // Seed users from USERS env var: "slug:Name:password:emoji,slug:Name:password:emoji"
-  seedUsers();
+  // Seed users from USERS env var: "slug:Name:password:emoji:email,..."
+  await seedUsers();
 
-  // Assign orphan gifts (with no user_id) to the first user
-  assignOrphanGifts();
+  // Assign orphan gifts
+  await assignOrphanGifts();
 
-  // Auto-save every 30 seconds (safety fallback)
-  setInterval(saveDB, 30000);
+  // Auto-save for SQLite (safety fallback)
+  if (saveDB) {
+    setInterval(saveDB, 30000);
+  }
 }
 
-function seedUsers() {
+async function seedUsers() {
   const usersEnv = process.env.USERS || config.defaultUsers;
   if (!usersEnv) return;
 
@@ -73,59 +70,44 @@ function seedUsers() {
   for (const entry of userEntries) {
     const parts = entry.split(':');
     if (parts.length < 3) {
-      console.warn(`⚠️ Invalid user entry: ${entry} (expected slug:name:password[:emoji])`);
+      console.warn(`⚠️ Invalid user entry: ${entry} (expected slug:name:password[:emoji[:email]])`);
       continue;
     }
-    const [slug, name, password, emoji] = parts;
-    User.upsert({
+    const [slug, name, password, emoji, email] = parts;
+    await User.seed({
       slug: slug.trim(),
       name: name.trim(),
       admin_password: password.trim(),
-      avatar_emoji: emoji ? emoji.trim() : '🎁'
+      avatar_emoji: emoji ? emoji.trim() : '🎁',
+      email: email ? email.trim() : null
     });
     console.log(`👤 User "${name.trim()}" (/${slug.trim()}) ready`);
   }
 }
 
-function assignOrphanGifts() {
-  const users = User.findAll();
+async function assignOrphanGifts() {
+  const users = await User.findAll();
   if (users.length === 0) return;
 
-  const result = db.exec('SELECT COUNT(*) FROM gifts WHERE user_id IS NULL');
-  const orphanCount = result[0]?.values[0]?.[0] || 0;
-
+  const orphanCount = await Gift.assignOrphans(users[0].id);
   if (orphanCount > 0) {
-    const firstUser = users[0];
-    db.run('UPDATE gifts SET user_id = ? WHERE user_id IS NULL', [firstUser.id]);
-    saveDB();
-    console.log(`📦 Assigned ${orphanCount} existing gift(s) to "${firstUser.name}"`);
+    console.log(`📦 Assigned ${orphanCount} existing gift(s) to "${users[0].name}"`);
   }
 }
 
-function saveDB() {
-  const data = db.export();
-  const buffer = Buffer.from(data);
-  fs.writeFileSync(DB_FILE, buffer);
-}
-
-// Configure CORS with allowed origins
+// CORS
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl requests, or same-origin requests)
     if (!origin) return callback(null, true);
-    // Allow all origins if wildcard is set (production mode)
     if (config.allowedOrigins.includes('*')) return callback(null, true);
-    // Check if origin is in allowed list
     if (config.allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'CORS policy: This origin is not allowed';
-      return callback(new Error(msg), false);
+      return callback(new Error('CORS policy: This origin is not allowed'), false);
     }
     return callback(null, true);
   },
   credentials: true
 }));
 
-// Logging middleware (skip in test environment)
 if (!config.skipMorganInTest) {
   app.use(morgan('dev'));
 }
@@ -133,313 +115,293 @@ if (!config.skipMorganInTest) {
 app.use(express.json());
 app.use(express.static('public'));
 
-// Middleware to verify admin password from header (global)
-function requireAdminAuth(req, res, next) {
-  const adminPassword = req.get('X-Admin-Password');
-  if (!adminPassword || adminPassword !== ADMIN_PASSWORD) {
-    return res.status(403).json({ error: 'Unauthorized: Invalid admin password' });
-  }
-  next();
-}
+// Auth middleware on all routes
+app.use(extractAuth);
 
-// Middleware to resolve user from :slug param
+// ==================== HELPER MIDDLEWARE ====================
+
 function resolveUser(req, res, next) {
-  const user = User.findBySlug(req.params.slug);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-  req.wishlistUser = user;
-  next();
+  (async () => {
+    const user = await User.findBySlug(req.params.slug);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    req.wishlistUser = user;
+    next();
+  })().catch(next);
 }
 
-// Middleware to verify per-user admin password
-function requireUserAuth(req, res, next) {
-  const adminPassword = req.get('X-Admin-Password');
-  if (!req.wishlistUser) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-  if (!adminPassword || adminPassword !== req.wishlistUser.admin_password) {
-    return res.status(403).json({ error: 'Unauthorized: Invalid admin password' });
-  }
-  next();
-}
+// ==================== AUTH ROUTES ====================
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  const uptime = Math.floor((Date.now() - startTime) / 1000);
+// Get auth config (SSO availability)
+app.get('/api/auth/config', (req, res) => {
+  res.json({
+    sso: config.authentikEnabled,
+    ssoUrl: config.authentikEnabled ? config.authentikUrl : null
+  });
+});
 
+// Login with password → JWT
+app.post('/api/auth/login', adminAuthLimiter, async (req, res) => {
   try {
-    const giftCount = db.exec('SELECT COUNT(*) as count FROM gifts')[0]?.values[0]?.[0] || 0;
+    const { slug, password } = req.body;
+    if (!slug || !password) {
+      return res.status(400).json({ error: 'slug and password required' });
+    }
 
-    res.json({
-      status: 'ok',
-      uptime: `${uptime}s`,
-      database: {
-        connected: true,
-        gifts: giftCount
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch {
-    res.status(500).json({
-      status: 'error',
-      error: 'Database connection failed'
-    });
+    const user = await User.findBySlug(slug);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const valid = await User.verifyPassword(user, password);
+    if (!valid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = generateToken(user);
+    res.json({ token, user: User.sanitizeUser(user) });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 
-// Verify admin password (global - backward compatible)
-app.post('/api/verify-password', adminAuthLimiter, (req, res) => {
-  const adminPassword = req.get('X-Admin-Password');
-  if (!adminPassword || adminPassword !== ADMIN_PASSWORD) {
-    return res.status(403).json({ error: 'Invalid password' });
+// SSO login — called when Authentik headers are present
+app.post('/api/auth/sso', async (req, res) => {
+  try {
+    if (!config.authentikEnabled) {
+      return res.status(404).json({ error: 'SSO not enabled' });
+    }
+
+    const email = req.get('X-Authentik-Email');
+    if (!email) {
+      return res.status(401).json({ error: 'No SSO headers' });
+    }
+
+    const user = await User.findByEmail(email);
+    if (!user) {
+      return res.status(403).json({ error: 'No wishlist account linked to this email' });
+    }
+
+    const token = generateToken(user);
+    res.json({ token, user: User.sanitizeUser(user) });
+  } catch (error) {
+    console.error('SSO login error:', error);
+    res.status(500).json({ error: 'SSO login failed' });
   }
-  res.json({ success: true });
+});
+
+// Get current auth state
+app.get('/api/auth/me', async (req, res) => {
+  if (!req.authUser) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  const user = await User.findById(req.authUser.id);
+  if (!user) {
+    return res.status(401).json({ error: 'User not found' });
+  }
+  res.json(User.sanitizeUser(user));
+});
+
+// ==================== HEALTH ====================
+
+app.get('/health', async (req, res) => {
+  const uptime = Math.floor((Date.now() - startTime) / 1000);
+  try {
+    const giftCount = await Gift.countAll();
+    res.json({
+      status: 'ok',
+      uptime: `${uptime}s`,
+      database: { connected: true, type: db.dialect, gifts: giftCount },
+      timestamp: new Date().toISOString()
+    });
+  } catch {
+    res.status(500).json({ status: 'error', error: 'Database connection failed' });
+  }
 });
 
 // ==================== USER ROUTES ====================
 
-// List all users (public)
-app.get('/api/users', (req, res) => {
-  const users = User.findAll().map(u => User.sanitizeUser(u));
+app.get('/api/users', async (req, res) => {
+  const users = (await User.findAll()).map(u => User.sanitizeUser(u));
   res.json(users);
 });
 
-// Get user by slug (public)
 app.get('/api/users/:slug', resolveUser, (req, res) => {
   res.json(User.sanitizeUser(req.wishlistUser));
 });
 
-// Verify per-user admin password
-app.post('/api/users/:slug/verify-password', adminAuthLimiter, resolveUser, (req, res) => {
-  const adminPassword = req.get('X-Admin-Password');
-  if (!adminPassword || adminPassword !== req.wishlistUser.admin_password) {
-    return res.status(403).json({ error: 'Invalid password' });
+// ==================== CATEGORY & PRIORITY ROUTES ====================
+
+app.get('/api/categories', async (req, res) => {
+  const locale = req.query.locale || 'ru';
+  const categories = await Category.findAll(locale);
+  res.json(categories);
+});
+
+app.post('/api/categories', requireAuth, async (req, res) => {
+  try {
+    const category = await Category.create(req.body);
+    res.json(category);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
-  res.json({ success: true });
+});
+
+app.put('/api/categories/:code', requireAuth, async (req, res) => {
+  const existing = await Category.findByCode(req.params.code);
+  if (!existing) return res.status(404).json({ error: 'Category not found' });
+  const updated = await Category.update(req.params.code, req.body);
+  res.json(updated);
+});
+
+app.delete('/api/categories/:code', requireAuth, async (req, res) => {
+  await Category.delete(req.params.code);
+  res.status(204).send();
+});
+
+app.get('/api/priorities', async (req, res) => {
+  const locale = req.query.locale || 'ru';
+  const priorities = await Priority.findAll(locale);
+  res.json(priorities);
+});
+
+app.post('/api/priorities', requireAuth, async (req, res) => {
+  try {
+    const priority = await Priority.create(req.body);
+    res.json(priority);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.put('/api/priorities/:code', requireAuth, async (req, res) => {
+  const existing = await Priority.findByCode(req.params.code);
+  if (!existing) return res.status(404).json({ error: 'Priority not found' });
+  const updated = await Priority.update(req.params.code, req.body);
+  res.json(updated);
+});
+
+app.delete('/api/priorities/:code', requireAuth, async (req, res) => {
+  await Priority.delete(req.params.code);
+  res.status(204).send();
+});
+
+// ==================== TRANSLATE ====================
+
+app.post('/api/translate', requireAuth, async (req, res) => {
+  try {
+    const { text, from, to } = req.body;
+    if (!text || !from || !to || !Array.isArray(to)) {
+      return res.status(400).json({ error: 'text, from, and to[] are required' });
+    }
+    const result = await translateText(text, from, to);
+    res.json(result);
+  } catch (error) {
+    console.error('Translation error:', error);
+    res.status(500).json({ error: 'Translation failed' });
+  }
 });
 
 // ==================== USER-SCOPED GIFT ROUTES ====================
 
-// List gifts for a user
-app.get('/api/users/:slug/gifts', resolveUser, (req, res) => {
-  const gifts = Gift.findAll(req.wishlistUser.id).map(gift => Gift.sanitizeGift(gift));
+app.get('/api/users/:slug/gifts', resolveUser, async (req, res) => {
+  const gifts = (await Gift.findAll(req.wishlistUser.id)).map(g => Gift.sanitizeGift(g));
   res.json(gifts);
 });
 
-// Get single gift for a user
-app.get('/api/users/:slug/gifts/:id', resolveUser, validateGiftId, (req, res) => {
-  const gift = Gift.findById(parseInt(req.params.id));
+app.get('/api/users/:slug/gifts/:id', resolveUser, validateGiftId, async (req, res) => {
+  const gift = await Gift.findById(parseInt(req.params.id));
   if (!gift || gift.user_id !== req.wishlistUser.id) {
     return res.status(404).json({ error: 'Not found' });
   }
   res.json(Gift.sanitizeGift(gift));
 });
 
-// Create gift for a user
-app.post('/api/users/:slug/gifts', adminAuthLimiter, resolveUser, requireUserAuth, validateGiftCreate, (req, res) => {
-  const gift = Gift.create({ ...req.body, user_id: req.wishlistUser.id });
+app.post('/api/users/:slug/gifts', resolveUser, requireOwner, validateGiftCreate, async (req, res) => {
+  const gift = await Gift.create({ ...req.body, user_id: req.wishlistUser.id });
   res.json(Gift.sanitizeGift(gift));
 });
 
-// Update gift for a user
-app.put('/api/users/:slug/gifts/:id', adminAuthLimiter, resolveUser, requireUserAuth, validateGiftUpdate, (req, res) => {
+app.put('/api/users/:slug/gifts/:id', resolveUser, requireOwner, validateGiftUpdate, async (req, res) => {
   const id = parseInt(req.params.id);
-  const gift = Gift.findById(id);
+  const gift = await Gift.findById(id);
   if (!gift || gift.user_id !== req.wishlistUser.id) {
     return res.status(404).json({ error: 'Not found' });
   }
-  const updated = Gift.update(id, req.body);
+  const updated = await Gift.update(id, req.body);
   res.json(Gift.sanitizeGift(updated));
 });
 
-// Delete gift for a user
-app.delete('/api/users/:slug/gifts/:id', adminAuthLimiter, resolveUser, requireUserAuth, (req, res) => {
+app.delete('/api/users/:slug/gifts/:id', resolveUser, requireOwner, async (req, res) => {
   const id = parseInt(req.params.id);
-  const gift = Gift.findById(id);
+  const gift = await Gift.findById(id);
   if (!gift || gift.user_id !== req.wishlistUser.id) {
     return res.status(404).json({ error: 'Not found' });
   }
-  Gift.delete(id);
+  await Gift.delete(id);
   res.status(204).send();
 });
 
-// Reserve gift for a user
-app.post('/api/users/:slug/gifts/:id/reserve', reservationLimiter, resolveUser, validateReserve, (req, res) => {
+app.post('/api/users/:slug/gifts/:id/reserve', reservationLimiter, resolveUser, validateReserve, async (req, res) => {
   const { secret_code, reserved_by } = req.body;
   const id = parseInt(req.params.id);
 
-  const gift = Gift.findById(id);
+  const gift = await Gift.findById(id);
   if (!gift || gift.user_id !== req.wishlistUser.id) {
     return res.status(404).json({ error: 'Not found' });
   }
   if (gift.reserved) return res.status(400).json({ error: 'Already reserved' });
 
-  const updated = Gift.reserve(id, secret_code, reserved_by);
+  const updated = await Gift.reserve(id, secret_code, reserved_by);
   res.json(Gift.sanitizeGift(updated));
 });
 
-// Unreserve gift for a user
-app.post('/api/users/:slug/gifts/:id/unreserve', reservationLimiter, resolveUser, validateUnreserve, (req, res) => {
+app.post('/api/users/:slug/gifts/:id/unreserve', reservationLimiter, resolveUser, validateUnreserve, async (req, res) => {
   const { secret_code } = req.body;
   const id = parseInt(req.params.id);
 
-  const gift = Gift.findById(id);
+  const gift = await Gift.findById(id);
   if (!gift || gift.user_id !== req.wishlistUser.id) {
     return res.status(404).json({ error: 'Not found' });
   }
   if (!gift.reserved) return res.status(400).json({ error: 'Not reserved' });
   if (gift.secret_code !== secret_code) return res.status(403).json({ error: 'Unauthorized' });
 
-  const updated = Gift.unreserve(id);
+  const updated = await Gift.unreserve(id);
   res.json(Gift.sanitizeGift(updated));
 });
 
-// Mark gift as purchased for a user
-app.post('/api/users/:slug/gifts/:id/purchased', reservationLimiter, resolveUser, validatePurchased, (req, res) => {
+app.post('/api/users/:slug/gifts/:id/purchased', reservationLimiter, resolveUser, validatePurchased, async (req, res) => {
   const { secret_code } = req.body;
   const id = parseInt(req.params.id);
 
-  const gift = Gift.findById(id);
+  const gift = await Gift.findById(id);
   if (!gift || gift.user_id !== req.wishlistUser.id) {
     return res.status(404).json({ error: 'Not found' });
   }
   if (!gift.reserved) return res.status(400).json({ error: 'Not reserved' });
   if (gift.secret_code !== secret_code) return res.status(403).json({ error: 'Unauthorized' });
 
-  const updated = Gift.markPurchased(id);
+  const updated = await Gift.markPurchased(id);
   res.json(Gift.sanitizeGift(updated));
 });
 
-// ==================== LEGACY GIFT ROUTES (backward compatible) ====================
+// ==================== METADATA & AI ====================
 
-// API Routes
-app.get('/api/gifts', (req, res) => {
-  const gifts = Gift.findAll().map(gift => Gift.sanitizeGift(gift));
-  res.json(gifts);
-});
-
-app.get('/api/gifts/:id', validateGiftId, (req, res) => {
-  const gift = Gift.findById(parseInt(req.params.id));
-
-  if (!gift) return res.status(404).json({ error: 'Not found' });
-  res.json(Gift.sanitizeGift(gift));
-});
-
-app.post('/api/gifts', adminAuthLimiter, requireAdminAuth, validateGiftCreate, (req, res) => {
-  const gift = Gift.create(req.body);
-  res.json(Gift.sanitizeGift(gift));
-});
-
-app.post('/api/gifts/:id/reserve', reservationLimiter, validateReserve, (req, res) => {
-  const { secret_code, reserved_by } = req.body;
-  const id = parseInt(req.params.id);
-
-  const gift = Gift.findById(id);
-  if (!gift) return res.status(404).json({ error: 'Not found' });
-  if (gift.reserved) return res.status(400).json({ error: 'Already reserved' });
-
-  const updated = Gift.reserve(id, secret_code, reserved_by);
-  res.json(Gift.sanitizeGift(updated));
-});
-
-app.post('/api/gifts/:id/unreserve', reservationLimiter, validateUnreserve, (req, res) => {
-  const { secret_code } = req.body;
-  const id = parseInt(req.params.id);
-
-  const gift = Gift.findById(id);
-  if (!gift) return res.status(404).json({ error: 'Not found' });
-  if (!gift.reserved) return res.status(400).json({ error: 'Not reserved' });
-  if (gift.secret_code !== secret_code) return res.status(403).json({ error: 'Unauthorized' });
-
-  const updated = Gift.unreserve(id);
-  res.json(Gift.sanitizeGift(updated));
-});
-
-app.post('/api/gifts/:id/purchased', reservationLimiter, validatePurchased, (req, res) => {
-  const { secret_code } = req.body;
-  const id = parseInt(req.params.id);
-
-  const gift = Gift.findById(id);
-  if (!gift) return res.status(404).json({ error: 'Not found' });
-  if (!gift.reserved) return res.status(400).json({ error: 'Not reserved' });
-  if (gift.secret_code !== secret_code) return res.status(403).json({ error: 'Unauthorized' });
-
-  const updated = Gift.markPurchased(id);
-  res.json(Gift.sanitizeGift(updated));
-});
-
-app.delete('/api/gifts/:id', adminAuthLimiter, requireAdminAuth, (req, res) => {
-  Gift.delete(parseInt(req.params.id));
-  res.status(204).send();
-});
-
-app.put('/api/gifts/:id', adminAuthLimiter, requireAdminAuth, validateGiftUpdate, (req, res) => {
-  const id = parseInt(req.params.id);
-  const updated = Gift.update(id, req.body);
-
-  if (!updated) return res.status(404).json({ error: 'Not found' });
-  res.json(Gift.sanitizeGift(updated));
-});
-
-// Extract metadata from URL (Open Graph, etc.)
 app.post('/api/extract-metadata', async (req, res) => {
   const { url } = req.body;
-
   if (!url || !url.trim()) {
     return res.status(400).json({ error: 'URL is required' });
   }
-
-  // Basic URL validation
   try {
     new URL(url);
   } catch {
     return res.status(400).json({ error: 'Invalid URL' });
   }
-
   try {
-    const fetch = (await import('node-fetch')).default;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      },
-      timeout: 10000 // 10 second timeout
-    });
-
-    if (!response.ok) {
-      return res.status(400).json({ error: 'Failed to fetch URL' });
-    }
-
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    // Extract Open Graph metadata
-    const metadata = {
-      title: $('meta[property="og:title"]').attr('content') ||
-              $('meta[name="twitter:title"]').attr('content') ||
-              $('title').text() ||
-              null,
-      description: $('meta[property="og:description"]').attr('content') ||
-                   $('meta[name="twitter:description"]').attr('content') ||
-                   $('meta[name="description"]').attr('content') ||
-                   null,
-      image: $('meta[property="og:image"]').attr('content') ||
-             $('meta[name="twitter:image"]').attr('content') ||
-             $('link[rel="image_src"]').attr('href') ||
-             null,
-      url: $('meta[property="og:url"]').attr('content') || url
-    };
-
-    // Resolve relative URLs for images
-    if (metadata.image && !metadata.image.startsWith('http')) {
-      try {
-        const baseUrl = new URL(url);
-        metadata.image = new URL(metadata.image, baseUrl.origin).href;
-      } catch {
-        metadata.image = null;
-      }
-    }
-
+    const metadata = await extractMetadata(url);
     res.json(metadata);
   } catch (error) {
     console.error('Metadata extraction error:', error);
@@ -447,93 +409,53 @@ app.post('/api/extract-metadata', async (req, res) => {
   }
 });
 
-// AI-powered gift parsing endpoint
 app.post('/api/parse-gift', async (req, res) => {
   const { text, locale = 'ru' } = req.body;
 
   if (!text || text.trim().length === 0) {
     return res.status(400).json({ error: 'Text is required' });
   }
-
   if (!config.geminiApiKey) {
     return res.status(500).json({ error: 'Gemini API key not configured' });
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: config.geminiModel });
-
     // Check if text is a URL and extract metadata
     let metadata = {};
     let isUrl = false;
     try {
       new URL(text.trim());
       isUrl = true;
-
-      // Try to extract metadata from URL
       try {
-        const fetch = (await import('node-fetch')).default;
-        const response = await fetch(text.trim(), {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          },
-          timeout: 10000
-        });
-
-        if (response.ok) {
-          const html = await response.text();
-          const $ = cheerio.load(html);
-
-          metadata = {
-            title: $('meta[property="og:title"]').attr('content') ||
-                    $('meta[name="twitter:title"]').attr('content') ||
-                    $('title').text() ||
-                    null,
-            description: $('meta[property="og:description"]').attr('content') ||
-                         $('meta[name="twitter:description"]').attr('content') ||
-                         $('meta[name="description"]').attr('content') ||
-                         null,
-            image: $('meta[property="og:image"]').attr('content') ||
-                   $('meta[name="twitter:image"]').attr('content') ||
-                   $('link[rel="image_src"]').attr('href') ||
-                   null
-          };
-
-          // Resolve relative URLs for images
-          if (metadata.image && !metadata.image.startsWith('http')) {
-            try {
-              const baseUrl = new URL(text.trim());
-              metadata.image = new URL(metadata.image, baseUrl.origin).href;
-            } catch {
-              metadata.image = null;
-            }
-          }
-        }
+        metadata = await extractMetadata(text.trim());
       } catch {
         console.log('Could not extract metadata, continuing with AI only');
       }
     } catch {
-      // Not a URL, continue with AI only
+      // Not a URL
     }
 
-    // Build prompt with metadata context
+    // Build category list dynamically from DB
+    const categories = await Category.findAll(locale);
+    const priorities = await Priority.findAll(locale);
+    const categoryList = categories.map(c => c.code).join(', ');
+    const priorityList = priorities.map(p => `${p.code} (${p.emoji} ${p.name})`).join(', ');
+
     let inputText = text;
     if (isUrl && metadata.title) {
-      inputText = `URL: ${text}\n\nPage Info:\nTitle: ${metadata.title}\nDescription: ${metadata.description || 'N/A'}\nImage: ${metadata.image || 'N/A'}\n\nUser can provide more context about this gift.`;
+      inputText = `URL: ${text}\n\nPage Info:\nTitle: ${metadata.title}\nDescription: ${metadata.description || 'N/A'}\nImage: ${metadata.image || 'N/A'}`;
     }
 
-    // Determine description language based on locale
-    const languageMap = {
-      'ru': 'Russian',
-      'en': 'English',
-      'sr': 'Serbian'
-    };
+    const languageMap = { ru: 'Russian', en: 'English', sr: 'Serbian' };
     const descriptionLanguage = languageMap[locale] || 'Russian';
+
+    const genAI = new GoogleGenerativeAI(config.geminiApiKey);
+    const model = genAI.getGenerativeModel({ model: config.geminiModel });
 
     const prompt = `Extract gift information from the following text or link and GENERATE a personal, practical description in ${descriptionLanguage}. Return ONLY valid JSON without any additional text or formatting.
 
-Available categories: electronics, home, accessories, education, games, clothing, sports, creativity
-Available priorities: hot (🔥 Очень хочу), medium (⭐ Было бы здорово), low (💭 Просто мечта)
+Available categories: ${categoryList}
+Available priorities: ${priorityList}
 
 Text/Link: ${inputText}
 
@@ -542,8 +464,8 @@ ${isUrl && metadata.image ? `IMPORTANT: The image URL "${metadata.image}" was fo
 Return JSON in this exact format:
 {
   "name": "gift name",
-  "description": "personal explanation of why someone would want this and how it would be useful in their daily life",
-  "price": "price with currency symbol (e.g., 5000 ₽, $100)",
+  "description": "personal explanation of why someone would want this",
+  "price": "price with currency symbol or null",
   "category": "one of the available categories",
   "priority": "hot, medium, or low",
   "link": "product URL or null",
@@ -551,73 +473,37 @@ Return JSON in this exact format:
 }
 
 Rules:
-- ALWAYS generate a personal description in ${descriptionLanguage}, even if one exists on the product page
-- Focus on WHY someone would want this: what problems it solves, how it fits into their life, what they can do with it
-- AVOID marketing language and promotional phrases
-- Think from the wishlist owner's perspective: "I want this because..."
-- Mention practical use cases and personal benefits, not just technical features
-- Keep descriptions concise (1-2 sentences) but personal and meaningful
-- If input is a URL, extract product info (name, price, image) and write original description in ${descriptionLanguage}
-- For image_url: look for image links in the text, or common product image patterns like:
-  * amazon.com/images/...
-  * .jpg, .png, .webp URLs
-  * cdn URLs, product photos
-- If no image is explicitly mentioned or found, set image_url to null (DO NOT make up URLs)
-- Detect category from keywords (console, laptop, phone -> electronics, book -> education, etc.)
-- Priority hot: phrases like "очень хочу", "need", "must have", "хочу"
-- Priority medium: phrases like "было бы здорово", "would be nice", "хотелось бы"
-- Priority low: phrases like "мечта", "someday", "just thinking", "мечтаю"
+- ALWAYS generate a personal description in ${descriptionLanguage}
+- Focus on WHY someone would want this
+- Keep descriptions concise (1-2 sentences) but personal
 - Default to medium priority if unclear
-- Return null for missing optional fields (price, link, image_url), but ALWAYS include description
-- Return ONLY JSON, no explanations
-
-Examples:
-Text: "Хочу iPhone 15 Pro 256GB"
-Response: {"name": "iPhone 15 Pro 256GB", "description": "Нужен для работы и творчества — быстрая обработка фото, удобная multitasking и отличная камера для ежедневных снимков", "price": null, "category": "electronics", "priority": "hot", "link": null, "image_url": null}
-
-Text: "https://example.com/product/playstation-5"
-Response: {"name": "PlayStation 5", "description": "Хочу для вечеров с друзьями и эксклюзивных игр, которые не выходят на PC — расслабиться и поиграть в любимые серии", "price": null, "category": "games", "priority": "medium", "link": "https://example.com/product/playstation-5", "image_url": null}
-
-Text: "I really want a mechanical keyboard"
-Response: {"name": "Mechanical Keyboard", "description": "Устал от мягких клавиш — хочу тактильные ощущения и комфорт при печатании кода весь день, плюс подсветка для вечерней работы", "price": null, "category": "electronics", "priority": "hot", "link": null, "image_url": null}
-
-Text: "Нужна хорошая кофеварка"
-Response: {"name": "Кофеварка", "description": "Чтобы не тратить время на очередь в кофейню каждое утро и сэкономить деньги — свежий кофе дома перед работой", "price": null, "category": "home", "priority": "medium", "link": null, "image_url": null}`;
+- Return null for missing optional fields
+- Return ONLY JSON, no explanations`;
 
     const result = await model.generateContent(prompt);
     const response = result.response.text().trim();
-
-    // Clean up response (remove markdown code blocks if present)
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     let parsedData;
     try {
       parsedData = JSON.parse(cleanedResponse);
     } catch {
-      console.error('Failed to parse Gemini response:', cleanedResponse);
       return res.status(500).json({ error: 'Failed to parse AI response' });
     }
 
-    // Validate and sanitize response
-    const validCategories = ['electronics', 'home', 'accessories', 'education', 'games', 'clothing', 'sports', 'creativity'];
-    const validPriorities = ['hot', 'medium', 'low'];
+    const validCategories = categories.map(c => c.code);
+    const validPriorities = priorities.map(p => p.code);
 
     if (!parsedData.name) {
       return res.status(500).json({ error: 'AI could not extract gift name' });
     }
-
-    // Ensure category is valid, default to 'electronics'
-    if (!parsedData.category || !validCategories.includes(parsedData.category)) {
-      parsedData.category = 'electronics';
+    if (!validCategories.includes(parsedData.category)) {
+      parsedData.category = validCategories[0] || 'electronics';
     }
-
-    // Ensure priority is valid, default to 'medium'
-    if (!parsedData.priority || !validPriorities.includes(parsedData.priority)) {
+    if (!validPriorities.includes(parsedData.priority)) {
       parsedData.priority = 'medium';
     }
-
-    // If AI didn't find an image but we extracted one from metadata, use it
-    if ((!parsedData.image_url || parsedData.image_url === null) && metadata.image) {
+    if (!parsedData.image_url && metadata.image) {
       parsedData.image_url = metadata.image;
     }
 
@@ -628,39 +514,32 @@ Response: {"name": "Кофеварка", "description": "Чтобы не тра�
   }
 });
 
-// 404 handler for undefined /api/* routes
+// ==================== ERROR HANDLING ====================
+
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
 
-// Global error handler
 app.use((err, req, res, _next) => {
   console.error('Error:', err);
-
-  // Handle validation errors
   if (err.name === 'ValidationError') {
     return res.status(400).json({ error: err.message });
   }
-
-  // Handle CORS errors
   if (err.message && err.message.includes('CORS')) {
     return res.status(403).json({ error: 'Origin not allowed' });
   }
-
-  // Default error response
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Serve static files from public directory in production
+// Static files & SPA fallback
 if (process.env.NODE_ENV !== 'development') {
   app.use(express.static(path.join(__dirname, 'public')));
-  // SPA fallback - serve index.html for all non-API routes
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   });
 }
 
-// Initialize and start server
+// Start
 initDB().then(() => {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
