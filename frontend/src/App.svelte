@@ -209,8 +209,8 @@
       case 'name':
         return a.name.localeCompare(b.name);
       case 'price': {
-        const priceA = a.price_amount ?? Infinity;
-        const priceB = b.price_amount ?? Infinity;
+        const priceA = a.price_rsd ?? Infinity;
+        const priceB = b.price_rsd ?? Infinity;
         return priceA - priceB;
       }
       case 'created_at':

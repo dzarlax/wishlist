@@ -26,8 +26,10 @@ class GiftModel {
    */
   async findAll(userId = null) {
     const sql = `
-      SELECT g.* FROM gifts g
+      SELECT g.*, COALESCE(g.price_amount * cr.rate_to_rsd, NULL) as price_rsd
+      FROM gifts g
       LEFT JOIN priorities p ON g.priority_code = p.code
+      LEFT JOIN currency_rates cr ON g.price_currency = cr.currency
       ${userId !== null ? 'WHERE g.user_id = ?' : ''}
       ORDER BY COALESCE(p.sort_order, 99), g.created_at DESC
     `;
