@@ -8,8 +8,15 @@ class GiftModel {
   sanitizeGift(gift) {
     if (!gift) return null;
     const { secret_code, ...sanitized } = gift;
-    // Normalize reserved to boolean
     sanitized.reserved = Boolean(sanitized.reserved);
+    // Build display price: prefer structured fields, fall back to legacy text
+    if (sanitized.price_amount != null) {
+      const symbols = { EUR: '€', USD: '$', RSD: 'RSD' };
+      const sym = symbols[sanitized.price_currency] || sanitized.price_currency || '';
+      sanitized.price_display = `${sanitized.price_amount} ${sym}`.trim();
+    } else {
+      sanitized.price_display = sanitized.price || null;
+    }
     return sanitized;
   }
 
@@ -33,24 +40,24 @@ class GiftModel {
   }
 
   async create(data) {
-    const { name, description, category_code, priority_code, link, image_url, price, user_id } = data;
+    const { name, description, category_code, priority_code, link, image_url, price, price_amount, price_currency, user_id } = data;
 
     const id = await this.db.insert(
-      `INSERT INTO gifts (name, description, category_code, priority_code, link, image_url, price, user_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name || null, description || null, category_code || null, priority_code || null, link || null, image_url || null, price || null, user_id || null]
+      `INSERT INTO gifts (name, description, category_code, priority_code, link, image_url, price, price_amount, price_currency, user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name || null, description || null, category_code || null, priority_code || null, link || null, image_url || null, price || null, price_amount || null, price_currency || 'EUR', user_id || null]
     );
     return this.findById(id);
   }
 
   async update(id, data) {
-    const { name, description, category_code, priority_code, link, image_url, price } = data;
+    const { name, description, category_code, priority_code, link, image_url, price, price_amount, price_currency } = data;
 
     await this.db.run(
       `UPDATE gifts
-       SET name = ?, description = ?, category_code = ?, priority_code = ?, link = ?, image_url = ?, price = ?
+       SET name = ?, description = ?, category_code = ?, priority_code = ?, link = ?, image_url = ?, price = ?, price_amount = ?, price_currency = ?
        WHERE id = ?`,
-      [name || null, description || null, category_code || null, priority_code || null, link || null, image_url || null, price || null, id]
+      [name || null, description || null, category_code || null, priority_code || null, link || null, image_url || null, price || null, price_amount || null, price_currency || null, id]
     );
     return this.findById(id);
   }

@@ -158,7 +158,7 @@
   </div>
 
   <!-- Price -->
-  {#if gift.price}
+  {#if gift.price_display || gift.price}
     <div
       role="button"
       tabindex="0"
@@ -168,7 +168,7 @@
       aria-label="View details for {gift.name}"
     >
       <span class="font-mono {designSystem.text.lg} {designSystem.color.status.available.text} {designSystem.color.status.available.textDark}">
-        {$formatPrice(gift.price)}
+        {gift.price_display || $formatPrice(gift.price)}
       </span>
     </div>
   {/if}

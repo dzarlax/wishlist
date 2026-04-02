@@ -17,7 +17,8 @@
   let description = '';
   let category = '';
   let priority = '';
-  let price = '';
+  let priceAmount = '';
+  let priceCurrency = 'EUR';
   let link = '';
   let imageUrl = '';
   let loading = false;
@@ -62,7 +63,8 @@
     } else {
       priority = 'medium';
     }
-    price = gift.price || '';
+    priceAmount = gift.price_amount != null ? String(gift.price_amount) : '';
+    priceCurrency = gift.price_currency || 'EUR';
     link = gift.link || '';
     imageUrl = gift.image_url || '';
   });
@@ -85,7 +87,10 @@
         priority_code: priority,
       };
 
-      if (price.trim()) payload.price = price.trim();
+      if (priceAmount) {
+        payload.price_amount = parseFloat(priceAmount);
+        payload.price_currency = priceCurrency;
+      }
       if (link.trim()) payload.link = link.trim();
       if (imageUrl.trim()) payload.image_url = imageUrl.trim();
 
@@ -244,12 +249,24 @@
           <label for="edit-gift-price" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
             >{$t('modals.add.price')}</label
           >
-          <input
-            id="edit-gift-price"
-            type="text"
-            bind:value={price}
-            class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
-          />
+          <div class="flex gap-2">
+            <input
+              id="edit-gift-price"
+              type="number"
+              step="0.01"
+              bind:value={priceAmount}
+              placeholder="0.00"
+              class="flex-1 {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+            />
+            <select
+              bind:value={priceCurrency}
+              class="w-20 {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+            >
+              <option value="EUR">€</option>
+              <option value="USD">$</option>
+              <option value="RSD">RSD</option>
+            </select>
+          </div>
         </div>
 
         <div>

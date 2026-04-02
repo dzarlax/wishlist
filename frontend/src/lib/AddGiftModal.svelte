@@ -17,7 +17,8 @@
   let description = '';
   let category = 'electronics';
   let priority = 'medium';
-  let price = '';
+  let priceAmount = '';
+  let priceCurrency = 'EUR';
   let link = '';
   let imageUrl = '';
   let loading = false;
@@ -53,8 +54,7 @@
     const descError = validators.description(description);
     if (descError) errors.description = descError;
 
-    const priceError = validators.price(price);
-    if (priceError) errors.price = priceError;
+    if (priceAmount && isNaN(parseFloat(priceAmount))) errors.price = 'Invalid number';
 
     const linkError = validators.link(link);
     if (linkError) errors.link = linkError;
@@ -82,18 +82,21 @@
         priority_code: priority,
       };
 
-      if (price.trim()) payload.price = price.trim();
+      if (priceAmount) {
+        payload.price_amount = parseFloat(priceAmount);
+        payload.price_currency = priceCurrency;
+      }
       if (link.trim()) payload.link = link.trim();
       if (imageUrl.trim()) payload.image_url = imageUrl.trim();
 
       await createUserGift(userSlug, payload);
 
-      // Reset form
       name = '';
       description = '';
       category = 'electronics';
       priority = 'medium';
-      price = '';
+      priceAmount = '';
+      priceCurrency = 'EUR';
       link = '';
       imageUrl = '';
 
@@ -150,7 +153,17 @@
       if (result.description) description = result.description;
       if (result.category) category = result.category;
       if (result.priority) priority = result.priority;
-      if (result.price) price = result.price;
+      if (result.price_amount) {
+        priceAmount = String(result.price_amount);
+        priceCurrency = result.price_currency || 'EUR';
+      } else if (result.price) {
+        // Legacy fallback from AI — try to parse
+        const match = result.price.match(/([\d.,]+)/);
+        if (match) priceAmount = match[1].replace(/,/g, '');
+        if (result.price.includes('$')) priceCurrency = 'USD';
+        else if (/RSD/i.test(result.price)) priceCurrency = 'RSD';
+        else priceCurrency = 'EUR';
+      }
       if (result.link) link = result.link;
       if (result.image_url) imageUrl = result.image_url;
 
@@ -308,13 +321,28 @@
           <label for="gift-price" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
             >{$t('modals.add.price')}</label
           >
-          <input
-            id="gift-price"
-            type="text"
-            bind:value={price}
-            placeholder={$t('modals.add.pricePlaceholder')}
-            class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
-          />
+          <div class="flex gap-2">
+            <input
+              id="gift-price"
+              type="number"
+              step="0.01"
+              bind:value={priceAmount}
+              placeholder="0.00"
+              class="flex-1 {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+              class:border-red-500={errors.price}
+            />
+            <select
+              bind:value={priceCurrency}
+              class="w-20 {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+            >
+              <option value="EUR">€</option>
+              <option value="USD">$</option>
+              <option value="RSD">RSD</option>
+            </select>
+          </div>
+          {#if errors.price}
+            <p class="mt-1 text-sm text-red-400">{errors.price}</p>
+          {/if}
         </div>
 
         <div>
