@@ -178,15 +178,20 @@ app.get('/api/auth/sso/redirect', (req, res) => {
     redirect_uri: `${config.appUrl}/api/auth/sso/callback`,
     scope: 'openid email profile',
   });
+  // Support silent auth check (prompt=none)
+  if (req.query.prompt === 'none') {
+    params.set('prompt', 'none');
+  }
   res.redirect(`${config.authentikUrl}/application/o/authorize/?${params}`);
 });
 
 // SSO: callback from Authentik with authorization code
 app.get('/api/auth/sso/callback', async (req, res) => {
   try {
-    const { code } = req.query;
-    if (!code) {
-      return res.redirect('/#/login-error?error=no_code');
+    const { code, error: authError } = req.query;
+    // Silent auth failed (prompt=none, user not logged in) — just go home quietly
+    if (authError || !code) {
+      return res.redirect('/');
     }
 
     // Exchange code for tokens

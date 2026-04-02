@@ -53,11 +53,17 @@ function createAuthStore() {
         if (res.ok) {
           user.set(await res.json());
         } else {
-          // Token expired or invalid
           logout();
         }
       } catch {
         logout();
+      }
+    } else {
+      // No token — try silent SSO if enabled
+      let cfg;
+      ssoConfig.subscribe(v => cfg = v)();
+      if (cfg?.sso) {
+        trySilentSso();
       }
     }
 
@@ -106,6 +112,20 @@ function createAuthStore() {
     }
     token.set(null);
     user.set(null);
+  }
+
+  /**
+   * Try silent SSO: full redirect with prompt=none.
+   * If Authentik has a session → instant redirect back with token.
+   * If not → Authentik returns error → callback redirects to /#/login-error → we ignore it.
+   * Only attempt once per session to avoid redirect loops.
+   */
+  function trySilentSso() {
+    if (!isBrowser) return;
+    const TRIED_KEY = 'sso_silent_tried';
+    if (sessionStorage.getItem(TRIED_KEY)) return;
+    sessionStorage.setItem(TRIED_KEY, '1');
+    window.location.assign('/api/auth/sso/redirect?prompt=none');
   }
 
   /**

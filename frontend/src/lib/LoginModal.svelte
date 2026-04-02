@@ -33,7 +33,8 @@
   }
 
   function handleSsoLogin() {
-    window.location.href = '/api/auth/sso/redirect';
+    // Direct navigation — must use assign to escape the modal/SPA
+    window.location.assign('/api/auth/sso/redirect');
   }
 
   function handleClickOutside(event) {
