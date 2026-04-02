@@ -48,7 +48,7 @@
 
 <div
   class="flex items-center gap-3 px-4 py-3 rounded-none border shadow-editorial backdrop-blur-md {styles.bg} {styles.border} {styles.text}"
-  transition:fly={{ x: 100, opacity: 0, duration: 300 }}
+  transition:fly={{ y: -30, opacity: 0, duration: 300 }}
   role="alert"
 >
   <span class="text-lg flex-shrink-0">{styles.icon}</span>
