@@ -175,11 +175,11 @@
     return prio ? prio.sort_order : 99;
   }
 
-  // Split gifts into active and purchased
-  $: activeGifts = gifts.filter((gift) => gift.status !== 'purchased');
-  $: purchasedGifts = gifts.filter((gift) => gift.status === 'purchased');
+  // Split gifts into active and gifted (archive)
+  $: activeGifts = gifts.filter((gift) => gift.status !== 'gifted');
+  $: giftedGifts = gifts.filter((gift) => gift.status === 'gifted');
 
-  $: sortedPurchasedGifts = [...purchasedGifts].sort((a, b) => {
+  $: sortedGiftedGifts = [...giftedGifts].sort((a, b) => {
     const dateA = new Date(a.reserved_at || a.created_at).getTime();
     const dateB = new Date(b.reserved_at || b.created_at).getTime();
     return dateB - dateA;
@@ -286,6 +286,17 @@
     } finally {
       secretCodeGift = null;
       secretCodeAction = null;
+    }
+  }
+
+  async function handleMarkGifted(gift) {
+    try {
+      const { giftUserGift } = await import('./lib/utils/api.js');
+      await giftUserGift(currentUser.slug, gift.id);
+      toasts.success($t('toasts.markedGifted'));
+      loadGifts();
+    } catch (error) {
+      toasts.error(error.message || $t('toasts.error'));
     }
   }
 
@@ -518,6 +529,7 @@
                 on:delete={() => openDeleteModal(gift)}
                 on:purchased={(e) => requestSecretCode(gift, 'purchased')}
                 on:unreserve={(e) => requestSecretCode(gift, 'unreserve')}
+                on:gifted={() => handleMarkGifted(gift)}
                 on:refresh={loadGifts}
               />
             </div>
@@ -525,22 +537,22 @@
         </div>
       {/if}
 
-      <!-- Purchased Gifts Section -->
-      {#if sortedPurchasedGifts.length > 0}
+      <!-- Gifted Gifts Section (Archive) -->
+      {#if sortedGiftedGifts.length > 0}
         <div class="mt-8 sm:mt-10">
           <button
             on:click={() => showPurchased = !showPurchased}
             class="flex items-center gap-2 text-sm text-black/50 dark:text-white/50 hover:text-black/70 dark:hover:text-white/70 transition-colors duration-200 mb-4"
           >
             <span class="text-xs transition-transform duration-200" class:rotate-90={showPurchased}>&#9654;</span>
-            <span>{$t('filters.purchasedSection')}</span>
-            <span class="px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5 text-xs">{sortedPurchasedGifts.length}</span>
+            <span>{$t('filters.giftedSection')}</span>
+            <span class="px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5 text-xs">{sortedGiftedGifts.length}</span>
           </button>
 
           {#if showPurchased}
             <div transition:slide={{ duration: 300 }}>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 opacity-75">
-                {#each sortedPurchasedGifts as gift, index (gift.id)}
+                {#each sortedGiftedGifts as gift, index (gift.id)}
                   <div>
                     <GiftCard
                       {gift}
@@ -553,6 +565,7 @@
                       on:reserve={() => openReserveModal(gift)}
                       on:delete={() => openDeleteModal(gift)}
                       on:unreserve={(e) => requestSecretCode(gift, 'unreserve')}
+                      on:gifted={() => handleMarkGifted(gift)}
                       on:refresh={loadGifts}
                     />
                   </div>

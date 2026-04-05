@@ -95,6 +95,11 @@ class GiftModel {
     return this.findById(id);
   }
 
+  async markGifted(id) {
+    await this.db.run("UPDATE gifts SET status = 'gifted' WHERE id = ?", [id]);
+    return this.findById(id);
+  }
+
   async countAll() {
     const row = await this.db.getOne('SELECT COUNT(*) as count FROM gifts');
     return row?.count || 0;

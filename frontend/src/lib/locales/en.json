@@ -17,6 +17,7 @@
     "reserved": "Reserved",
     "purchased": "Purchased",
     "purchasedSection": "Purchased gifts",
+    "giftedSection": "Gifted gifts",
     "resultsCount": "Showing {count} of {total}",
     "sortBy": "Sort by",
     "sortByPriority": "By priority",
@@ -38,12 +39,14 @@
   "status": {
     "available": "Available",
     "reserved": "Reserved",
-    "purchased": "Purchased"
+    "purchased": "Purchased",
+    "gifted": "Gifted"
   },
   "actions": {
     "reserve": "Reserve",
     "unreserve": "Cancel",
     "markPurchased": "Purchased",
+    "markGifted": "Gifted",
     "edit": "Edit",
     "delete": "Delete",
     "cancel": "Cancel",
@@ -132,6 +135,7 @@
     "reserved": "Gift reserved!",
     "unreserved": "Reservation cancelled!",
     "markedPurchased": "Gift marked as purchased!",
+    "markedGifted": "Gift marked as gifted!",
     "error": "An error occurred",
     "invalidSecretCode": "Invalid secret code",
     "copySuccess": "Copied!"

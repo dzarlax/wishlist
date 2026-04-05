@@ -17,6 +17,7 @@
     "reserved": "Rezervisano",
     "purchased": "Kupljeno",
     "purchasedSection": "Kupljeni pokloni",
+    "giftedSection": "Poklonjeni pokloni",
     "resultsCount": "Prikazano {count} od {total}",
     "sortBy": "Sortiraj",
     "sortByPriority": "Po prioritetu",
@@ -38,12 +39,14 @@
   "status": {
     "available": "Dostupno",
     "reserved": "Rezervisano",
-    "purchased": "Kupljeno"
+    "purchased": "Kupljeno",
+    "gifted": "Poklonjeno"
   },
   "actions": {
     "reserve": "Rezerviši",
     "unreserve": "Otkaži",
     "markPurchased": "Kupljeno",
+    "markGifted": "Poklonjeno",
     "edit": "Uredi",
     "delete": "Obriši",
     "cancel": "Otkaži",
@@ -132,6 +135,7 @@
     "reserved": "Poklon rezervisan!",
     "unreserved": "Rezervacija otkazana!",
     "markedPurchased": "Poklon označen kao kupljen!",
+    "markedGifted": "Poklon označen kao poklonjen!",
     "error": "Došlo je do greške",
     "invalidSecretCode": "Nevažeći tajni kod",
     "copySuccess": "Kopirano!"

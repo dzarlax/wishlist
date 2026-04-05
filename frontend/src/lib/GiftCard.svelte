@@ -60,10 +60,18 @@
       case 'purchased':
         return {
           text: `✅ ${$t('status.purchased')}`,
-          dotClass: 'bg-emerald-500',
-          textClass: 'text-emerald-700 dark:text-emerald-300',
-          bgClass: 'bg-emerald-500/10',
-          borderClass: 'border-emerald-500/30'
+          dotClass: 'bg-blue-500',
+          textClass: 'text-blue-700 dark:text-blue-300',
+          bgClass: 'bg-blue-500/10',
+          borderClass: 'border-blue-500/30'
+        };
+      case 'gifted':
+        return {
+          text: `🎉 ${$t('status.gifted')}`,
+          dotClass: 'bg-violet-500',
+          textClass: 'text-violet-700 dark:text-violet-300',
+          bgClass: 'bg-violet-500/10',
+          borderClass: 'border-violet-500/30'
         };
       default:
         return { text: '', dotClass: '', textClass: '', bgClass: '', borderClass: '' };
@@ -222,15 +230,27 @@
   <!-- Reserve / Purchased / Unreserve buttons — visible to everyone -->
   {#if gift.status === 'available'}
     <div class="px-5 pt-3 pb-5">
-      <button
-        on:click={handleReserve}
-        disabled={loading}
-        class="w-full min-w-[fit-content] whitespace-nowrap py-2.5 px-4 rounded-full font-medium {designSystem.color.primary.bg} {designSystem.color.primary.bgDark} {designSystem.color.primary.text} {designSystem.color.primary.textDark} {designSystem.color.primary.hover} {designSystem.color.primary.hoverDark} shadow-editorial disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
-      >
-        <span class="flex items-center justify-center gap-2">
-          🎁 {$t('actions.reserve')}
-        </span>
-      </button>
+      <div class="flex gap-2">
+        <button
+          on:click={handleReserve}
+          disabled={loading}
+          class="flex-1 min-w-[fit-content] whitespace-nowrap py-2.5 px-4 rounded-full font-medium {designSystem.color.primary.bg} {designSystem.color.primary.bgDark} {designSystem.color.primary.text} {designSystem.color.primary.textDark} {designSystem.color.primary.hover} {designSystem.color.primary.hoverDark} shadow-editorial disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
+        >
+          <span class="flex items-center justify-center gap-2">
+            🎁 {$t('actions.reserve')}
+          </span>
+        </button>
+        {#if isOwner}
+          <button
+            on:click={() => dispatch('gifted')}
+            disabled={loading}
+            class="min-w-[fit-content] whitespace-nowrap py-2.5 px-4 rounded-full font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-editorial disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
+            title={$t('actions.markGifted')}
+          >
+            🎉
+          </button>
+        {/if}
+      </div>
     </div>
   {:else if gift.status === 'reserved'}
     <div class="px-5 pt-3 pb-5">
@@ -244,6 +264,16 @@
             ✅ {$t('actions.markPurchased')}
           </span>
         </button>
+        {#if isOwner}
+          <button
+            on:click={() => dispatch('gifted')}
+            disabled={loading}
+            class="min-w-[fit-content] whitespace-nowrap py-2 px-4 rounded-full font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-editorial disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
+            title={$t('actions.markGifted')}
+          >
+            🎉
+          </button>
+        {/if}
         <button
           on:click={handleUnreserve}
           disabled={loading}
@@ -257,16 +287,31 @@
     </div>
   {:else if gift.status === 'purchased'}
     <div class="px-5 pt-3 pb-5">
-      <button
-        on:click={handleUnreserve}
-        disabled={loading}
-        class="w-full min-w-[fit-content] whitespace-nowrap py-2 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
-      >
-        <span class="flex items-center justify-center gap-2">
-          🔄 {$t('actions.unreserve')}
-        </span>
-      </button>
+      <div class="flex gap-2">
+        {#if isOwner}
+          <button
+            on:click={() => dispatch('gifted')}
+            disabled={loading}
+            class="flex-1 min-w-[fit-content] whitespace-nowrap py-2 px-4 rounded-full font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-editorial disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <span class="flex items-center justify-center gap-2">
+              🎉 {$t('actions.markGifted')}
+            </span>
+          </button>
+        {/if}
+        <button
+          on:click={handleUnreserve}
+          disabled={loading}
+          class="min-w-[fit-content] whitespace-nowrap py-2 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+        >
+          <span class="flex items-center justify-center gap-2">
+            🔄 {$t('actions.unreserve')}
+          </span>
+        </button>
+      </div>
     </div>
+  {:else if gift.status === 'gifted'}
+    <!-- No actions for gifted gifts -->
   {/if}
 </article>
 

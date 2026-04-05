@@ -489,6 +489,19 @@ app.post('/api/users/:slug/gifts/:id/purchased', reservationLimiter, resolveUser
   res.json(Gift.sanitizeGift(updated));
 });
 
+app.post('/api/users/:slug/gifts/:id/gifted', resolveUser, requireOwner, async (req, res) => {
+  const id = parseInt(req.params.id);
+
+  const gift = await Gift.findById(id);
+  if (!gift || gift.user_id !== req.wishlistUser.id) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  if (gift.status === 'gifted') return res.status(400).json({ error: 'Already gifted' });
+
+  const updated = await Gift.markGifted(id);
+  res.json(Gift.sanitizeGift(updated));
+});
+
 // ==================== METADATA & AI ====================
 
 app.post('/api/extract-metadata', async (req, res) => {

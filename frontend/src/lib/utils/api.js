@@ -96,6 +96,10 @@ export async function purchaseUserGift(userSlug, giftId, data) {
   return post(`/api/users/${userSlug}/gifts/${giftId}/purchased`, data);
 }
 
+export async function giftUserGift(userSlug, giftId) {
+  return post(`/api/users/${userSlug}/gifts/${giftId}/gifted`, {});
+}
+
 // ==================== Reference Data API ====================
 
 export async function fetchCategories(locale = 'ru') {

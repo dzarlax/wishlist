@@ -17,6 +17,7 @@
     "reserved": "Забронированные",
     "purchased": "Купленные",
     "purchasedSection": "Купленные подарки",
+    "giftedSection": "Подаренные подарки",
     "resultsCount": "Показано {count} из {total}",
     "sortBy": "Сортировка",
     "sortByPriority": "По приоритету",
@@ -38,12 +39,14 @@
   "status": {
     "available": "Доступно",
     "reserved": "Забронировано",
-    "purchased": "Куплено"
+    "purchased": "Куплено",
+    "gifted": "Подарено"
   },
   "actions": {
     "reserve": "Забронировать",
     "unreserve": "Отменить",
     "markPurchased": "Куплено",
+    "markGifted": "Подарен",
     "edit": "Редактировать",
     "delete": "Удалить",
     "cancel": "Отмена",
@@ -132,6 +135,7 @@
     "reserved": "Подарок забронирован!",
     "unreserved": "Бронирование отменено!",
     "markedPurchased": "Подарок отмечен как купленный!",
+    "markedGifted": "Подарок отмечен как подаренный!",
     "error": "Произошла ошибка",
     "invalidSecretCode": "Неверный секретный код",
     "copySuccess": "Скопировано!"
