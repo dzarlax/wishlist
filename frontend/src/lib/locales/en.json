@@ -173,6 +173,36 @@
     "or": "or",
     "sessionExpired": "Session expired, please log in again"
   },
+  "invite": {
+    "title": "Invite registration",
+    "subtitle": "Create an account for your wishlist.",
+    "name": "Name",
+    "slug": "Wishlist address",
+    "accept": "Create account",
+    "accepted": "Account created",
+    "invalid": "Invite is invalid",
+    "required": "Fill in name, address, and password",
+    "passwordLength": "Password must be at least 8 characters",
+    "acceptFailed": "Could not accept invite",
+    "aiIncluded": "AI access is enabled for this account"
+  },
+  "admin": {
+    "title": "Admin",
+    "createInvite": "Create invite",
+    "nameHint": "Name",
+    "aiAccess": "AI access",
+    "adminAccess": "Admin",
+    "copyLink": "Copy",
+    "linkCopied": "Link copied",
+    "inviteCreated": "Invite created",
+    "inviteRevoked": "Invite revoked",
+    "accessUpdated": "Access updated",
+    "users": "Users",
+    "invites": "Invites",
+    "invite": "Invite",
+    "expires": "expires",
+    "revoke": "Revoke"
+  },
   "language": {
     "switch": "Переключить на русский",
     "russian": "Русский",

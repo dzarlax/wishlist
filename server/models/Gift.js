@@ -7,7 +7,8 @@ class GiftModel {
 
   sanitizeGift(gift) {
     if (!gift) return null;
-    const { secret_code, ...sanitized } = gift;
+    const sanitized = { ...gift };
+    delete sanitized.secret_code;
     sanitized.reserved = Boolean(sanitized.reserved);
     // Build display price: prefer structured fields, fall back to legacy text
     if (sanitized.price_amount != null) {

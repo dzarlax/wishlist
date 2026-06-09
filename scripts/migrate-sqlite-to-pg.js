@@ -66,7 +66,7 @@ async function main() {
         console.log(`   ✓ ${slug} (${name})`);
       }
       // Reset sequence to max id
-      await client.query(`SELECT setval('users_id_seq', (SELECT MAX(id) FROM users))`);
+      await client.query('SELECT setval(\'users_id_seq\', (SELECT MAX(id) FROM users))');
     }
 
     // --- Migrate gifts ---
@@ -89,7 +89,7 @@ async function main() {
         );
       }
       // Reset sequence
-      await client.query(`SELECT setval('gifts_id_seq', (SELECT MAX(id) FROM gifts))`);
+      await client.query('SELECT setval(\'gifts_id_seq\', (SELECT MAX(id) FROM gifts))');
       console.log(`   ✓ ${giftsResult[0].values.length} gifts migrated`);
     }
 

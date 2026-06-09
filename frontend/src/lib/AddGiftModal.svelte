@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { fade, fly, scale } from 'svelte/transition';
+  import { fly, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { toasts } from './stores/toasts.js';
   import { locale } from './stores/locale.js';
@@ -10,6 +10,7 @@
   import { designSystem } from './utils/design-system.js';
 
   export let userSlug = null;
+  export let canUseAi = false;
 
   const dispatch = createEventDispatcher();
 
@@ -36,14 +37,14 @@
     try {
       [categories, priorities] = await Promise.all([
         fetchCategories($locale),
-        fetchPriorities($locale)
+        fetchPriorities($locale),
       ]);
     } catch {
       // Fallback to empty — form still works with manual codes
     }
   }
 
-  $: $locale, loadReferenceData();
+  $: ($locale, loadReferenceData());
 
   function validateForm() {
     errors = {};
@@ -124,10 +125,11 @@
   function handleBackdropKeydown(event) {
     // Don't close if focus is on an input element
     const target = event.target;
-    const isInput = target.tagName === 'INPUT' ||
-                    target.tagName === 'TEXTAREA' ||
-                    target.tagName === 'SELECT' ||
-                    target.isContentEditable;
+    const isInput =
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable;
     if (isInput) return;
 
     if (event.key === 'Enter' || event.key === ' ') {
@@ -205,13 +207,18 @@
       <div class="flex items-center justify-between">
         <h2
           id="modal-title"
-          class="{designSystem.text['2xl']} {designSystem.text.weight.medium} {designSystem.text.tracking.tighter} text-graphite dark:text-dark-text"
+          class="{designSystem.text['2xl']} {designSystem.text.weight.medium} {designSystem.text
+            .tracking.tighter} text-graphite dark:text-dark-text"
         >
           {$t('modals.add.title')}
         </h2>
         <button
           on:click={() => dispatch('close')}
-          class="w-8 h-8 rounded-full {designSystem.color.neutral.background.surface} {designSystem.color.neutral.background.surfaceDark} hover:bg-red-100 dark:hover:bg-red-900/30 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] hover:border-red-400 dark:hover:border-red-700/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+          class="w-8 h-8 rounded-full {designSystem.color.neutral.background.surface} {designSystem
+            .color.neutral.background
+            .surfaceDark} hover:bg-red-100 dark:hover:bg-red-900/30 border {designSystem.color
+            .neutral.border
+            .DEFAULT} dark:border-white/[0.08] hover:border-red-400 dark:hover:border-red-700/50 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
           aria-label="Close"
         >
           ✕
@@ -221,33 +228,48 @@
 
     <!-- Body -->
     <div class="p-7 space-y-5">
-      <!-- AI Autofill Section -->
-      <div
-        class="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200/50 dark:border-indigo-700/30 rounded-[4px] p-4"
-      >
-        <h3 class="{designSystem.text.xs} {designSystem.text.weight.semibold} {designSystem.text.tracking.widest} uppercase text-indigo-700 dark:text-indigo-300 mb-3">{$t('modals.add.aiSection')}</h3>
-        <div class="flex gap-2">
-          <input
-            type="text"
-            bind:value={aiText}
-            placeholder={$t('modals.add.aiInputPlaceholder')}
-            disabled={aiLoading}
-            on:keydown={(e) => e.key === 'Enter' && handleAIFill()}
-            class="flex-1 px-4 py-2 bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 {designSystem.text.sm} focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all disabled:opacity-50"
-          />
-          <button
-            on:click={handleAIFill}
-            disabled={aiLoading || !aiText.trim()}
-            class="{designSystem.text.spacing.button} rounded-none {designSystem.text.weight.medium} {designSystem.text.tracking.tighter} {designSystem.text.sm} bg-graphite dark:bg-black hover:bg-black dark:hover:bg-black text-white shadow-editorial transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+      {#if canUseAi}
+        <!-- AI Autofill Section -->
+        <div
+          class="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200/50 dark:border-indigo-700/30 rounded-[4px] p-4"
+        >
+          <h3
+            class="{designSystem.text.xs} {designSystem.text.weight.semibold} {designSystem.text
+              .tracking.widest} uppercase text-indigo-700 dark:text-indigo-300 mb-3"
           >
-            {aiLoading ? $t('modals.add.aiFillButtonLoading') : $t('modals.add.aiFillButton')}
-          </button>
+            {$t('modals.add.aiSection')}
+          </h3>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              bind:value={aiText}
+              placeholder={$t('modals.add.aiInputPlaceholder')}
+              disabled={aiLoading}
+              on:keydown={(e) => e.key === 'Enter' && handleAIFill()}
+              class="flex-1 px-4 py-2 bg-white/80 dark:bg-dark-bg/80 border {designSystem.color
+                .neutral.border
+                .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 {designSystem
+                .text
+                .sm} focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all disabled:opacity-50"
+            />
+            <button
+              on:click={handleAIFill}
+              disabled={aiLoading || !aiText.trim()}
+              class="{designSystem.text.spacing.button} rounded-none {designSystem.text.weight
+                .medium} {designSystem.text.tracking.tighter} {designSystem.text
+                .sm} bg-graphite dark:bg-black hover:bg-black dark:hover:bg-black text-white shadow-editorial transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {aiLoading ? $t('modals.add.aiFillButtonLoading') : $t('modals.add.aiFillButton')}
+            </button>
+          </div>
         </div>
-      </div>
+      {/if}
 
       <!-- Name -->
       <div>
-        <label for="gift-name" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-2"
+        <label
+          for="gift-name"
+          class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-2"
           >{$t('modals.add.name')} *</label
         >
         <input
@@ -255,7 +277,9 @@
           type="text"
           bind:value={name}
           placeholder={$t('modals.add.namePlaceholder')}
-          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+          class="w-full {designSystem.text.spacing
+            .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+            .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
           class:border-red-500={errors.name}
         />
         {#if errors.name}
@@ -266,13 +290,17 @@
       <!-- Category & Priority -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label for="gift-category" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
-            >{$t('modals.add.category')}</label
+          <label
+            for="gift-category"
+            class="block {designSystem.text.combinations
+              .label} text-black/70 dark:text-white/70 mb-[7px]">{$t('modals.add.category')}</label
           >
           <select
             id="gift-category"
             bind:value={category}
-            class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+            class="w-full {designSystem.text.spacing
+              .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+              .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
           >
             <option value="">{$t('modals.add.category')}</option>
             {#each categories as cat (cat.code)}
@@ -282,13 +310,17 @@
         </div>
 
         <div>
-          <label for="gift-priority" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
-            >{$t('modals.add.priority')}</label
+          <label
+            for="gift-priority"
+            class="block {designSystem.text.combinations
+              .label} text-black/70 dark:text-white/70 mb-[7px]">{$t('modals.add.priority')}</label
           >
           <select
             id="gift-priority"
             bind:value={priority}
-            class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+            class="w-full {designSystem.text.spacing
+              .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+              .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
           >
             {#each priorities as prio (prio.code)}
               <option value={prio.code}>{prio.name}</option>
@@ -299,15 +331,19 @@
 
       <!-- Description -->
       <div>
-        <label for="gift-description" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
-          >{$t('modals.add.description')}</label
+        <label
+          for="gift-description"
+          class="block {designSystem.text.combinations
+            .label} text-black/70 dark:text-white/70 mb-[7px]">{$t('modals.add.description')}</label
         >
         <textarea
           id="gift-description"
           bind:value={description}
           rows="3"
           placeholder={$t('modals.add.descriptionPlaceholder')}
-          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all resize-none"
+          class="w-full {designSystem.text.spacing
+            .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+            .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all resize-none"
           class:border-red-500={errors.description}
         ></textarea>
         {#if errors.description}
@@ -318,8 +354,10 @@
       <!-- Price & Link -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label for="gift-price" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
-            >{$t('modals.add.price')}</label
+          <label
+            for="gift-price"
+            class="block {designSystem.text.combinations
+              .label} text-black/70 dark:text-white/70 mb-[7px]">{$t('modals.add.price')}</label
           >
           <div class="flex gap-2">
             <input
@@ -328,12 +366,16 @@
               step="0.01"
               bind:value={priceAmount}
               placeholder="0.00"
-              class="flex-1 {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+              class="flex-1 {designSystem.text.spacing
+                .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+                .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
               class:border-red-500={errors.price}
             />
             <select
               bind:value={priceCurrency}
-              class="w-20 {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+              class="w-20 {designSystem.text.spacing
+                .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+                .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
             >
               <option value="EUR">€</option>
               <option value="USD">$</option>
@@ -346,15 +388,19 @@
         </div>
 
         <div>
-          <label for="gift-link" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
-            >{$t('modals.add.link')}</label
+          <label
+            for="gift-link"
+            class="block {designSystem.text.combinations
+              .label} text-black/70 dark:text-white/70 mb-[7px]">{$t('modals.add.link')}</label
           >
           <input
             id="gift-link"
             type="url"
             bind:value={link}
             placeholder={$t('modals.add.linkPlaceholder')}
-            class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+            class="w-full {designSystem.text.spacing
+              .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+              .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
             class:border-red-500={errors.link}
           />
           {#if errors.link}
@@ -365,15 +411,19 @@
 
       <!-- Image URL -->
       <div>
-        <label for="gift-image" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
-          >{$t('modals.add.image')}</label
+        <label
+          for="gift-image"
+          class="block {designSystem.text.combinations
+            .label} text-black/70 dark:text-white/70 mb-[7px]">{$t('modals.add.image')}</label
         >
         <input
           id="gift-image"
           type="url"
           bind:value={imageUrl}
           placeholder={$t('modals.add.imagePlaceholder')}
-          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+          class="w-full {designSystem.text.spacing
+            .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+            .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
           class:border-red-500={errors.imageUrl}
         />
         {#if errors.imageUrl}
@@ -384,18 +434,25 @@
 
     <!-- Footer -->
     <div
-      class="sticky bottom-0 bg-ivory/95 dark:bg-dark-bg/95 backdrop-blur-xl px-7 py-5 border-t {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] flex gap-3 justify-end"
+      class="sticky bottom-0 bg-ivory/95 dark:bg-dark-bg/95 backdrop-blur-xl px-7 py-5 border-t {designSystem
+        .color.neutral.border.DEFAULT} dark:border-white/[0.08] flex gap-3 justify-end"
     >
       <button
         on:click={() => dispatch('close')}
-        class="h-10 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} transition-all duration-200"
+        class="h-10 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem
+          .color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary
+          .textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary
+          .hoverDark} transition-all duration-200"
       >
         {$t('actions.cancel')}
       </button>
       <button
         on:click={handleSubmit}
         disabled={loading}
-        class="h-10 px-4 rounded-full font-medium {designSystem.color.primary.bg} {designSystem.color.primary.bgDark} {designSystem.color.primary.text} {designSystem.color.primary.textDark} {designSystem.color.primary.hover} {designSystem.color.primary.hoverDark} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="h-10 px-4 rounded-full font-medium {designSystem.color.primary.bg} {designSystem
+          .color.primary.bgDark} {designSystem.color.primary.text} {designSystem.color.primary
+          .textDark} {designSystem.color.primary.hover} {designSystem.color.primary
+          .hoverDark} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? $t('app.loading') : $t('actions.save')}
       </button>

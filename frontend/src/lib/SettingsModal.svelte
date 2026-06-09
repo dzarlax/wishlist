@@ -7,10 +7,22 @@
   import { t } from './utils/i18n.js';
   import { designSystem } from './utils/design-system.js';
   import {
-    fetchCategories, fetchPriorities,
-    createCategory, updateCategory, deleteCategory,
-    createPriority, updatePriority, deletePriority,
-    translateText, updateProfile, changePassword
+    fetchCategories,
+    fetchPriorities,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    createPriority,
+    updatePriority,
+    deletePriority,
+    translateText,
+    updateProfile,
+    changePassword,
+    fetchAdminInvites,
+    createAdminInvite,
+    revokeAdminInvite,
+    fetchAdminUsers,
+    updateAdminUserAccess,
   } from './utils/api.js';
   import { auth } from './stores/auth.js';
 
@@ -34,9 +46,19 @@
   let confirmPassword = '';
   let profileSaving = false;
   let passwordSaving = false;
+  let adminInvites = [];
+  let adminUsers = [];
+  let adminLoading = false;
+  let adminLoaded = false;
+  let inviteEmail = '';
+  let inviteNameHint = '';
+  let inviteCanUseAi = false;
+  let lastInviteUrl = '';
 
   let authUser = null;
-  auth.user.subscribe(val => { authUser = val; });
+  auth.user.subscribe((val) => {
+    authUser = val;
+  });
 
   onMount(() => {
     loadData();
@@ -50,12 +72,33 @@
     try {
       [categories, priorities] = await Promise.all([
         fetchCategories($locale),
-        fetchPriorities($locale)
+        fetchPriorities($locale),
       ]);
     } catch (e) {
       toasts.error(e.message);
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadAdminData() {
+    if (!authUser?.is_admin) return;
+    adminLoading = true;
+    try {
+      [adminInvites, adminUsers] = await Promise.all([fetchAdminInvites(), fetchAdminUsers()]);
+    } catch (e) {
+      toasts.error(e.message);
+    } finally {
+      adminLoaded = true;
+      adminLoading = false;
+    }
+  }
+
+  function openAdminTab() {
+    activeTab = 'admin';
+    cancelEdit();
+    if (!adminLoaded && !adminLoading) {
+      loadAdminData();
     }
   }
 
@@ -68,7 +111,7 @@
         sort_order: item.sort_order || 0,
         name_ru: item.name_ru || '',
         name_en: item.name_en || '',
-        name_sr: item.name_sr || ''
+        name_sr: item.name_sr || '',
       };
     } else {
       editForm = { code: '', emoji: '📦', sort_order: 0, name_ru: '', name_en: '', name_sr: '' };
@@ -129,20 +172,29 @@
   }
 
   async function aiTranslate() {
+    if (!authUser?.can_use_ai) return;
+
     // Find source: first non-empty name field
     let sourceLocale = null;
     let sourceText = null;
 
-    if (editForm.name_ru) { sourceLocale = 'ru'; sourceText = editForm.name_ru; }
-    else if (editForm.name_en) { sourceLocale = 'en'; sourceText = editForm.name_en; }
-    else if (editForm.name_sr) { sourceLocale = 'sr'; sourceText = editForm.name_sr; }
+    if (editForm.name_ru) {
+      sourceLocale = 'ru';
+      sourceText = editForm.name_ru;
+    } else if (editForm.name_en) {
+      sourceLocale = 'en';
+      sourceText = editForm.name_en;
+    } else if (editForm.name_sr) {
+      sourceLocale = 'sr';
+      sourceText = editForm.name_sr;
+    }
 
     if (!sourceText) {
       toasts.error('Fill in at least one name to translate');
       return;
     }
 
-    const targets = ['ru', 'en', 'sr'].filter(l => l !== sourceLocale);
+    const targets = ['ru', 'en', 'sr'].filter((l) => l !== sourceLocale);
 
     translating = true;
     try {
@@ -181,7 +233,7 @@
   async function saveProfile() {
     profileSaving = true;
     try {
-      const updated = await updateProfile({ email: profileEmail.trim() || null });
+      await updateProfile({ email: profileEmail.trim() || null });
       auth.user.set ? null : null; // auth store doesn't expose set directly
       toasts.success($t('settings.profileUpdated'));
     } catch (e) {
@@ -212,7 +264,7 @@
 
   async function moveItem(type, code, direction) {
     const list = type === 'category' ? categories : priorities;
-    const idx = list.findIndex(i => i.code === code);
+    const idx = list.findIndex((i) => i.code === code);
     if (idx < 0) return;
 
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
@@ -226,7 +278,7 @@
     try {
       await Promise.all([
         updateFn(item.code, { ...item, sort_order: swap.sort_order }),
-        updateFn(swap.code, { ...swap, sort_order: item.sort_order })
+        updateFn(swap.code, { ...swap, sort_order: item.sort_order }),
       ]);
       await loadData();
       dispatch('updated');
@@ -237,6 +289,56 @@
 
   $: currentList = activeTab === 'categories' ? categories : priorities;
   $: currentType = activeTab === 'categories' ? 'category' : 'priority';
+
+  async function createInvite() {
+    try {
+      const invite = await createAdminInvite({
+        email: inviteEmail.trim() || null,
+        name_hint: inviteNameHint.trim() || null,
+        can_use_ai: inviteCanUseAi,
+      });
+      lastInviteUrl = invite.invite_url;
+      inviteEmail = '';
+      inviteNameHint = '';
+      inviteCanUseAi = false;
+      await loadAdminData();
+      toasts.success($t('admin.inviteCreated'));
+    } catch (e) {
+      toasts.error(e.message);
+    }
+  }
+
+  async function revokeInvite(id) {
+    try {
+      await revokeAdminInvite(id);
+      await loadAdminData();
+      toasts.success($t('admin.inviteRevoked'));
+    } catch (e) {
+      toasts.error(e.message);
+    }
+  }
+
+  async function updateUserAccess(user, field, value) {
+    try {
+      const updated = await updateAdminUserAccess(user.id, { [field]: value });
+      adminUsers = adminUsers.map((u) => (u.id === updated.id ? updated : u));
+      if (authUser?.id === updated.id) await auth.refresh();
+      toasts.success($t('admin.accessUpdated'));
+    } catch (e) {
+      toasts.error(e.message);
+      await loadAdminData();
+    }
+  }
+
+  async function copyInviteUrl() {
+    if (!lastInviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(lastInviteUrl);
+      toasts.success($t('admin.linkCopied'));
+    } catch {
+      toasts.error(lastInviteUrl);
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -245,6 +347,7 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
   transition:scale={{ duration: 200, start: 0.95, easing: quintOut }}
   on:click={handleClickOutside}
+  on:keydown={handleKeydown}
   role="button"
   tabindex="-1"
   aria-label="Close modal"
@@ -257,8 +360,13 @@
     tabindex="-1"
   >
     <!-- Header -->
-    <div class="px-7 py-5 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between flex-shrink-0">
-      <h2 class="{designSystem.text['2xl']} {designSystem.text.weight.medium} {designSystem.text.tracking.tighter} text-graphite dark:text-dark-text">
+    <div
+      class="px-7 py-5 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between flex-shrink-0"
+    >
+      <h2
+        class="{designSystem.text['2xl']} {designSystem.text.weight.medium} {designSystem.text
+          .tracking.tighter} text-graphite dark:text-dark-text"
+      >
         ⚙️ {$t('settings.title')}
       </h2>
       <button
@@ -272,7 +380,10 @@
     <!-- Tabs -->
     <div class="px-7 pt-4 flex gap-2 flex-shrink-0">
       <button
-        on:click={() => { activeTab = 'categories'; cancelEdit(); }}
+        on:click={() => {
+          activeTab = 'categories';
+          cancelEdit();
+        }}
         class="px-4 py-2 rounded-full text-sm font-medium transition-all {activeTab === 'categories'
           ? 'bg-graphite text-white'
           : 'bg-black/5 dark:bg-white/5 text-graphite dark:text-dark-text hover:bg-black/10 dark:hover:bg-white/10'}"
@@ -280,7 +391,10 @@
         {$t('settings.categories')}
       </button>
       <button
-        on:click={() => { activeTab = 'priorities'; cancelEdit(); }}
+        on:click={() => {
+          activeTab = 'priorities';
+          cancelEdit();
+        }}
         class="px-4 py-2 rounded-full text-sm font-medium transition-all {activeTab === 'priorities'
           ? 'bg-graphite text-white'
           : 'bg-black/5 dark:bg-white/5 text-graphite dark:text-dark-text hover:bg-black/10 dark:hover:bg-white/10'}"
@@ -288,26 +402,172 @@
         {$t('settings.priorities')}
       </button>
       <button
-        on:click={() => { activeTab = 'profile'; cancelEdit(); }}
+        on:click={() => {
+          activeTab = 'profile';
+          cancelEdit();
+        }}
         class="px-4 py-2 rounded-full text-sm font-medium transition-all {activeTab === 'profile'
           ? 'bg-graphite text-white'
           : 'bg-black/5 dark:bg-white/5 text-graphite dark:text-dark-text hover:bg-black/10 dark:hover:bg-white/10'}"
       >
         {$t('settings.profile')}
       </button>
+      {#if authUser?.is_admin}
+        <button
+          on:click={openAdminTab}
+          class="px-4 py-2 rounded-full text-sm font-medium transition-all {activeTab === 'admin'
+            ? 'bg-graphite text-white'
+            : 'bg-black/5 dark:bg-white/5 text-graphite dark:text-dark-text hover:bg-black/10 dark:hover:bg-white/10'}"
+        >
+          {$t('admin.title')}
+        </button>
+      {/if}
     </div>
 
     <!-- Content -->
     <div class="p-7 overflow-y-auto flex-1">
-      {#if activeTab === 'profile'}
+      {#if activeTab === 'admin' && authUser?.is_admin}
+        <div class="space-y-6">
+          <div class="space-y-3">
+            <h3 class="text-sm font-medium text-graphite dark:text-dark-text">
+              {$t('admin.createInvite')}
+            </h3>
+            <div class="grid grid-cols-2 gap-3">
+              <input
+                type="email"
+                bind:value={inviteEmail}
+                placeholder={$t('settings.email')}
+                class="px-3 py-2 text-sm bg-white/80 dark:bg-dark-bg/80 border border-black/[0.08] dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text"
+              />
+              <input
+                type="text"
+                bind:value={inviteNameHint}
+                placeholder={$t('admin.nameHint')}
+                class="px-3 py-2 text-sm bg-white/80 dark:bg-dark-bg/80 border border-black/[0.08] dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text"
+              />
+            </div>
+            <label class="flex items-center gap-2 text-sm text-graphite dark:text-dark-text">
+              <input type="checkbox" bind:checked={inviteCanUseAi} />
+              {$t('admin.aiAccess')}
+            </label>
+            <button
+              on:click={createInvite}
+              class="px-4 py-2 rounded-full text-sm font-medium bg-graphite text-white hover:bg-black transition-all"
+            >
+              {$t('admin.createInvite')}
+            </button>
+            {#if lastInviteUrl}
+              <div class="flex gap-2">
+                <input
+                  type="text"
+                  readonly
+                  value={lastInviteUrl}
+                  class="flex-1 px-3 py-2 text-xs bg-black/5 dark:bg-white/5 border border-black/[0.08] dark:border-white/[0.08] text-graphite dark:text-dark-text"
+                />
+                <button
+                  on:click={copyInviteUrl}
+                  class="px-4 py-2 rounded-full text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-500 transition-all"
+                >
+                  {$t('admin.copyLink')}
+                </button>
+              </div>
+            {/if}
+          </div>
+
+          <hr class="border-black/[0.08] dark:border-white/[0.08]" />
+
+          {#if adminLoading}
+            <div class="flex justify-center py-8">
+              <div
+                class="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent"
+              ></div>
+            </div>
+          {:else}
+            <div class="space-y-3">
+              <h3 class="text-sm font-medium text-graphite dark:text-dark-text">
+                {$t('admin.users')}
+              </h3>
+              {#each adminUsers as user (user.id)}
+                <div
+                  class="flex items-center gap-3 px-4 py-3 bg-white/50 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] rounded-lg"
+                >
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-graphite dark:text-dark-text">
+                      {user.avatar_emoji || '🎁'}
+                      {user.name}
+                    </div>
+                    <div class="text-xs text-black/40 dark:text-white/40">
+                      /{user.slug}{user.email ? ` · ${user.email}` : ''}
+                    </div>
+                  </div>
+                  <label class="flex items-center gap-1 text-xs text-black/60 dark:text-white/60">
+                    <input
+                      type="checkbox"
+                      checked={user.can_use_ai}
+                      on:change={(e) =>
+                        updateUserAccess(user, 'can_use_ai', e.currentTarget.checked)}
+                    />
+                    {$t('admin.aiAccess')}
+                  </label>
+                  <label class="flex items-center gap-1 text-xs text-black/60 dark:text-white/60">
+                    <input
+                      type="checkbox"
+                      checked={user.is_admin}
+                      on:change={(e) => updateUserAccess(user, 'is_admin', e.currentTarget.checked)}
+                    />
+                    {$t('admin.adminAccess')}
+                  </label>
+                </div>
+              {/each}
+            </div>
+
+            <div class="space-y-3">
+              <h3 class="text-sm font-medium text-graphite dark:text-dark-text">
+                {$t('admin.invites')}
+              </h3>
+              {#each adminInvites as invite (invite.id)}
+                <div
+                  class="flex items-center gap-3 px-4 py-3 bg-white/50 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] rounded-lg"
+                >
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-graphite dark:text-dark-text">
+                      {invite.name_hint || invite.email || $t('admin.invite')}
+                    </div>
+                    <div class="text-xs text-black/40 dark:text-white/40">
+                      {invite.status} · {$t('admin.expires')}
+                      {new Date(invite.expires_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  {#if invite.can_use_ai}
+                    <span class="text-xs text-indigo-600 dark:text-indigo-300">AI</span>
+                  {/if}
+                  {#if invite.status === 'active'}
+                    <button
+                      on:click={() => revokeInvite(invite.id)}
+                      class="px-3 py-1 rounded-full text-xs bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
+                    >
+                      {$t('admin.revoke')}
+                    </button>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {:else if activeTab === 'profile'}
         <!-- Profile tab -->
         <div class="space-y-6">
           <!-- Email -->
           <div>
-            <label class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1">{$t('settings.email')}</label>
+            <label
+              for="profile-email"
+              class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1"
+              >{$t('settings.email')}</label
+            >
             <div class="flex gap-2">
               <input
                 type="email"
+                id="profile-email"
                 bind:value={profileEmail}
                 placeholder="user@example.com"
                 class="flex-1 px-3 py-2 text-sm bg-white/80 dark:bg-dark-bg/80 border border-black/[0.08] dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text"
@@ -326,10 +586,17 @@
 
           <!-- Change password -->
           <div class="space-y-3">
-            <h3 class="text-sm font-medium text-graphite dark:text-dark-text">{$t('settings.changePassword')}</h3>
+            <h3 class="text-sm font-medium text-graphite dark:text-dark-text">
+              {$t('settings.changePassword')}
+            </h3>
             <div>
-              <label class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1">{$t('settings.currentPassword')}</label>
+              <label
+                for="current-password"
+                class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1"
+                >{$t('settings.currentPassword')}</label
+              >
               <input
+                id="current-password"
                 type="password"
                 bind:value={currentPassword}
                 placeholder="••••••••"
@@ -337,8 +604,13 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1">{$t('settings.newPassword')}</label>
+              <label
+                for="new-password"
+                class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1"
+                >{$t('settings.newPassword')}</label
+              >
               <input
+                id="new-password"
                 type="password"
                 bind:value={newPassword}
                 placeholder="••••••••"
@@ -346,8 +618,13 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1">{$t('settings.confirmPassword')}</label>
+              <label
+                for="confirm-password"
+                class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1"
+                >{$t('settings.confirmPassword')}</label
+              >
               <input
+                id="confirm-password"
                 type="password"
                 bind:value={confirmPassword}
                 placeholder="••••••••"
@@ -365,15 +642,22 @@
         </div>
       {:else if loading}
         <div class="flex justify-center py-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent"></div>
+          <div
+            class="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent"
+          ></div>
         </div>
       {:else if editingItem}
         <!-- Edit/Create Form -->
         <div class="space-y-4">
           <div class="grid grid-cols-3 gap-3">
             <div>
-              <label class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1">Code *</label>
+              <label
+                for="settings-item-code"
+                class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1"
+                >Code *</label
+              >
               <input
+                id="settings-item-code"
                 type="text"
                 bind:value={editForm.code}
                 disabled={editingItem.code !== null}
@@ -382,8 +666,12 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1">Emoji</label>
+              <label
+                for="settings-item-emoji"
+                class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1">Emoji</label
+              >
               <input
+                id="settings-item-emoji"
                 type="text"
                 bind:value={editForm.emoji}
                 placeholder="📦"
@@ -391,8 +679,13 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1">{$t('settings.sortOrder')}</label>
+              <label
+                for="settings-item-sort-order"
+                class="block text-xs font-medium text-black/60 dark:text-white/60 mb-1"
+                >{$t('settings.sortOrder')}</label
+              >
               <input
+                id="settings-item-sort-order"
                 type="number"
                 bind:value={editForm.sort_order}
                 class="w-full px-3 py-2 text-sm bg-white/80 dark:bg-dark-bg/80 border border-black/[0.08] dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text"
@@ -403,14 +696,18 @@
           <!-- Translation fields -->
           <div class="space-y-3">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-medium text-black/60 dark:text-white/60">{$t('settings.translations')}</span>
-              <button
-                on:click={aiTranslate}
-                disabled={translating}
-                class="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-all disabled:opacity-50"
+              <span class="text-xs font-medium text-black/60 dark:text-white/60"
+                >{$t('settings.translations')}</span
               >
-                {translating ? '⏳' : '✨'} AI
-              </button>
+              {#if authUser?.can_use_ai}
+                <button
+                  on:click={aiTranslate}
+                  disabled={translating}
+                  class="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-all disabled:opacity-50"
+                >
+                  {translating ? '⏳' : '✨'} AI
+                </button>
+              {/if}
             </div>
 
             <div class="flex items-center gap-2">
@@ -462,23 +759,29 @@
         <!-- List -->
         <div class="space-y-2">
           {#each currentList as item, idx (item.code)}
-            <div class="flex items-center gap-3 px-4 py-3 bg-white/50 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] rounded-lg group">
+            <div
+              class="flex items-center gap-3 px-4 py-3 bg-white/50 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] rounded-lg group"
+            >
               <!-- Reorder buttons -->
               <div class="flex flex-col gap-0.5">
                 <button
                   on:click={() => moveItem(currentType, item.code, 'up')}
                   disabled={idx === 0}
                   class="w-6 h-5 flex items-center justify-center text-xs text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white disabled:opacity-20 disabled:cursor-default transition-colors"
-                >▲</button>
+                  >▲</button
+                >
                 <button
                   on:click={() => moveItem(currentType, item.code, 'down')}
                   disabled={idx === currentList.length - 1}
                   class="w-6 h-5 flex items-center justify-center text-xs text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white disabled:opacity-20 disabled:cursor-default transition-colors"
-                >▼</button>
+                  >▼</button
+                >
               </div>
               <span class="text-xl w-8 text-center">{item.emoji}</span>
               <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium text-graphite dark:text-dark-text truncate">{item.name}</div>
+                <div class="text-sm font-medium text-graphite dark:text-dark-text truncate">
+                  {item.name}
+                </div>
                 <div class="text-xs text-black/40 dark:text-white/40">{item.code}</div>
               </div>
               <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

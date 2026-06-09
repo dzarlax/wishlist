@@ -20,7 +20,9 @@ Minimalist design, dark/light theme support, multi-language interface (Russian, 
 - 🌙 **Theme toggle** (light/dark) with preference persistence
 - 🔔 **Toast notifications** for user feedback
 - 🌍 **Multi-language support**: Russian, English, Serbian
-- 🔐 **Persistent admin authentication** (saved in browser, no need to re-enter password)
+- 🔐 **JWT authentication** with optional Authentik SSO
+- ✉️ **Invite-link registration** for adding new wishlist owners
+- 🛡️ **Admin approval controls** for invite creation, admin grants, and AI access
 
 ## 🚀 Installation
 
@@ -38,7 +40,7 @@ cd frontend && npm install && cd ..
 
 # 3. Configure environment variables
 cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
+# Edit .env and add your JWT_SECRET, USERS, and optional GEMINI_API_KEY
 
 # 4. Run in development mode (backend + frontend)
 npm run dev
@@ -53,6 +55,14 @@ The app will be available at:
 GEMINI_API_KEY=your_api_key_here
 ```
 
+For authenticated wishlist management, configure at least one bootstrap user:
+```bash
+JWT_SECRET=replace_with_a_long_random_secret
+USERS=alexey:Alexey:change_me:🎁:alexey@example.com
+```
+
+The first user in `USERS` is bootstrapped as an admin and receives AI access. Existing seeded users keep their password if it was changed in the app.
+
 ### Production
 
 ```bash
@@ -63,31 +73,35 @@ npm run build
 npm start
 ```
 
-### 🔒 Admin Password
+### 🔒 Authentication, Invites, and AI Access
 
-**Default:** `wishlist2025`
+The app supports the current authenticated flow and the older simple deployment style.
 
-**How to change password:**
+**Recommended authenticated flow:**
 
-Method 1 - Via .env file (recommended):
-```bash
-# Edit .env file
-ADMIN_PASSWORD=your_secure_password
-npm start
-```
+- Configure `JWT_SECRET` and at least one `USERS` entry.
+- Log in as the bootstrap admin.
+- Open Settings → Admin.
+- Create an invite link for a new user.
+- The new user opens `#/invite/<token>`, chooses a slug/name/password, and registers.
+- Admin grants `can_use_ai` separately when the user should be allowed to use AI parsing or translation.
 
-Method 2 - Via environment variable:
+**Email is optional.** Invite links may include an email hint, but registration does not require one.
+
+**Legacy fallback:**
+
+`ADMIN_PASSWORD` is still available for older deployments and migration compatibility:
 ```bash
 ADMIN_PASSWORD="your_password" npm start
 ```
 
-**Password is required for:**
-- ➕ Adding gifts
-- ✏️ Editing gifts
-- 🗑️ Deleting gifts
-- 🤖 Using AI autofill
+**Access rules when authentication is enabled:**
+- Creating, editing, deleting, or archiving gifts requires the wishlist owner to be logged in.
+- AI gift parsing and translation require both login and `can_use_ai=true`.
+- Invite and user access management require `is_admin=true`.
+- Reservation, unreserve, and purchased flows remain available to gift givers through secret codes.
 
-**Note**: The admin password is saved in your browser's localStorage, so you only need to enter it once per session.
+**Important production setting:** Always set a non-default `JWT_SECRET` in production.
 
 ## 🌍 Languages
 
@@ -124,10 +138,14 @@ wishlist/
 │   ├── config/
 │   │   └── env.js        # Environment configuration (CORS, etc.)
 │   ├── middleware/
+│   │   ├── access.js         # Admin and AI access checks
+│   │   ├── auth.js           # JWT auth helpers
 │   │   ├── rateLimiter.js    # Rate limiting
 │   │   └── validation.js     # Request validation
 │   ├── models/
-│   │   └── Gift.js       # Gift model
+│   │   ├── Gift.js       # Gift model
+│   │   ├── Invite.js     # Invite-token lifecycle
+│   │   └── User.js       # User profiles and access flags
 │   └── migrations/
 │       ├── migrationManager.js  # Migration system
 │       ├── 0001-initial-schema.js
@@ -145,7 +163,8 @@ wishlist/
 │   │   ├── app.css                # Global styles with Tailwind
 │   │   └── lib/
 │   │       ├── GiftCard.svelte     # Gift card component
-│   │       ├── PasswordModal.svelte # Admin authentication modal
+│   │       ├── InviteRegistration.svelte # Invite-link registration
+│   │       ├── LoginModal.svelte    # Login modal
 │   │       ├── AddGiftModal.svelte # Add gift modal with AI autofill
 │   │       ├── EditGiftModal.svelte # Edit gift modal
 │   │       ├── ReserveModal.svelte # Reserve modal
@@ -223,19 +242,82 @@ Initialization includes:
 - Adding category and priority codes for better i18n support
 - Ready to work with categories and priorities
 
+## 👥 User Onboarding Process
+
+1. A bootstrap admin logs in.
+2. The admin creates an invite link in Settings → Admin.
+3. The invite link is sent to the new user.
+4. The new user registers from the invite link. Email is optional.
+5. The user can create and manage only their own wishlist after login.
+6. The admin separately enables AI access when needed.
+
+Invite tokens expire automatically and can be revoked before use. Used or revoked invite links cannot register another user.
+
 ## 🔧 API
 
-### GET /api/gifts
-Get all gifts (sorted by priority)
+Most owner/admin write endpoints use JWT authentication:
 
-### GET /api/gifts/:id
-Get information about a specific gift
+```http
+Authorization: Bearer <token>
+```
 
-### POST /api/gifts
-Add a new gift
+### POST /api/auth/login
+Log in with slug and password.
 ```json
 {
-  "admin_password": "wishlist2025",
+  "slug": "alexey",
+  "password": "change_me"
+}
+```
+
+### GET /api/auth/me
+Return the current authenticated user or `null`.
+
+### POST /api/admin/invites
+Create an invite link. Requires admin access.
+```json
+{
+  "email": "optional@example.com",
+  "name_hint": "Optional Name",
+  "can_use_ai": false
+}
+```
+
+### GET /api/invites/:token
+Return public invite details before registration.
+
+### POST /api/invites/:token/accept
+Register a new user from an active invite.
+```json
+{
+  "slug": "new-user",
+  "name": "New User",
+  "password": "strong-password"
+}
+```
+
+### PATCH /api/admin/users/:id/access
+Update user access flags. Requires admin access.
+```json
+{
+  "is_admin": false,
+  "can_use_ai": true
+}
+```
+
+### GET /api/users
+Get public wishlist owners.
+
+### GET /api/users/:slug/gifts
+Get all gifts for a wishlist owner (sorted by priority).
+
+### GET /api/users/:slug/gifts/:id
+Get information about a specific gift.
+
+### POST /api/users/:slug/gifts
+Add a new gift. Requires authenticated owner access.
+```json
+{
   "name": "Gift Name",
   "description": "Description",
   "category_code": "electronics",
@@ -250,7 +332,7 @@ Add a new gift
 
 **Priority codes:** `hot`, `medium`, `low`
 
-### POST /api/gifts/:id/reserve
+### POST /api/users/:slug/gifts/:id/reserve
 Reserve a gift
 ```json
 {
@@ -259,7 +341,7 @@ Reserve a gift
 }
 ```
 
-### POST /api/gifts/:id/unreserve
+### POST /api/users/:slug/gifts/:id/unreserve
 Cancel reservation
 ```json
 {
@@ -267,7 +349,7 @@ Cancel reservation
 }
 ```
 
-### POST /api/gifts/:id/purchased
+### POST /api/users/:slug/gifts/:id/purchased
 Mark as purchased
 ```json
 {
@@ -275,11 +357,13 @@ Mark as purchased
 }
 ```
 
-### PUT /api/gifts/:id
-Edit a gift
+### POST /api/users/:slug/gifts/:id/gifted
+Archive a received gift. Requires authenticated owner access.
+
+### PUT /api/users/:slug/gifts/:id
+Edit a gift. Requires authenticated owner access.
 ```json
 {
-  "admin_password": "wishlist2025",
   "name": "New Name",
   "description": "New Description",
   "category_code": "electronics",
@@ -290,16 +374,11 @@ Edit a gift
 }
 ```
 
-### DELETE /api/gifts/:id
-Delete a gift
-```json
-{
-  "admin_password": "wishlist2025"
-}
-```
+### DELETE /api/users/:slug/gifts/:id
+Delete a gift. Requires authenticated owner access.
 
 ### POST /api/parse-gift
-Parse gift information from text or URL using AI
+Parse gift information from text or URL using AI. Requires authenticated user with `can_use_ai=true`.
 ```json
 {
   "text": "iPhone 15 Pro 256GB"
@@ -385,6 +464,8 @@ docker run -d \
   -p 3000:3000 \
   -v $(pwd)/wishlist.db:/app/wishlist.db \
   -e ADMIN_PASSWORD="your_password" \
+  -e JWT_SECRET="replace_with_a_long_random_secret" \
+  -e USERS="alexey:Alexey:change_me:🎁:alexey@example.com" \
   -e ALLOWED_ORIGINS="https://yourdomain.com" \
   dzarlax/wishlist-app:latest
 ```
@@ -403,14 +484,17 @@ docker run -d \
   -p 3000:3000 \
   -v $(pwd)/wishlist.db:/app/wishlist.db \
   -e ADMIN_PASSWORD="your_password" \
+  -e JWT_SECRET="replace_with_a_long_random_secret" \
+  -e USERS="alexey:Alexey:change_me:🎁:alexey@example.com" \
   wishlist-app
 ```
 
 ## 💡 Tips
 
-- **AI Autofill**: Paste any product link or describe a gift in plain language — AI will extract all details automatically
+- **Invite Registration**: Admin-created links are the normal way to add new wishlist owners
+- **AI Autofill**: Paste any product link or describe a gift in plain language — AI will extract all details automatically when your user has AI access
 - **Image Extraction**: When pasting product URLs, the app automatically extracts images via Open Graph metadata
-- **Persistent Authentication**: Enter admin password once per browser — it's saved in localStorage
+- **Persistent Authentication**: JWT session is saved in localStorage
 - **Database**: Created automatically on first run, all data saved in `wishlist.db`
 - **Gift Sorting**: By priority (🔥 > ⭐ > 💭), then by creation date
 - **Price Format**: Stored as text — supports custom formats like "15000 ₽ + доставка", "$100 + shipping", etc.

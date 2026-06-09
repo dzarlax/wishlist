@@ -104,14 +104,27 @@ class SqliteAdapter {
     this.db.close();
   }
 
+  async transaction(callback) {
+    await this.run('BEGIN IMMEDIATE');
+    try {
+      const result = await callback(this);
+      await this.run('COMMIT');
+      return result;
+    } catch (error) {
+      await this.run('ROLLBACK');
+      throw error;
+    }
+  }
+
   get dialect() {
     return 'sqlite';
   }
 }
 
 class PgAdapter {
-  constructor(pool) {
+  constructor(pool, ownsPool = true) {
     this.pool = pool;
+    this.ownsPool = ownsPool;
   }
 
   /**
@@ -171,7 +184,25 @@ class PgAdapter {
   }
 
   async close() {
-    await this.pool.end();
+    if (this.ownsPool) {
+      await this.pool.end();
+    }
+  }
+
+  async transaction(callback) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const txDb = new PgAdapter(client, false);
+      const result = await callback(txDb);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   get dialect() {

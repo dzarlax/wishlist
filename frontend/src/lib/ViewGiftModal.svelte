@@ -6,7 +6,6 @@
   import { getPriorityColors, getStatusColors } from './utils/design-system.js';
 
   export let gift;
-  export let userSlug = null;
 
   const dispatch = createEventDispatcher();
 
@@ -29,10 +28,11 @@
   function handleBackdropKeydown(e) {
     // Don't close if focus is on an input element
     const target = e.target;
-    const isInput = target.tagName === 'INPUT' ||
-                    target.tagName === 'TEXTAREA' ||
-                    target.tagName === 'SELECT' ||
-                    target.isContentEditable;
+    const isInput =
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable;
     if (isInput) return;
 
     if (e.key === 'Enter' || e.key === ' ') {
@@ -61,7 +61,9 @@
     tabindex="-1"
   >
     <!-- Header -->
-    <div class="relative sticky top-0 z-10 bg-ivory/95 dark:bg-dark-bg/95 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] px-7 py-5">
+    <div
+      class="relative sticky top-0 z-10 bg-ivory/95 dark:bg-dark-bg/95 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] px-7 py-5"
+    >
       <div class="flex items-center justify-between">
         <h2
           id="modal-title"
@@ -84,36 +86,42 @@
     <div class="px-7 py-5 pb-16 space-y-5">
       <!-- Image -->
       {#if gift.image_url}
-        <div class="rounded-modal overflow-hidden border border-black/[0.08] dark:border-white/[0.08]">
-          <img
-            src={gift.image_url}
-            alt={gift.name}
-            class="w-full h-auto max-h-96 object-cover"
-          />
+        <div
+          class="rounded-modal overflow-hidden border border-black/[0.08] dark:border-white/[0.08]"
+        >
+          <img src={gift.image_url} alt={gift.name} class="w-full h-auto max-h-96 object-cover" />
         </div>
       {/if}
 
       <!-- Title -->
-      <h3 class="text-2xl font-medium tracking-tighter text-graphite dark:text-dark-text leading-tight">
+      <h3
+        class="text-2xl font-medium tracking-tighter text-graphite dark:text-dark-text leading-tight"
+      >
         {gift.name}
       </h3>
 
       <!-- Badges -->
       <div class="flex gap-2 flex-wrap">
         {#if gift.category_code}
-          <span class="px-3 py-1.5 rounded-[4px] text-sm text-black/70 dark:text-white/70 bg-surface dark:bg-surface-dark border border-black/[0.08] dark:border-white/[0.08]">
+          <span
+            class="px-3 py-1.5 rounded-[4px] text-sm text-black/70 dark:text-white/70 bg-surface dark:bg-surface-dark border border-black/[0.08] dark:border-white/[0.08]"
+          >
             {$t(`categories.${gift.category_code}`)}
           </span>
         {/if}
 
         {#if gift.priority_code}
-          <span class="px-3 py-1.5 rounded-[4px] text-sm {priorityColors.bg} {priorityColors.text} {priorityColors.border} border">
+          <span
+            class="px-3 py-1.5 rounded-[4px] text-sm {priorityColors.bg} {priorityColors.text} {priorityColors.border} border"
+          >
             {$t(`priorities.${gift.priority_code}`)}
           </span>
         {/if}
 
         {#if gift.status !== 'available'}
-          <span class="px-3 py-1.5 rounded-[4px] text-sm {statusColors.bg} {statusColors.text} {statusColors.border} border">
+          <span
+            class="px-3 py-1.5 rounded-[4px] text-sm {statusColors.bg} {statusColors.text} {statusColors.border} border"
+          >
             {$t(`status.${gift.status}`)}
           </span>
         {/if}
@@ -122,7 +130,9 @@
       <!-- Description -->
       {#if gift.description}
         <div class="space-y-2">
-          <h4 class="text-xs font-semibold tracking-widest uppercase text-black/70 dark:text-white/70">
+          <h4
+            class="text-xs font-semibold tracking-widest uppercase text-black/70 dark:text-white/70"
+          >
             {$t('modals.view.description')}
           </h4>
           <p class="text-graphite dark:text-dark-text leading-relaxed whitespace-pre-wrap">
@@ -134,7 +144,9 @@
       <!-- Price -->
       {#if gift.price}
         <div class="space-y-2">
-          <h4 class="text-xs font-semibold tracking-widest uppercase text-black/70 dark:text-white/70">
+          <h4
+            class="text-xs font-semibold tracking-widest uppercase text-black/70 dark:text-white/70"
+          >
             {$t('modals.view.price')}
           </h4>
           <p
@@ -148,7 +160,9 @@
       <!-- Link -->
       {#if gift.link}
         <div class="space-y-2">
-          <h4 class="text-xs font-semibold tracking-widest uppercase text-black/70 dark:text-white/70">
+          <h4
+            class="text-xs font-semibold tracking-widest uppercase text-black/70 dark:text-white/70"
+          >
             {$t('modals.view.link')}
           </h4>
           <a
@@ -164,12 +178,12 @@
 
       <!-- Reservation Info -->
       {#if gift.status === 'reserved' || gift.status === 'purchased'}
-        <div class="space-y-3 p-4 rounded-modal {gift.status === 'reserved'
-          ? 'bg-amber-100 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700/50'
-          : 'bg-emerald-100 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700/50'} border">
-          <h4
-            class="text-sm font-semibold {statusColors.text} uppercase tracking-wide"
-          >
+        <div
+          class="space-y-3 p-4 rounded-modal {gift.status === 'reserved'
+            ? 'bg-amber-100 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700/50'
+            : 'bg-emerald-100 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700/50'} border"
+        >
+          <h4 class="text-sm font-semibold {statusColors.text} uppercase tracking-wide">
             {$t(`status.${gift.status}`)}
           </h4>
           {#if gift.reserved_by}

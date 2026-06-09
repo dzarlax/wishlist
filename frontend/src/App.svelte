@@ -5,7 +5,15 @@
   import { theme } from './lib/stores/theme.js';
   import { locale } from './lib/stores/locale.js';
   import { auth } from './lib/stores/auth.js';
-  import { fetchUsers, fetchUserGifts, fetchCategories, fetchPriorities } from './lib/utils/api.js';
+  import {
+    fetchUsers,
+    fetchUserGifts,
+    fetchCategories,
+    fetchPriorities,
+    purchaseUserGift,
+    unreserveUserGift,
+    giftUserGift,
+  } from './lib/utils/api.js';
   import GiftCard from './lib/GiftCard.svelte';
   import AddGiftModal from './lib/AddGiftModal.svelte';
   import EditGiftModal from './lib/EditGiftModal.svelte';
@@ -13,6 +21,7 @@
   import DeleteModal from './lib/DeleteModal.svelte';
   import ViewGiftModal from './lib/ViewGiftModal.svelte';
   import LoginModal from './lib/LoginModal.svelte';
+  import InviteRegistration from './lib/InviteRegistration.svelte';
   import SecretCodeModal from './lib/SecretCodeModal.svelte';
   import SettingsModal from './lib/SettingsModal.svelte';
   import UserSelect from './lib/UserSelect.svelte';
@@ -21,16 +30,24 @@
   import { t } from './lib/utils/i18n.js';
 
   let currentTheme = 'dark';
-  theme.subscribe((value) => { currentTheme = value; });
+  theme.subscribe((value) => {
+    currentTheme = value;
+  });
 
   // Auth state — subscribe to individual stores
   let isAuthenticated = false;
   let authUser = null;
   let authLoading = true;
 
-  auth.isAuthenticated.subscribe(val => { isAuthenticated = val; });
-  auth.user.subscribe(val => { authUser = val; });
-  auth.loading.subscribe(val => { authLoading = val; });
+  auth.isAuthenticated.subscribe((val) => {
+    isAuthenticated = val;
+  });
+  auth.user.subscribe((val) => {
+    authUser = val;
+  });
+  auth.loading.subscribe((val) => {
+    authLoading = val;
+  });
 
   // Check if current user is the owner (authenticated user matches current wishlist user)
   $: isOwner = isAuthenticated && currentUser && authUser && authUser.id === currentUser.id;
@@ -38,6 +55,7 @@
   // Multi-user state
   let users = [];
   let currentUser = null;
+  let inviteToken = null;
   let usersLoading = true;
 
   let gifts = [];
@@ -73,20 +91,27 @@
     try {
       [categoriesList, prioritiesList] = await Promise.all([
         fetchCategories($locale),
-        fetchPriorities($locale)
+        fetchPriorities($locale),
       ]);
     } catch {
       // Fallback — empty lists, filters won't show
     }
   }
 
-  $: $locale, loadReferenceData();
+  $: ($locale, loadReferenceData());
 
   // Hash-based routing
   function getSlugFromHash() {
     const hash = window.location.hash;
+    if (hash.startsWith('#/invite/')) return null;
     const match = hash.match(/^#\/(.+)$/);
     return match ? match[1] : null;
+  }
+
+  function getInviteTokenFromHash() {
+    const hash = window.location.hash;
+    const match = hash.match(/^#\/invite\/(.+)$/);
+    return match ? decodeURIComponent(match[1]) : null;
   }
 
   function navigateToUser(user) {
@@ -98,9 +123,16 @@
   }
 
   function handleHashChange() {
+    inviteToken = getInviteTokenFromHash();
+    if (inviteToken) {
+      currentUser = null;
+      gifts = [];
+      return;
+    }
+
     const slug = getSlugFromHash();
     if (slug && users.length > 0) {
-      const user = users.find(u => u.slug === slug);
+      const user = users.find((u) => u.slug === slug);
       if (user) {
         currentUser = user;
         loadGifts();
@@ -129,7 +161,7 @@
     usersLoading = true;
     try {
       users = await fetchUsers();
-      if (users.length === 1 && !getSlugFromHash()) {
+      if (users.length === 1 && !getSlugFromHash() && !getInviteTokenFromHash()) {
         navigateToUser(users[0]);
       }
     } catch (error) {
@@ -171,7 +203,7 @@
 
   // Priority order for sorting (from API sort_order)
   function getPriorityOrder(priorityCode) {
-    const prio = prioritiesList.find(p => p.code === priorityCode);
+    const prio = prioritiesList.find((p) => p.code === priorityCode);
     return prio ? prio.sort_order : 99;
   }
 
@@ -273,10 +305,8 @@
       const slug = currentUser.slug;
 
       if (secretCodeAction === 'purchased') {
-        const { purchaseUserGift } = await import('./lib/utils/api.js');
         await purchaseUserGift(slug, giftId, { secret_code: secretCode });
       } else if (secretCodeAction === 'unreserve') {
-        const { unreserveUserGift } = await import('./lib/utils/api.js');
         await unreserveUserGift(slug, giftId, { secret_code: secretCode });
       }
 
@@ -291,7 +321,6 @@
 
   async function handleMarkGifted(gift) {
     try {
-      const { giftUserGift } = await import('./lib/utils/api.js');
       await giftUserGift(currentUser.slug, gift.id);
       toasts.success($t('toasts.markedGifted'));
       loadGifts();
@@ -324,6 +353,11 @@
     showLoginModal = false;
     toasts.success($t('auth.loginSuccess'));
   }
+
+  async function onInviteRegistered(event) {
+    await loadUsers();
+    navigateToUser(event.detail);
+  }
 </script>
 
 <div class="min-h-screen bg-ivory dark:bg-dark-bg transition-colors duration-300">
@@ -342,7 +376,10 @@
             ← {$t('users.backToUsers')}
           </button>
         {/if}
-        <h1 class="text-2xl sm:text-3xl font-medium tracking-tighter text-graphite dark:text-dark-text" style="letter-spacing: -0.02em;">
+        <h1
+          class="text-2xl sm:text-3xl font-medium tracking-tighter text-graphite dark:text-dark-text"
+          style="letter-spacing: -0.02em;"
+        >
           {#if currentUser}
             {currentUser.avatar_emoji || '🎁'} {currentUser.name}
           {:else}
@@ -368,7 +405,7 @@
         {#if !authLoading}
           {#if isAuthenticated}
             <button
-              on:click={() => showSettingsModal = true}
+              on:click={() => (showSettingsModal = true)}
               class="px-4 py-2 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center justify-center text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
               title={$t('settings.title')}
             >
@@ -403,12 +440,10 @@
       </div>
     </header>
 
-    {#if !currentUser}
-      <UserSelect
-        {users}
-        loading={usersLoading}
-        on:select={onUserSelect}
-      />
+    {#if inviteToken}
+      <InviteRegistration token={inviteToken} on:registered={onInviteRegistered} />
+    {:else if !currentUser}
+      <UserSelect {users} loading={usersLoading} on:select={onUserSelect} />
     {:else}
       <!-- Search and Filters -->
       <div class="mb-6 sm:mb-7 space-y-4">
@@ -433,15 +468,17 @@
           </select>
 
           <div class="flex gap-2 flex-wrap items-center">
-            {#each ['available', 'reserved'] as status}
+            {#each ['available', 'reserved'] as status (status)}
               <button
-                on:click={() => selectedStatus = selectedStatus === status ? '' : status}
+                on:click={() => (selectedStatus = selectedStatus === status ? '' : status)}
                 class:font-medium={selectedStatus === status}
-                class="whitespace-nowrap px-3 py-1.5 rounded-full text-xs transition-all {selectedStatus === status
+                class="whitespace-nowrap px-3 py-1.5 rounded-full text-xs transition-all {selectedStatus ===
+                status
                   ? 'bg-graphite text-white'
                   : 'bg-transparent border border-black/10 dark:border-white/10 text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'}"
               >
-                {status === 'available' ? '✨' : '🔒'} {$t('status.' + status)}
+                {status === 'available' ? '✨' : '🔒'}
+                {$t('status.' + status)}
               </button>
             {/each}
 
@@ -449,13 +486,16 @@
 
             {#each prioritiesList as prio (prio.code)}
               <button
-                on:click={() => selectedPriority = selectedPriority === prio.code ? '' : prio.code}
+                on:click={() =>
+                  (selectedPriority = selectedPriority === prio.code ? '' : prio.code)}
                 class:font-medium={selectedPriority === prio.code}
-                class="whitespace-nowrap px-3 py-1.5 rounded-full text-xs transition-all {selectedPriority === prio.code
+                class="whitespace-nowrap px-3 py-1.5 rounded-full text-xs transition-all {selectedPriority ===
+                prio.code
                   ? 'bg-graphite text-white'
                   : 'bg-transparent border border-black/10 dark:border-white/10 text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'}"
               >
-                {prio.emoji} {prio.name}
+                {prio.emoji}
+                {prio.name}
               </button>
             {/each}
           </div>
@@ -492,7 +532,9 @@
       {#if loading}
         <div class="flex items-center justify-center py-14">
           <div class="text-center">
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-[3px] border-indigo-500 border-t-transparent mb-4"></div>
+            <div
+              class="inline-block animate-spin rounded-full h-12 w-12 border-[3px] border-indigo-500 border-t-transparent mb-4"
+            ></div>
             <p class="text-black/40 dark:text-white/40">{$t('app.loading')}</p>
           </div>
         </div>
@@ -500,7 +542,9 @@
         <div class="flex items-center justify-center py-14">
           <div class="text-center">
             <div class="text-6xl mb-4 opacity-20">🎁</div>
-            <h3 class="text-xl font-medium tracking-tighter text-black/30 dark:text-white/30 mb-2">{$t('app.noGifts')}</h3>
+            <h3 class="text-xl font-medium tracking-tighter text-black/30 dark:text-white/30 mb-2">
+              {$t('app.noGifts')}
+            </h3>
             <p class="text-black/50 dark:text-white/50 text-sm">{$t('app.noGiftsDescription')}</p>
           </div>
         </div>
@@ -508,12 +552,16 @@
         <div class="flex items-center justify-center py-14">
           <div class="text-center">
             <div class="text-6xl mb-4 opacity-20">🔍</div>
-            <h3 class="text-xl font-medium tracking-tighter text-black/30 dark:text-white/30 mb-2">{$t('app.noGifts')}</h3>
+            <h3 class="text-xl font-medium tracking-tighter text-black/30 dark:text-white/30 mb-2">
+              {$t('app.noGifts')}
+            </h3>
             <p class="text-black/50 dark:text-white/50 text-sm">{$t('app.noGiftsDescription')}</p>
           </div>
         </div>
       {:else}
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5">
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5"
+        >
           {#each sortedGifts as gift, index (gift.id + gift.status)}
             {@const cardSpan = getCardSpan(gift)}
             <div class={cardSpan.colSpan}>
@@ -522,13 +570,12 @@
                 {index}
                 isLarge={cardSpan.isLarge}
                 {isOwner}
-                userSlug={currentUser?.slug}
                 on:view={() => openViewModal(gift)}
                 on:edit={() => openEditModal(gift)}
                 on:reserve={() => openReserveModal(gift)}
                 on:delete={() => openDeleteModal(gift)}
-                on:purchased={(e) => requestSecretCode(gift, 'purchased')}
-                on:unreserve={(e) => requestSecretCode(gift, 'unreserve')}
+                on:purchased={() => requestSecretCode(gift, 'purchased')}
+                on:unreserve={() => requestSecretCode(gift, 'unreserve')}
                 on:gifted={() => handleMarkGifted(gift)}
                 on:refresh={loadGifts}
               />
@@ -541,17 +588,23 @@
       {#if sortedGiftedGifts.length > 0}
         <div class="mt-8 sm:mt-10">
           <button
-            on:click={() => showPurchased = !showPurchased}
+            on:click={() => (showPurchased = !showPurchased)}
             class="flex items-center gap-2 text-sm text-black/50 dark:text-white/50 hover:text-black/70 dark:hover:text-white/70 transition-colors duration-200 mb-4"
           >
-            <span class="text-xs transition-transform duration-200" class:rotate-90={showPurchased}>&#9654;</span>
+            <span class="text-xs transition-transform duration-200" class:rotate-90={showPurchased}
+              >&#9654;</span
+            >
             <span>{$t('filters.giftedSection')}</span>
-            <span class="px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5 text-xs">{sortedGiftedGifts.length}</span>
+            <span class="px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5 text-xs"
+              >{sortedGiftedGifts.length}</span
+            >
           </button>
 
           {#if showPurchased}
             <div transition:slide={{ duration: 300 }}>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 opacity-75">
+              <div
+                class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 opacity-75"
+              >
                 {#each sortedGiftedGifts as gift, index (gift.id)}
                   <div>
                     <GiftCard
@@ -559,12 +612,11 @@
                       {index}
                       isLarge={false}
                       {isOwner}
-                      userSlug={currentUser?.slug}
                       on:view={() => openViewModal(gift)}
                       on:edit={() => openEditModal(gift)}
                       on:reserve={() => openReserveModal(gift)}
                       on:delete={() => openDeleteModal(gift)}
-                      on:unreserve={(e) => requestSecretCode(gift, 'unreserve')}
+                      on:unreserve={() => requestSecretCode(gift, 'unreserve')}
                       on:gifted={() => handleMarkGifted(gift)}
                       on:refresh={loadGifts}
                     />
@@ -581,10 +633,7 @@
 
 <!-- Modals -->
 {#if showSettingsModal && isAuthenticated}
-  <SettingsModal
-    on:close={() => (showSettingsModal = false)}
-    on:updated={loadGifts}
-  />
+  <SettingsModal on:close={() => (showSettingsModal = false)} on:updated={loadGifts} />
 {/if}
 
 {#if showLoginModal && currentUser}
@@ -598,6 +647,7 @@
 {#if showAddModal && currentUser && isOwner}
   <AddGiftModal
     userSlug={currentUser.slug}
+    canUseAi={Boolean(authUser?.can_use_ai)}
     on:close={() => (showAddModal = false)}
     on:saved={onGiftSaved}
   />
@@ -633,13 +683,12 @@
 {#if showViewModal && selectedGift && currentUser}
   <ViewGiftModal
     gift={selectedGift}
-    userSlug={currentUser.slug}
     on:close={() => (showViewModal = false)}
-    on:reserve={(e) => {
+    on:reserve={() => {
       showViewModal = false;
       openReserveModal(selectedGift);
     }}
-    on:purchased={(e) => {
+    on:purchased={() => {
       showViewModal = false;
       requestSecretCode(selectedGift, 'purchased');
     }}
@@ -648,8 +697,12 @@
 
 {#if showSecretCodeModal}
   <SecretCodeModal
-    title={secretCodeAction === 'purchased' ? $t('modals.markPurchased.title') : $t('modals.unreserve.title')}
-    description={secretCodeAction === 'purchased' ? $t('modals.markPurchased.prompt') : $t('modals.unreserve.prompt')}
+    title={secretCodeAction === 'purchased'
+      ? $t('modals.markPurchased.title')
+      : $t('modals.unreserve.title')}
+    description={secretCodeAction === 'purchased'
+      ? $t('modals.markPurchased.prompt')
+      : $t('modals.unreserve.prompt')}
     on:close={() => (showSecretCodeModal = false)}
     on:submit={handleSecretCodeSubmit}
   />
