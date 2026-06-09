@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Implementation Plan: Wishlist Homepage Refresh</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #4f46e5;
+      --warn: #d97706;
+      --risk: #dc2626;
+      --ok: #059669;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    main { max-width: 1120px; margin: 0 auto; padding: 32px; }
+    header { margin-bottom: 22px; }
+    h1, h2, h3 { line-height: 1.2; margin: 0 0 10px; }
+    h1 { font-size: 34px; letter-spacing: -0.02em; }
+    h2 { font-size: 20px; }
+    p { margin: 0 0 10px; }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+    ul, ol { margin: 8px 0 0 20px; padding: 0; }
+    li { margin: 6px 0; }
+    code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .callout { border-left: 4px solid var(--accent); }
+    .risk { border-left: 4px solid var(--risk); }
+    .approval { border-left: 4px solid var(--warn); }
+    .done { border-left: 4px solid var(--ok); }
+    .muted { color: var(--muted); }
+    .mockup {
+      background: #fcfaf7;
+      border: 1px solid #dedbd5;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    }
+    .mockup.dark {
+      background: #0d0d0f;
+      border-color: #25282d;
+      color: #f5f5f5;
+    }
+    .mockup-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    .mockup.dark .mockup-bar { border-bottom-color: rgba(255,255,255,0.08); }
+    .mockup-shell { padding: 18px; }
+    .mockup-title { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin: 0; }
+    .mockup-subtitle { font-size: 13px; color: #6b7280; margin: 4px 0 0; }
+    .mockup.dark .mockup-subtitle { color: rgba(255,255,255,0.58); }
+    .mockup-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      padding: 6px 11px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.65);
+      font-size: 12px;
+      color: #374151;
+    }
+    .mockup.dark .pill {
+      border-color: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.78);
+    }
+    .pill.primary { background: #18181b; color: white; border-color: #18181b; }
+    .mockup.dark .pill.primary { background: white; color: #18181b; border-color: white; }
+    .hero-row {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 14px;
+      align-items: stretch;
+    }
+    .panel {
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.72);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .mockup.dark .panel {
+      border-color: rgba(255,255,255,0.09);
+      background: rgba(255,255,255,0.045);
+    }
+    .user-grid, .stats-grid, .gift-grid {
+      display: grid;
+      gap: 10px;
+    }
+    .user-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 14px; }
+    .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 14px; }
+    .gift-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 14px; }
+    .user-card, .stat-card, .gift-tile {
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.78);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .mockup.dark .user-card,
+    .mockup.dark .stat-card,
+    .mockup.dark .gift-tile {
+      border-color: rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.055);
+    }
+    .avatar { font-size: 30px; margin-bottom: 8px; }
+    .card-title { font-weight: 650; font-size: 14px; margin: 0; }
+    .card-meta { color: #6b7280; font-size: 12px; margin: 2px 0 0; }
+    .mockup.dark .card-meta { color: rgba(255,255,255,0.52); }
+    .stat-value { font-size: 22px; font-weight: 720; margin: 0; }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      padding: 10px;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.5);
+    }
+    .mockup.dark .toolbar {
+      border-color: rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.035);
+    }
+    .search-box {
+      flex: 1 1 220px;
+      min-height: 32px;
+      padding: 7px 11px;
+      border: 1px solid rgba(0,0,0,0.1);
+      background: white;
+      color: #6b7280;
+      font-size: 12px;
+    }
+    .mockup.dark .search-box {
+      border-color: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.58);
+    }
+    .gift-image {
+      height: 72px;
+      border-radius: 6px;
+      background: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    .mockup.dark .gift-image { background: rgba(255,255,255,0.07); }
+    .landing-sections {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .landing-wide {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .mini-list {
+      margin: 8px 0 0;
+      padding-left: 18px;
+      color: #4b5563;
+      font-size: 12px;
+    }
+    @media (max-width: 860px) {
+      .hero-row, .user-grid, .stats-grid, .gift-grid, .landing-sections, .landing-wide { grid-template-columns: 1fr; }
+      .mockup-bar { align-items: flex-start; flex-direction: column; }
+      .mockup-actions { justify-content: flex-start; }
+    }
+    @media (max-width: 760px) {
+      main { padding: 20px; }
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="badge">Approval required before implementation</p>
+    <h1>Implementation Plan: Wishlist List Homepage Refresh</h1>
+    <p class="muted">Branch: <code>codex/homepage-refresh-plan</code>. Created after PR #2 was merged and deployed.</p>
+  </header>
+
+  <section>
+    <h2>Task Summary</h2>
+    <p>
+      Plan a focused refresh of the root homepage: available wishlists first, then a fuller explanation section
+      that describes how to use this hosted wishlist service and why it is useful.
+      The target is only the no-slug homepage rendered before a specific wishlist is opened.
+      The selected wishlist screen, filters, gift grid, and gift cards are intentionally out of scope.
+    </p>
+  </section>
+
+  <section>
+    <h2>Current Behavior</h2>
+    <ul>
+      <li><code>frontend/src/App.svelte</code> owns routing, auth state, selected wishlist, filters, sorting, modals, and the gift grid.</li>
+      <li>The root route with multiple users renders <code>UserSelect.svelte</code>: a centered title, subtitle, and user cards.</li>
+      <li>A selected wishlist route <code>#/&lt;slug&gt;</code> renders the current wishlist browsing screen; this plan should not change that screen.</li>
+      <li>If exactly one user exists, the app automatically navigates to that user.</li>
+      <li>Invite registration is a hash route at <code>#/invite/&lt;token&gt;</code> and should stay functionally separate.</li>
+      <li>Auth is now JWT-based; gift creation/editing is owner-only, AI controls depend on <code>can_use_ai</code>, and admin controls live in settings.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Desired Behavior</h2>
+    <ul>
+      <li>Make the first viewport feel like a polished wishlist directory, not just a centered picker.</li>
+      <li>Keep available wishlists as the primary signal: names, avatars, slugs, and clear open actions.</li>
+      <li>Preserve simple navigation: selecting a user should still route to <code>#/&lt;slug&gt;</code>.</li>
+      <li>Add a fuller explanation area below the directory: what guests can do, what wishlist owners can do, how reservations work, and why secret codes matter.</li>
+      <li>Frame this as the hosted service managed by the site admin, not as a self-hosted product or installable app.</li>
+      <li>Be clear that new wishlist owners are added by invite/admin approval; public users do not self-administer the service.</li>
+      <li>Make the page visually polished: intentional spacing, restrained palette, clean hierarchy, and no cramped or placeholder-looking blocks.</li>
+      <li>Design mobile as a first-class view: wishlist cards first, explanation sections stacked cleanly, no clipped buttons or overlapping text.</li>
+      <li>Respect existing design constraints: no marketing landing page, no decorative gradient/orb backgrounds, no nested cards, no remote assets.</li>
+      <li>Keep all copy localized in Russian, English, and Serbian.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Proposed UX Direction</h2>
+    <ul>
+      <li>Replace the simple centered picker with a full-width app home section and a denser wishlist directory.</li>
+      <li>Show concise product identity: Wishlist, available lists, and a direct "open wishlist" affordance per user.</li>
+      <li>Make each user card easier to scan with avatar, name, slug, and optionally lightweight counts if they are already available without extra API work.</li>
+      <li>Add usage-focused sections below the directory: how to reserve, how to manage your own wishlist after login, what AI autofill does, and how anonymity works.</li>
+      <li>Keep the directory above the explanatory content so repeat visitors can open a wishlist without scrolling through copy.</li>
+      <li>Avoid self-hosting language, pricing language, public signup promises, or admin-facing claims. Admin is the site owner only.</li>
+      <li>Use a polished but practical visual treatment: wide bands, balanced whitespace, clear cards for individual wishlists/features, and crisp mobile stacking.</li>
+      <li>Keep the no-user state practical and configuration-focused.</li>
+      <li>Do not change the selected wishlist header, filters, gift cards, archive, reservation flow, or owner controls in this iteration.</li>
+    </ul>
+  </section>
+
+  <section class="callout">
+    <h2>Static Mockup</h2>
+    <p class="muted">
+      This is a review sketch, not final implementation. It shows layout hierarchy, density, and control placement.
+      Final spacing and copy should be adjusted in Svelte after browser QA.
+    </p>
+
+    <h3>Root Home / Wishlist Directory</h3>
+    <div class="mockup" aria-label="Mockup of root user selection homepage">
+      <div class="mockup-bar">
+        <div>
+          <p class="mockup-title">🎁 Wishlist</p>
+          <p class="mockup-subtitle">Choose a wishlist, reserve gifts, or sign in to manage yours.</p>
+        </div>
+        <div class="mockup-actions">
+          <span class="pill">🌙</span>
+          <span class="pill">RU</span>
+          <span class="pill primary">Sign in</span>
+        </div>
+      </div>
+      <div class="mockup-shell">
+        <div class="panel">
+          <p class="mockup-title">Whose wishlist?</p>
+          <p class="mockup-subtitle">Open a public list to reserve a gift. Owners sign in after opening their own list.</p>
+          <div class="user-grid">
+            <div class="user-card">
+              <div class="avatar">🎁</div>
+              <p class="card-title">Alexey</p>
+              <p class="card-meta">/alexey</p>
+              <span class="pill primary" style="margin-top: 10px;">Open wishlist</span>
+            </div>
+            <div class="user-card">
+              <div class="avatar">💅</div>
+              <p class="card-title">Mariia</p>
+              <p class="card-meta">/mariia</p>
+              <span class="pill primary" style="margin-top: 10px;">Open wishlist</span>
+            </div>
+            <div class="user-card">
+              <div class="avatar">🌞</div>
+              <p class="card-title">Olga</p>
+              <p class="card-meta">/olga</p>
+              <span class="pill primary" style="margin-top: 10px;">Open wishlist</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mockup-shell" style="padding-top: 0;">
+        <div class="landing-sections">
+          <div class="panel">
+            <p class="card-title">If you are choosing a gift</p>
+            <ul class="mini-list">
+              <li>Open a wishlist</li>
+              <li>Reserve with your name</li>
+              <li>Keep your secret code</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <p class="card-title">If this is your wishlist</p>
+            <ul class="mini-list">
+              <li>Sign in to manage gifts</li>
+              <li>Add links or descriptions</li>
+              <li>Use AI autofill if enabled</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <p class="card-title">What stays private</p>
+            <ul class="mini-list">
+              <li>Reservations use secret codes</li>
+              <li>Gift givers manage their own reservation</li>
+              <li>Owner actions require login</li>
+            </ul>
+          </div>
+        </div>
+        <div class="landing-wide">
+          <div class="panel">
+            <p class="card-title">Why it is convenient</p>
+            <p class="card-meta">Links, prices, priorities, images, reservations, and gift status live in one shared place.</p>
+          </div>
+          <div class="panel">
+            <p class="card-title">How new lists appear</p>
+            <p class="card-meta">New wishlist owners can join by invitation. If you want your own list, contact the administrator.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Assumptions and Unknowns</h2>
+    <ul>
+      <li>Assumption: "главная страница" now means only the root user selection / wishlist directory page.</li>
+      <li>Assumption: no new backend data is required; user cards should use the existing <code>/api/users</code> response.</li>
+      <li>Assumption: the current ivory/dark editorial visual language should remain, but with less sparse composition.</li>
+      <li>Decision: include a fuller explanatory area below the directory to explain this hosted service for normal users.</li>
+      <li>Decision: do not describe the product as self-hosted, installable, or publicly administered by users.</li>
+      <li>Decision: admin capability belongs to the site owner; new owners join through invite/approval.</li>
+      <li>Decision: phrase invite/approval softly on the homepage: users can contact the administrator if they want their own wishlist.</li>
+      <li>Unknown: whether the root home should show only user cards or lightweight public counts; counts would require either API changes or extra gift fetches.</li>
+      <li>Decision for this scope: owner-only admin actions stay inside selected wishlist/settings, not on the root directory.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Files Likely to Change</h2>
+    <ul>
+      <li><code>frontend/src/lib/UserSelect.svelte</code> - refresh root home/user selection screen.</li>
+      <li><code>frontend/src/App.svelte</code> - likely only minor container/header adjustments around the no-current-user branch, if needed.</li>
+      <li><code>frontend/src/lib/locales/ru.json</code>, <code>en.json</code>, <code>sr.json</code> - add localized labels for root homepage and usage explanation copy.</li>
+      <li><code>frontend/tests/App.test.js</code> - update expectations for new root home copy and user selection behavior.</li>
+      <li>Optional: <code>frontend/src/lib/components/</code> - introduce small presentational components only if <code>UserSelect.svelte</code> becomes too large.</li>
+      <li>Optional: <code>frontend/src/app.css</code> or design token utilities - only for reusable layout tokens; avoid one-off global CSS.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Implementation Steps</h2>
+    <ol>
+      <li>Refresh <code>UserSelect.svelte</code> with a more useful root home layout while keeping direct user selection as the primary action.</li>
+      <li>Keep the current header controls visible and avoid duplicating login/settings behavior on the root page.</li>
+      <li>Add below-directory explanation sections for gift giver flow, wishlist owner flow, AI autofill, invite/approval, and privacy/secret-code rules.</li>
+      <li>Update no-user state so it can still explain the service without exposing operational details to normal users.</li>
+      <li>Add locale keys in all supported languages and avoid hardcoded visible copy in Svelte components.</li>
+      <li>Implement responsive layout deliberately: desktop directory grid, tablet wrapping, single-column mobile flow, and touch-friendly buttons.</li>
+      <li>Update tests for user-selection and invite route non-regression.</li>
+      <li>Run browser QA at desktop and mobile widths before completing implementation.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Impact</h2>
+    <ul>
+      <li><strong>Data/API:</strong> no backend endpoint or schema change expected.</li>
+      <li><strong>Auth/permissions:</strong> no permission contract change; UI copy should make existing owner-only behavior clearer.</li>
+      <li><strong>Deployment:</strong> normal frontend build and Docker image pipeline only.</li>
+      <li><strong>UX:</strong> visible layout and copy changes only on the root homepage: wishlist directory first, usage explanation below.</li>
+      <li><strong>Localization:</strong> all new visible strings must be added to Russian, English, and Serbian locale files.</li>
+      <li><strong>Accessibility:</strong> preserve keyboard navigation, semantic buttons, visible focus, and responsive text fitting.</li>
+      <li><strong>Mobile:</strong> mobile view is part of the implementation scope, not a follow-up.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Test Plan</h2>
+    <ul>
+      <li><code>npm run lint</code></li>
+      <li><code>npm test</code></li>
+      <li><code>npm test -- --run</code> from <code>frontend/</code></li>
+      <li><code>npm run build</code></li>
+      <li>Browser QA with the in-app browser against a local dev server or built app preview.</li>
+      <li>Visual QA screenshots/checks at desktop and mobile widths, including 390px mobile viewport.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Manual QA Checklist</h2>
+    <ul>
+      <li>Root route with multiple users shows the refreshed wishlist directory and each user is selectable.</li>
+      <li>Explanation sections appear below the directory and do not push wishlist cards out of the first viewport on common desktop sizes.</li>
+      <li>Single-user auto-navigation still works.</li>
+      <li><code>#/alexey</code> or another user slug still shows the existing wishlist view unchanged.</li>
+      <li>Invite route <code>#/invite/&lt;token&gt;</code> still shows registration and is not affected by homepage layout.</li>
+      <li>Mobile layout keeps wishlist cards first and stacks explanation sections without overlap.</li>
+      <li>All new homepage copy appears correctly in Russian, English, and Serbian after switching languages.</li>
+      <li>Buttons and card labels fit on narrow mobile screens without clipping or awkward wrapping.</li>
+      <li>Dark and light themes remain legible.</li>
+    </ul>
+  </section>
+
+  <section class="risk">
+    <h2>Risks and Edge Cases</h2>
+    <ul>
+      <li>Root homepage can start feeling like marketing if explanation copy becomes promotional; keep it instructional and concrete.</li>
+      <li>Copy must not imply open public signup, self-hosting, or user-administered access.</li>
+      <li>Fuller explanation copy increases localization scope; keep section copy concise and concrete.</li>
+      <li>A visually richer homepage can become too decorative; keep the design elegant but functional, with the wishlist directory as the first actionable area.</li>
+      <li>Extra public counts can create API/performance creep; avoid counts unless they come from existing data cheaply.</li>
+      <li>Root route behavior differs for one user vs multiple users; both paths need explicit testing.</li>
+      <li>Copy additions must be added to all three locale files to avoid fallback gaps.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Rollback Plan</h2>
+    <p>
+      Revert the homepage refresh commit. Since the plan does not require backend, schema, or API changes,
+      rollback should restore the previous frontend layout without data migration work.
+    </p>
+  </section>
+
+  <section>
+    <h2>Open Questions</h2>
+    <ul>
+      <li>Should the root home show only user cards, or also public counts per wishlist?</li>
+      <li>How deep should the usage explanation go in v1: explanation cards only, or also a short FAQ?</li>
+      <li>Resolved: use a soft invite/admin line rather than a hard restriction message.</li>
+      <li>Should there be a search/filter for users if the list grows, or is the current user count small enough to avoid it?</li>
+    </ul>
+  </section>
+
+  <section class="approval">
+    <h2>Approval Gate</h2>
+    <p>
+      Implementation must not start until this plan is explicitly approved or revised.
+      After approval, production code changes should stay on <code>codex/homepage-refresh-plan</code>
+      or a follow-up branch from it.
+    </p>
+  </section>
+
+  <section class="done">
+    <h2>Implementation Update</h2>
+    <ul>
+      <li>Implemented the root homepage refresh in <code>frontend/src/lib/UserSelect.svelte</code>.</li>
+      <li>Kept the selected wishlist screen, gift grid, filters, reservation flow, owner actions, and invite route unchanged.</li>
+      <li>Added a wishlist directory first, then usage-focused explanation sections below it.</li>
+      <li>Added all new visible copy to <code>ru</code>, <code>en</code>, and <code>sr</code> locale files.</li>
+      <li>Updated frontend tests to cover the new homepage service explanation.</li>
+      <li>Tuned dark-theme contrast for the light invitation card and language switcher so they stay visible without using pure white surfaces.</li>
+    </ul>
+  </section>
+
+  <section class="done">
+    <h2>Checks Run</h2>
+    <ul>
+      <li><code>npm run lint</code> - passed.</li>
+      <li><code>npm test</code> - passed, 5 backend tests.</li>
+      <li><code>npm test -- --run</code> in <code>frontend/</code> - passed, 6 frontend tests.</li>
+      <li><code>npm run build</code> - passed.</li>
+      <li>Locale sanity check confirmed all new <code>users.*</code> keys exist in <code>ru</code>, <code>en</code>, and <code>sr</code>.</li>
+      <li>Local browser QA used the existing development setup at <code>http://localhost:5173</code>.</li>
+      <li>Browser QA via Playwright at desktop <code>1792x1010</code> and mobile <code>390x844</code>, including the revised dark theme.</li>
+    </ul>
+  </section>
+
+  <section class="risk">
+    <h2>Known Notes</h2>
+    <ul>
+      <li>Build/test output still includes the existing external Browserslist data age notice.</li>
+      <li>During QA, Tailwind <code>max-w-*</code> classes conflicted with project theme tokens and produced extremely narrow text on desktop. The implemented homepage avoids those classes and uses explicit inline <code>max-width</code> only where needed.</li>
+      <li>Temporary QA screenshots were generated locally and should not be committed.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

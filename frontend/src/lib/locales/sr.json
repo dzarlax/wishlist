@@ -226,12 +226,64 @@
     "creativity": "🎨 Kreativnost"
   },
   "users": {
+    "kicker": "Liste želja na jednom mestu",
     "title": "Čija lista želja?",
-    "subtitle": "Izaberite čiju listu želja želite da vidite",
+    "subtitle": "Otvorite pravu listu želja, izaberite poklon i rezervišite ga. Vlasnici se prijavljuju u svoju listu da upravljaju poklonima.",
     "noUsers": "Nema korisnika",
-    "noUsersDescription": "Dodajte korisnike preko promenljive okruženja USERS",
+    "noUsersDescription": "Još nema dostupnih lista želja. Nove liste se dodaju pozivnicom administratora.",
     "backToUsers": "Sve liste želja",
-    "wishlistOf": "Lista želja: {name}"
+    "wishlistOf": "Lista želja: {name}",
+    "openWishlist": "Otvori",
+    "openWishlistFor": "Otvori listu želja za {name}",
+    "guestNote": {
+      "title": "Za goste",
+      "body": "Poklon možete rezervisati svojim imenom i tajnim kodom. Sačuvajte kod da kasnije otkažete rezervaciju ili označite kupovinu."
+    },
+    "service": {
+      "givers": {
+        "title": "Ako birate poklon",
+        "body": "Otvorite pravu listu želja, izaberite dostupan poklon, rezervišite ga i sačuvajte tajni kod."
+      },
+      "owners": {
+        "title": "Ako je ovo vaša lista",
+        "body": "Prijavite se da dodajete poklone, menjate detalje, arhivirate primljeno i koristite AI ako je pristup uključen."
+      },
+      "privacy": {
+        "title": "Šta ostaje privatno",
+        "body": "Rezervacije se kontrolišu tajnim kodovima. Radnje vlasnika traže prijavu, a nove liste se dodaju pozivnicom."
+      }
+    },
+    "howItWorks": {
+      "kicker": "Kako radi",
+      "title": "Jedno mesto za poklone, rezervacije i statuse",
+      "step1": {
+        "title": "Otvorite listu",
+        "body": "Izaberite osobu iznad i pregledajte ideje za poklone, linkove, prioritete, slike i cene."
+      },
+      "step2": {
+        "title": "Rezervišite poklon",
+        "body": "Unesite svoje ime i tajni kod da isti poklon ne bude slučajno kupljen dva puta."
+      },
+      "step3": {
+        "title": "Ažurirajte status",
+        "body": "Istim tajnim kodom možete otkazati rezervaciju ili označiti poklon kao kupljen."
+      }
+    },
+    "join": {
+      "kicker": "Nove liste želja",
+      "title": "Želite svoju listu?",
+      "body": "Novi vlasnici lista se dodaju pozivnicom. Ako želite svoju listu ovde, obratite se administratoru."
+    },
+    "features": {
+      "links": {
+        "label": "Sve na jednom mestu",
+        "text": "Linkovi, cene, opisi, prioriteti, slike, rezervacije i status poklona ostaju zajedno."
+      },
+      "ai": {
+        "label": "AI pomaže kada je uključen",
+        "text": "Vlasnik sa AI pristupom može da nalepi link ili kratak opis, a aplikacija popunjava detalje poklona."
+      }
+    }
   },
   "categoryMapping": {
     "🔧 Электроника и гаджеты": "electronics",
