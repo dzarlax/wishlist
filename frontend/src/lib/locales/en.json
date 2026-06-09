@@ -225,12 +225,64 @@
     "creativity": "🎨 Creativity"
   },
   "users": {
+    "kicker": "Hosted wishlist service",
     "title": "Whose wishlist?",
-    "subtitle": "Choose whose wishlist you'd like to view",
+    "subtitle": "Open a public wishlist to choose and reserve a gift. Wishlist owners sign in from their own list to manage gifts.",
     "noUsers": "No users",
-    "noUsersDescription": "Add users via the USERS environment variable",
+    "noUsersDescription": "No wishlists are available yet. New wishlists are added by invitation from the administrator.",
     "backToUsers": "All wishlists",
-    "wishlistOf": "Wishlist: {name}"
+    "wishlistOf": "Wishlist: {name}",
+    "openWishlist": "Open wishlist",
+    "openWishlistFor": "Open wishlist for {name}",
+    "guestNote": {
+      "title": "For guests",
+      "body": "You can reserve a gift with your name and a secret code. Keep the code to cancel or mark the gift as purchased later."
+    },
+    "service": {
+      "givers": {
+        "title": "If you are choosing a gift",
+        "body": "Open the right wishlist, choose an available gift, reserve it, and keep your secret code."
+      },
+      "owners": {
+        "title": "If this is your wishlist",
+        "body": "Sign in to add gifts, edit details, archive received gifts, and use AI autofill when access is enabled."
+      },
+      "privacy": {
+        "title": "What stays private",
+        "body": "Reservations are managed with secret codes. Owner actions require login, and new wishlists are added by invitation."
+      }
+    },
+    "howItWorks": {
+      "kicker": "How it works",
+      "title": "A shared place for gifts, reservations, and status",
+      "step1": {
+        "title": "Open a wishlist",
+        "body": "Pick a person above and browse their gift ideas, links, priorities, images, and prices."
+      },
+      "step2": {
+        "title": "Reserve a gift",
+        "body": "Use your name and a secret code so the gift is not accidentally bought twice."
+      },
+      "step3": {
+        "title": "Manage status",
+        "body": "Use the same secret code to cancel a reservation or mark the gift as purchased."
+      }
+    },
+    "join": {
+      "kicker": "New wishlists",
+      "title": "Want your own wishlist?",
+      "body": "New wishlist owners can join by invitation. Contact the administrator if you want your own list here."
+    },
+    "features": {
+      "links": {
+        "label": "Everything in one place",
+        "text": "Links, prices, descriptions, priorities, images, reservations, and gift status stay together."
+      },
+      "ai": {
+        "label": "AI helps when enabled",
+        "text": "Owners with AI access can paste a product link or a short description and let the app fill gift details."
+      }
+    }
   },
   "categoryMapping": {
     "🔧 Электроника и гаджеты": "electronics",

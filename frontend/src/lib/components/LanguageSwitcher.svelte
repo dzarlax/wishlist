@@ -44,7 +44,7 @@
 <div class="relative" bind:this={button}>
   <button
     on:click={toggle}
-    class="px-4 py-2 rounded-full bg-surface dark:bg-surface-dark hover:bg-[#D8D6D3] dark:hover:bg-surface-hover-dark border border-black/[0.08] dark:border-white/[0.08] transition-all duration-200 flex items-center justify-center"
+    class="px-4 py-2 rounded-full bg-surface dark:bg-[#d1c7ba] hover:bg-[#D8D6D3] dark:hover:bg-[#ddd4c8] border border-black/[0.08] dark:border-white/[0.10] shadow-editorial transition-all duration-200 flex items-center justify-center"
     aria-label={$t('language.switch')}
     aria-expanded={isOpen}
     type="button"
@@ -54,15 +54,15 @@
 
   {#if isOpen}
     <div
-      class="absolute right-0 mt-2 bg-white dark:bg-dark-bg rounded-modal shadow-editorial border border-black/[0.08] dark:border-white/[0.08] py-2 z-50 min-w-[80px]"
+      class="absolute right-0 mt-2 bg-white dark:bg-[#d1c7ba] rounded-modal shadow-editorial border border-black/[0.08] dark:border-white/[0.10] py-2 z-50 min-w-[80px]"
       role="menu"
     >
       {#each locales as loc (loc.code)}
         <button
           on:click={() => selectLocale(loc.code)}
-          class="w-full flex items-center justify-center gap-3 px-4 py-3 hover:bg-surface dark:hover:bg-surface-dark transition-colors {loc.code ===
+          class="w-full flex items-center justify-center gap-3 px-4 py-3 text-graphite hover:bg-surface dark:hover:bg-[#c3b8aa] transition-colors {loc.code ===
           $locale
-            ? 'bg-surface dark:bg-surface-dark'
+            ? 'bg-surface dark:bg-[#c3b8aa]'
             : ''}"
           role="menuitem"
           type="button"
@@ -70,7 +70,7 @@
           <span class="text-2xl">{loc.flag}</span>
           {#if loc.code === $locale}
             <svg
-              class="w-4 h-4 ml-auto text-black/50 dark:text-white/50"
+              class="w-4 h-4 ml-auto text-black/50 dark:text-black/55"
               fill="currentColor"
               viewBox="0 0 20 20"
             >

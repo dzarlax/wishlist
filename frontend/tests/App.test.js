@@ -51,6 +51,17 @@ describe('App', () => {
     expect(container.querySelector('h1')?.textContent).toContain('Wishlist');
   });
 
+  it('renders the wishlist directory service explanation', async () => {
+    const { container } = render(App);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain('Whose wishlist?');
+      expect(container.textContent).toContain('Open wishlist');
+      expect(container.textContent).toContain('For guests');
+      expect(container.textContent).toContain('Want your own wishlist?');
+    });
+  });
+
   it('shows loading state initially', () => {
     const { container } = render(App);
     expect(container.querySelector('.animate-spin')).toBeTruthy();
