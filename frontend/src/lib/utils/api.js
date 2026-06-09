@@ -58,6 +58,13 @@ export async function put(url, body) {
   });
 }
 
+export async function patch(url, body) {
+  return apiRequest(url, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
 export async function del(url) {
   return apiRequest(url, { method: 'DELETE' });
 }
@@ -143,8 +150,38 @@ export async function updateProfile(data) {
 export async function changePassword(currentPassword, newPassword) {
   return post('/api/auth/change-password', {
     current_password: currentPassword,
-    new_password: newPassword
+    new_password: newPassword,
   });
+}
+
+// ==================== Invite & Admin API ====================
+
+export async function fetchInvite(token) {
+  return get(`/api/invites/${encodeURIComponent(token)}`);
+}
+
+export async function acceptInvite(token, data) {
+  return post(`/api/invites/${encodeURIComponent(token)}/accept`, data);
+}
+
+export async function fetchAdminInvites() {
+  return get('/api/admin/invites');
+}
+
+export async function createAdminInvite(data) {
+  return post('/api/admin/invites', data);
+}
+
+export async function revokeAdminInvite(id) {
+  return post(`/api/admin/invites/${id}/revoke`, {});
+}
+
+export async function fetchAdminUsers() {
+  return get('/api/admin/users');
+}
+
+export async function updateAdminUserAccess(id, data) {
+  return patch(`/api/admin/users/${id}/access`, data);
 }
 
 // ==================== AI API ====================

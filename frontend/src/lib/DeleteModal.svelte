@@ -47,6 +47,7 @@
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
   transition:scale={{ duration: 200, start: 0.95, easing: quintOut }}
   on:click={handleClickOutside}
+  on:keydown={handleKeydown}
   role="button"
   tabindex="-1"
   aria-label="Close modal"
@@ -59,10 +60,14 @@
     aria-labelledby="delete-modal-title"
     tabindex="-1"
   >
-    <div class="relative px-7 py-5 border-b {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08]">
+    <div
+      class="relative px-7 py-5 border-b {designSystem.color.neutral.border
+        .DEFAULT} dark:border-white/[0.08]"
+    >
       <h2
         id="delete-modal-title"
-        class="{designSystem.text['2xl']} {designSystem.text.weight.medium} {designSystem.text.tracking.tighter} text-graphite dark:text-dark-text"
+        class="{designSystem.text['2xl']} {designSystem.text.weight.medium} {designSystem.text
+          .tracking.tighter} text-graphite dark:text-dark-text"
       >
         🗑️ {$t('modals.delete.title')}
       </h2>
@@ -70,7 +75,9 @@
 
     <div class="p-7 space-y-5">
       {#if error}
-        <div class="bg-red-500/10 border border-red-500/30 rounded-[4px] px-4 py-3 text-sm text-red-300">
+        <div
+          class="bg-red-500/10 border border-red-500/30 rounded-[4px] px-4 py-3 text-sm text-red-300"
+        >
           {error}
         </div>
       {/if}
@@ -80,10 +87,16 @@
       </p>
     </div>
 
-    <div class="px-7 py-5 border-t {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] flex gap-3 justify-end">
+    <div
+      class="px-7 py-5 border-t {designSystem.color.neutral.border
+        .DEFAULT} dark:border-white/[0.08] flex gap-3 justify-end"
+    >
       <button
         on:click={() => dispatch('close')}
-        class="h-10 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} transition-all duration-200"
+        class="h-10 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem
+          .color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary
+          .textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary
+          .hoverDark} transition-all duration-200"
       >
         {$t('actions.cancel')}
       </button>

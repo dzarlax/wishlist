@@ -9,6 +9,7 @@
     "server": "node server.js",
     "frontend": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build",
+    "test": "node --test tests/*.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:frontend": "cd frontend && npm run lint"

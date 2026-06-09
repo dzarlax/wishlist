@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invite Registration And AI Access Plan</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f7f5f0;
+      --text: #202124;
+      --muted: #5f6368;
+      --card: #ffffff;
+      --border: #dadce0;
+      --accent: #2563eb;
+      --warn: #92400e;
+      --code: #f1f3f4;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111315;
+        --text: #eceff1;
+        --muted: #b0b5ba;
+        --card: #191c20;
+        --border: #343a40;
+        --accent: #7aa2ff;
+        --warn: #f5c26b;
+        --code: #252a30;
+      }
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 20px 64px;
+    }
+
+    header {
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.2;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 21px;
+    }
+
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul, ol {
+      margin: 0 0 0 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code {
+      background: var(--code);
+      border-radius: 4px;
+      padding: 2px 5px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 0.95em;
+    }
+
+    pre {
+      background: var(--code);
+      border-radius: 6px;
+      overflow: auto;
+      padding: 14px;
+      margin: 10px 0 0;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+    }
+
+    .meta {
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .decision {
+      border-left: 4px solid var(--accent);
+    }
+
+    .risk {
+      border-left: 4px solid var(--warn);
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Invite Registration And AI Access Plan</h1>
+    <p class="meta">Created: 2026-06-09. Repository: <code>D:\Projects\Code\Personal\wishlist</code>.</p>
+  </header>
+
+  <section>
+    <h2>Task Summary</h2>
+    <p>
+      Add invite-link registration with admin approval-by-invite and separate AI access control.
+      The feature must stay compatible with the current multi-user wishlist model, password login,
+      optional Authentik SSO, SQLite fallback, and PostgreSQL deployment.
+    </p>
+  </section>
+
+  <section>
+    <h2>Current Behavior</h2>
+    <ul>
+      <li>Users are provisioned from the <code>USERS</code> environment variable on startup.</li>
+      <li>Existing users are updated by slug for name, emoji, and email; passwords are not overwritten after creation.</li>
+      <li>Password login uses <code>POST /api/auth/login</code> and returns a JWT.</li>
+      <li>SSO is optional and maps Authentik email to <code>users.email</code>.</li>
+      <li>Wishlist owner operations use <code>requireOwner</code>; guests can view wishlists and reserve gifts with a secret code.</li>
+      <li><code>POST /api/parse-gift</code> is currently public. <code>POST /api/translate</code> is authenticated.</li>
+      <li>Production deploy lives in <code>personal_ai_stack/deploy/wishlist</code> and uses PostgreSQL schema <code>wishlist</code>.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Desired Behavior</h2>
+    <ul>
+      <li>Only system admins can create invite links.</li>
+      <li>Invite links are one-time-use and expire after 7 days.</li>
+      <li>Invite creation includes an <code>AI access</code> flag.</li>
+      <li>Accepting an invite creates a normal non-admin user with <code>can_use_ai</code> copied from the invite.</li>
+      <li>Admins can later toggle <code>can_use_ai</code> and <code>is_admin</code> for users.</li>
+      <li>Existing users keep working without manual migration steps.</li>
+      <li>AI endpoints require login and explicit AI access.</li>
+    </ul>
+  </section>
+
+  <section class="decision">
+    <h2>Confirmed Decisions</h2>
+    <ul>
+      <li>Use built-in invite registration, not public self-registration and not Authentik-only provisioning.</li>
+      <li>Add a global <code>is_admin</code> user flag. Initial admin is <code>alexey</code>.</li>
+      <li>Add a separate <code>can_use_ai</code> user flag.</li>
+      <li>Existing users receive <code>can_use_ai=true</code> for compatibility.</li>
+      <li>Invite links are single-use and expire after 7 days.</li>
+      <li>Guests still cannot create gifts. AI access is only relevant inside authenticated owner workflows.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Assumptions</h2>
+    <ul>
+      <li>The first production admin should be the existing user with slug <code>alexey</code>.</li>
+      <li>Invite email is optional. If present, it becomes the user's email and enables later SSO mapping.</li>
+      <li>New invite registrations should require stronger passwords than the current legacy minimum of 3 characters.</li>
+      <li>The implementation should not remove the <code>USERS</code> fallback in this change.</li>
+      <li>No email delivery is required. Admin copies and sends the generated invite URL manually.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Data Model</h2>
+    <p>Add fields to <code>users</code>:</p>
+    <ul>
+      <li><code>is_admin BOOLEAN NOT NULL DEFAULT false</code></li>
+      <li><code>can_use_ai BOOLEAN NOT NULL DEFAULT false</code></li>
+    </ul>
+
+    <p>Add <code>invites</code> table:</p>
+    <pre><code>id
+token_hash
+created_by_user_id
+email
+name_hint
+can_use_ai
+expires_at
+used_at
+used_by_user_id
+revoked_at
+created_at</code></pre>
+
+    <p>
+      Store a hash of the invite token, not the raw token. The URL contains the raw random token,
+      and the backend hashes it for lookup.
+    </p>
+  </section>
+
+  <section>
+    <h2>API Changes</h2>
+    <p>Admin-only endpoints:</p>
+    <ul>
+      <li><code>GET /api/admin/invites</code> - list active, used, expired, and revoked invites.</li>
+      <li><code>POST /api/admin/invites</code> - create an invite and return the invite URL.</li>
+      <li><code>POST /api/admin/invites/:id/revoke</code> - revoke an unused invite.</li>
+      <li><code>GET /api/admin/users</code> - list users with access flags.</li>
+      <li><code>PATCH /api/admin/users/:id/access</code> - update <code>is_admin</code> and <code>can_use_ai</code>.</li>
+    </ul>
+
+    <p>Public invite endpoints:</p>
+    <ul>
+      <li><code>GET /api/invites/:token</code> - validate an invite and return safe display data.</li>
+      <li><code>POST /api/invites/:token/accept</code> - create the user, mark the invite used, and return JWT plus user.</li>
+    </ul>
+
+    <p>Access middleware:</p>
+    <ul>
+      <li>Add <code>requireAdmin</code> for admin endpoints.</li>
+      <li>Add <code>requireAiAccess</code> for AI endpoints.</li>
+      <li>Change <code>POST /api/parse-gift</code> to require auth and AI access.</li>
+      <li>Change <code>POST /api/translate</code> to require AI access in addition to auth.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Frontend Changes</h2>
+    <ul>
+      <li>Add hash route handling for <code>#/invite/&lt;token&gt;</code>.</li>
+      <li>Add invite registration view with name, slug, password, and confirm password.</li>
+      <li>After invite acceptance, store JWT and navigate to the new user's wishlist.</li>
+      <li>Add admin section in settings when <code>authUser.is_admin=true</code>.</li>
+      <li>Admin section includes invite creation, invite listing/revocation, and user access toggles.</li>
+      <li>Show AI autofill UI only when <code>isOwner && authUser.can_use_ai</code>.</li>
+      <li>Manual gift creation remains available for owners without AI access.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Implementation Steps</h2>
+    <ol>
+      <li>Add database migration for user access flags and invite table, with SQLite and PostgreSQL-compatible SQL.</li>
+      <li>Extend <code>UserModel</code> to expose sanitized access flags and admin user listing/update methods.</li>
+      <li>Add <code>InviteModel</code> for create, lookup by token hash, accept, revoke, and list operations.</li>
+      <li>Add auth middleware <code>requireAdmin</code> and <code>requireAiAccess</code>.</li>
+      <li>Add admin invite/user endpoints and public invite validation/acceptance endpoints.</li>
+      <li>Lock AI endpoints behind <code>requireAuth</code> and <code>requireAiAccess</code>.</li>
+      <li>Update frontend auth store and API helpers for invite/admin calls.</li>
+      <li>Add invite registration view and admin settings UI.</li>
+      <li>Gate AI UI on <code>isOwner && authUser.can_use_ai</code>.</li>
+      <li>Update the plan with actual changes and checks after implementation.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Test Plan</h2>
+    <ul>
+      <li>Run backend tests or add endpoint-level tests for invite creation, validation, accept, revoke, expiration, and reuse.</li>
+      <li>Test slug conflict returns <code>409</code>.</li>
+      <li>Test non-admin users cannot create or revoke invites.</li>
+      <li>Test users without AI access receive <code>403</code> from <code>/api/parse-gift</code> and <code>/api/translate</code>.</li>
+      <li>Run frontend build and lint where available.</li>
+      <li>Run SQLite smoke locally.</li>
+      <li>For production readiness, verify PostgreSQL migration against a safe environment before deploy.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Manual QA Checklist</h2>
+    <ul>
+      <li>Admin logs in and sees the admin section.</li>
+      <li>Admin creates an invite with AI access disabled and copies the URL.</li>
+      <li>Invite URL opens registration form and pre-fills available hints.</li>
+      <li>Accepting invite logs in the new user and opens their wishlist.</li>
+      <li>Used invite cannot be accepted again.</li>
+      <li>Revoked invite cannot be accepted.</li>
+      <li>Owner without AI access can manually create a gift but does not see AI autofill.</li>
+      <li>Admin toggles AI access and the user sees AI UI after reloading auth state.</li>
+      <li>Existing users can still log in and manage their existing wishlists.</li>
+      <li>SSO still works for users with matching email.</li>
+    </ul>
+  </section>
+
+  <section class="risk">
+    <h2>Risks</h2>
+    <ul>
+      <li>Migration SQL must handle SQLite and PostgreSQL differences for booleans and timestamps.</li>
+      <li>Existing documentation still describes the old single-admin password model and may need follow-up cleanup.</li>
+      <li>Changing <code>/api/parse-gift</code> from public to authenticated can break any external caller, if one exists.</li>
+      <li>Admin UI in the current settings modal could become crowded; keep the first pass minimal.</li>
+      <li>Invite token handling must avoid logging raw tokens in server logs.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Rollback Plan</h2>
+    <ul>
+      <li>Frontend changes can be reverted without data loss; existing users and gifts remain.</li>
+      <li>If invite endpoints fail, disable invite UI and continue provisioning via <code>USERS</code> temporarily.</li>
+      <li>Do not remove existing login or <code>USERS</code> seeding in this change, so rollback does not require recreating users.</li>
+      <li>Database columns and invite table can remain unused if the feature is disabled.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Resolved Questions</h2>
+    <ul>
+      <li>Email is optional. Invite creation must not require it.</li>
+      <li>Invite creation cannot grant admin rights. Admin rights are assigned only after registration through user access management.</li>
+      <li>Invite URLs should use hash routing: <code>https://wishlist.dzarlax.dev/#/invite/&lt;token&gt;</code>. This is the best fit for the current SPA and deploy setup because it does not require additional backend path handling or Traefik rewrite rules.</li>
+    </ul>
+  </section>
+
+  <section class="decision">
+    <h2>Approval Gate</h2>
+    <p>
+      Stop here. No production code should be changed until this plan is reviewed and explicitly approved.
+      After approval, implementation should follow this plan and update this document with actual changes,
+      checks run, known limitations, and follow-up recommendations.
+    </p>
+  </section>
+
+  <section>
+    <h2>Implementation Update</h2>
+    <p>Updated after implementation on 2026-06-09.</p>
+    <ul>
+      <li>Added migration <code>0009-add-invites-access-flags.js</code> for <code>users.is_admin</code>, <code>users.can_use_ai</code>, and <code>invites</code>.</li>
+      <li>Added <code>InviteModel</code> with random token generation, SHA-256 token lookup, public invite sanitization, revoke, and used status handling.</li>
+      <li>Extended <code>UserModel</code> to sanitize access flags, create users with access flags, update access flags, and protect against removing the last admin.</li>
+      <li>Added admin invite/user API endpoints and public invite validation/accept endpoints.</li>
+      <li>Restricted <code>/api/parse-gift</code> and <code>/api/translate</code> to authenticated users with <code>can_use_ai=true</code>.</li>
+      <li>Added invite registration hash route <code>#/invite/&lt;token&gt;</code> and a registration view that logs the new user in after acceptance.</li>
+      <li>Added admin controls in Settings for invite creation/revocation and user access toggles.</li>
+      <li>Gated the Add Gift AI autofill UI on owner AI access while keeping manual gift creation available.</li>
+      <li>Added backend tests for migration/access flags, invite lifecycle, and admin/AI access middleware.</li>
+      <li>Updated frontend tests for multi-user routing and invite registration routing.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Checks Run</h2>
+    <ul>
+      <li><code>npm test</code> - passed, 3 backend tests.</li>
+      <li><code>cd frontend &amp;&amp; npm test -- --run</code> - passed, 5 frontend tests.</li>
+      <li><code>npm run build</code> - passed; Vite build completed.</li>
+      <li><code>npx eslint ...</code> on changed backend files - passed.</li>
+      <li><code>cd frontend &amp;&amp; npx eslint ...</code> on changed frontend files - passed.</li>
+      <li><code>npm run lint</code> - passed after fixing old quote-style issues and an unused sanitized field in existing files.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Known Limitations</h2>
+    <ul>
+      <li>No email delivery is implemented; admins copy invite links manually.</li>
+      <li>Invite acceptance is not wrapped in a database transaction because the current DB adapter does not expose transaction helpers.</li>
+      <li>Clean path routing such as <code>/invite/:token</code> was intentionally not added; hash routing remains the compatibility path.</li>
+      <li>Build and tests no longer emit Svelte component warnings; only the external Browserslist data age notice remains.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

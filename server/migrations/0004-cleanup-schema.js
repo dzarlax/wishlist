@@ -7,11 +7,11 @@ async function up(db) {
     // PostgreSQL supports DROP COLUMN
     await db.run('ALTER TABLE gifts DROP COLUMN IF EXISTS category');
     await db.run('ALTER TABLE gifts DROP COLUMN IF EXISTS priority');
-    await db.run(`ALTER TABLE gifts ALTER COLUMN category_code SET DEFAULT 'electronics'`);
-    await db.run(`ALTER TABLE gifts ALTER COLUMN priority_code SET DEFAULT 'medium'`);
+    await db.run('ALTER TABLE gifts ALTER COLUMN category_code SET DEFAULT \'electronics\'');
+    await db.run('ALTER TABLE gifts ALTER COLUMN priority_code SET DEFAULT \'medium\'');
     // Update nulls
-    await db.run(`UPDATE gifts SET category_code = 'electronics' WHERE category_code IS NULL`);
-    await db.run(`UPDATE gifts SET priority_code = 'medium' WHERE priority_code IS NULL`);
+    await db.run('UPDATE gifts SET category_code = \'electronics\' WHERE category_code IS NULL');
+    await db.run('UPDATE gifts SET priority_code = \'medium\' WHERE priority_code IS NULL');
   } else {
     // SQLite: recreate table
     await db.run(`

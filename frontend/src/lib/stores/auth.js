@@ -9,10 +9,7 @@ function createAuthStore() {
   const loading = writable(true);
   const ssoConfig = writable({ sso: false, ssoUrl: null });
 
-  const isAuthenticated = derived(
-    [token, user],
-    ([$token, $user]) => !!$token && !!$user
-  );
+  const isAuthenticated = derived([token, user], ([$token, $user]) => !!$token && !!$user);
 
   async function init() {
     loading.set(true);
@@ -43,12 +40,12 @@ function createAuthStore() {
 
     // Validate existing token
     let currentToken;
-    token.subscribe(v => currentToken = v)();
+    token.subscribe((v) => (currentToken = v))();
 
     if (currentToken) {
       try {
         const res = await fetch('/api/auth/me', {
-          headers: { 'Authorization': `Bearer ${currentToken}` }
+          headers: { Authorization: `Bearer ${currentToken}` },
         });
         if (res.ok) {
           user.set(await res.json());
@@ -67,7 +64,7 @@ function createAuthStore() {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug, password })
+      body: JSON.stringify({ slug, password }),
     });
 
     if (!res.ok) {
@@ -99,6 +96,22 @@ function createAuthStore() {
     user.set(newUser);
   }
 
+  async function refresh() {
+    const currentToken = getToken();
+    if (!currentToken) return null;
+
+    const res = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${currentToken}` },
+    });
+    if (!res.ok) {
+      logout();
+      return null;
+    }
+    const currentUser = await res.json();
+    user.set(currentUser);
+    return currentUser;
+  }
+
   function logout() {
     if (isBrowser) {
       localStorage.removeItem(TOKEN_KEY);
@@ -107,12 +120,12 @@ function createAuthStore() {
     user.set(null);
   }
 
-/**
+  /**
    * Get the current token synchronously (for API calls).
    */
   function getToken() {
     let t;
-    token.subscribe(v => t = v)();
+    token.subscribe((v) => (t = v))();
     return t;
   }
 
@@ -125,8 +138,10 @@ function createAuthStore() {
     init,
     loginWithPassword,
     loginWithSso,
+    setSession,
+    refresh,
     logout,
-    getToken
+    getToken,
   };
 }
 

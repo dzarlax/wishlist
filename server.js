@@ -6,6 +6,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { adminAuthLimiter, reservationLimiter } = require('./server/middleware/rateLimiter');
+const { requireAdmin, requireAiAccess } = require('./server/middleware/access');
 const {
   validateGiftCreate,
   validateGiftUpdate,
@@ -14,9 +15,10 @@ const {
   validateUnreserve,
   validatePurchased
 } = require('./server/middleware/validation');
-const { generateToken, extractAuth, requireAuth, requireOwner, extractSsoUser } = require('./server/middleware/auth');
+const { generateToken, extractAuth, requireAuth, requireOwner } = require('./server/middleware/auth');
 const GiftModel = require('./server/models/Gift');
 const UserModel = require('./server/models/User');
+const InviteModel = require('./server/models/Invite');
 const CategoryModel = require('./server/models/Category');
 const PriorityModel = require('./server/models/Priority');
 const MigrationManager = require('./server/migrations/migrationManager');
@@ -30,7 +32,7 @@ validateConfig();
 const app = express();
 
 let db;
-let Gift, User, Category, Priority;
+let Gift, User, Invite, Category, Priority;
 let saveDB = null;
 const startTime = Date.now();
 
@@ -47,6 +49,7 @@ async function initDB() {
   // Initialize models
   Gift = new GiftModel(db);
   User = new UserModel(db);
+  Invite = new InviteModel(db);
   Category = new CategoryModel(db);
   Priority = new PriorityModel(db);
 
@@ -67,21 +70,24 @@ async function seedUsers() {
   if (!usersEnv) return;
 
   const userEntries = usersEnv.split(',').map(entry => entry.trim()).filter(Boolean);
-  for (const entry of userEntries) {
+  for (const [index, entry] of userEntries.entries()) {
     const parts = entry.split(':');
     if (parts.length < 3) {
       console.warn(`⚠️ Invalid user entry: ${entry} (expected slug:name:password[:emoji[:email]])`);
       continue;
     }
     const [slug, name, password, emoji, email] = parts;
+    const trimmedSlug = slug.trim();
     await User.seed({
-      slug: slug.trim(),
+      slug: trimmedSlug,
       name: name.trim(),
       admin_password: password.trim(),
       avatar_emoji: emoji ? emoji.trim() : '🎁',
-      email: email ? email.trim() : null
+      email: email ? email.trim() : null,
+      is_admin: index === 0 || trimmedSlug === 'alexey',
+      can_use_ai: true
     });
-    console.log(`👤 User "${name.trim()}" (/${slug.trim()}) ready`);
+    console.log(`👤 User "${name.trim()}" (/${trimmedSlug}) ready`);
   }
 }
 
@@ -117,6 +123,17 @@ app.use(express.static('public'));
 
 // Auth middleware on all routes
 app.use(extractAuth);
+app.use(async (req, res, next) => {
+  req.currentUser = null;
+  if (!req.authUser) return next();
+  try {
+    const user = await User.findById(req.authUser.id);
+    req.currentUser = User.sanitizeUser(user);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 // ==================== HELPER MIDDLEWARE ====================
 
@@ -129,6 +146,20 @@ function resolveUser(req, res, next) {
     req.wishlistUser = user;
     next();
   })().catch(next);
+}
+
+function normalizeOptionalString(value) {
+  if (value === undefined || value === null) return null;
+  const trimmed = String(value).trim();
+  return trimmed || null;
+}
+
+function isValidSlug(slug) {
+  return /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(slug);
+}
+
+function getInviteUrl(token) {
+  return `${config.appUrl.replace(/\/$/, '')}/#/invite/${encodeURIComponent(token)}`;
 }
 
 // ==================== AUTH ROUTES ====================
@@ -249,14 +280,194 @@ app.get('/api/auth/sso/callback', async (req, res) => {
 
 // Get current auth state
 app.get('/api/auth/me', async (req, res) => {
-  if (!req.authUser) {
+  if (!req.currentUser) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-  const user = await User.findById(req.authUser.id);
-  if (!user) {
-    return res.status(401).json({ error: 'User not found' });
+  res.json(req.currentUser);
+});
+
+// ==================== INVITES ====================
+
+app.get('/api/admin/invites', requireAdmin, async (req, res) => {
+  const invites = await Invite.findAll();
+  res.json(invites);
+});
+
+app.post('/api/admin/invites', requireAdmin, async (req, res) => {
+  try {
+    const email = normalizeOptionalString(req.body.email);
+    const nameHint = normalizeOptionalString(req.body.name_hint);
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email' });
+    }
+    if (nameHint && nameHint.length > 100) {
+      return res.status(400).json({ error: 'Name hint is too long' });
+    }
+
+    const { token, invite } = await Invite.create({
+      created_by_user_id: req.currentUser.id,
+      email,
+      name_hint: nameHint,
+      can_use_ai: Boolean(req.body.can_use_ai)
+    });
+
+    res.status(201).json({
+      ...invite,
+      invite_url: getInviteUrl(token)
+    });
+  } catch (error) {
+    console.error('Create invite error:', error);
+    res.status(500).json({ error: 'Failed to create invite' });
   }
-  res.json(User.sanitizeUser(user));
+});
+
+app.post('/api/admin/invites/:id/revoke', requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid invite id' });
+  }
+
+  const invite = await Invite.findById(id);
+  if (!invite) return res.status(404).json({ error: 'Invite not found' });
+  if (Invite.getStatus(invite) !== 'active') {
+    return res.status(400).json({ error: 'Invite is not active' });
+  }
+
+  const updated = await Invite.revoke(id);
+  res.json(Invite.sanitizeInvite(updated));
+});
+
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  const users = (await User.findAll()).map(u => User.sanitizeUser(u));
+  res.json(users);
+});
+
+app.patch('/api/admin/users/:id/access', requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+
+  const user = await User.findById(id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const updates = {};
+  if (req.body.is_admin !== undefined) updates.is_admin = Boolean(req.body.is_admin);
+  if (req.body.can_use_ai !== undefined) updates.can_use_ai = Boolean(req.body.can_use_ai);
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'No access changes provided' });
+  }
+
+  if (updates.is_admin === false && Boolean(user.is_admin)) {
+    const otherAdmins = await User.countAdmins(id);
+    if (otherAdmins === 0) {
+      return res.status(400).json({ error: 'Cannot remove the last admin' });
+    }
+  }
+
+  const updated = await User.updateAccess(id, updates);
+  res.json(User.sanitizeUser(updated));
+});
+
+app.get('/api/invites/:token', async (req, res) => {
+  const invite = await Invite.findByToken(req.params.token);
+  if (!invite) return res.status(404).json({ error: 'Invite not found' });
+
+  const status = Invite.getStatus(invite);
+  if (status !== 'active') {
+    return res.status(410).json({ error: `Invite is ${status}` });
+  }
+
+  res.json(Invite.sanitizePublicInvite(invite));
+});
+
+app.post('/api/invites/:token/accept', async (req, res) => {
+  try {
+    let invite = await Invite.findByToken(req.params.token);
+    if (!invite) return res.status(404).json({ error: 'Invite not found' });
+
+    let status = Invite.getStatus(invite);
+    if (status !== 'active') {
+      return res.status(410).json({ error: `Invite is ${status}` });
+    }
+
+    const slug = normalizeOptionalString(req.body.slug)?.toLowerCase();
+    const name = normalizeOptionalString(req.body.name || invite.name_hint);
+    const password = normalizeOptionalString(req.body.password);
+
+    if (!slug || !name || !password) {
+      return res.status(400).json({ error: 'slug, name, and password are required' });
+    }
+    if (!isValidSlug(slug)) {
+      return res.status(400).json({ error: 'Slug must be 3-40 lowercase letters, numbers, or hyphens' });
+    }
+    if (name.length > 100) {
+      return res.status(400).json({ error: 'Name is too long' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    const user = await db.transaction(async (txDb) => {
+      const txUser = new UserModel(txDb);
+      const txInvite = new InviteModel(txDb);
+
+      invite = await txInvite.findByToken(req.params.token);
+      if (!invite) {
+        const error = new Error('Invite not found');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      status = txInvite.getStatus(invite);
+      if (status !== 'active') {
+        const error = new Error(`Invite is ${status}`);
+        error.statusCode = 410;
+        throw error;
+      }
+
+      const existingSlug = await txUser.findBySlug(slug);
+      if (existingSlug) {
+        const error = new Error('Slug is already taken');
+        error.statusCode = 409;
+        throw error;
+      }
+
+      const createdUser = await txUser.create({
+        slug,
+        name,
+        admin_password: password,
+        avatar_emoji: '🎁',
+        email: invite.email || null,
+        is_admin: false,
+        can_use_ai: Boolean(invite.can_use_ai)
+      });
+
+      const used = await txInvite.markUsed(invite.id, createdUser.id);
+      if (used.changes !== 1) {
+        const usedStatus = txInvite.getStatus(used.invite || invite);
+        const error = new Error(`Invite is ${usedStatus}`);
+        error.statusCode = 410;
+        throw error;
+      }
+
+      return createdUser;
+    });
+
+    const token = generateToken(user);
+    res.status(201).json({ token, user: User.sanitizeUser(user) });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    if (error.message && /unique|duplicate/i.test(error.message)) {
+      return res.status(409).json({ error: 'User already exists' });
+    }
+    console.error('Accept invite error:', error);
+    res.status(500).json({ error: 'Failed to accept invite' });
+  }
 });
 
 // ==================== HEALTH ====================
@@ -391,7 +602,7 @@ app.delete('/api/priorities/:code', requireAuth, async (req, res) => {
 
 // ==================== TRANSLATE ====================
 
-app.post('/api/translate', requireAuth, async (req, res) => {
+app.post('/api/translate', requireAuth, requireAiAccess, async (req, res) => {
   try {
     const { text, from, to } = req.body;
     if (!text || !from || !to || !Array.isArray(to)) {
@@ -523,7 +734,7 @@ app.post('/api/extract-metadata', async (req, res) => {
   }
 });
 
-app.post('/api/parse-gift', async (req, res) => {
+app.post('/api/parse-gift', requireAuth, requireAiAccess, async (req, res) => {
   const { text, locale = 'ru' } = req.body;
 
   if (!text || text.trim().length === 0) {

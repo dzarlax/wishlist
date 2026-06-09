@@ -5,19 +5,19 @@
 async function up(db) {
   console.log('    Adding price_amount and price_currency columns...');
   await db.run('ALTER TABLE gifts ADD COLUMN price_amount NUMERIC');
-  await db.run("ALTER TABLE gifts ADD COLUMN price_currency TEXT DEFAULT 'EUR'");
+  await db.run('ALTER TABLE gifts ADD COLUMN price_currency TEXT DEFAULT \'EUR\'');
 
   // Parse existing prices into structured fields
   console.log('    Parsing existing prices...');
 
   // EUR: "92 €", "1.195 €", "80 EUR", "138 €"
-  await db.run(`UPDATE gifts SET price_currency = 'EUR' WHERE price LIKE '%€%' OR price LIKE '%EUR%'`);
+  await db.run('UPDATE gifts SET price_currency = \'EUR\' WHERE price LIKE \'%€%\' OR price LIKE \'%EUR%\'');
   // USD: "$3,999.00", "20$", "26.40$"
-  await db.run(`UPDATE gifts SET price_currency = 'USD' WHERE price LIKE '%$%' OR price LIKE '%USD%'`);
+  await db.run('UPDATE gifts SET price_currency = \'USD\' WHERE price LIKE \'%$%\' OR price LIKE \'%USD%\'');
   // RSD: "18.990 RSD", "1,708.66 RSD"
-  await db.run(`UPDATE gifts SET price_currency = 'RSD' WHERE price LIKE '%RSD%'`);
+  await db.run('UPDATE gifts SET price_currency = \'RSD\' WHERE price LIKE \'%RSD%\'');
   // Bare numbers default to RSD
-  await db.run(`UPDATE gifts SET price_currency = 'RSD' WHERE price IS NOT NULL AND price_currency = 'EUR' AND price NOT LIKE '%€%' AND price NOT LIKE '%EUR%' AND price NOT LIKE '%$%' AND price NOT LIKE '%USD%' AND price NOT LIKE '%RSD%'`);
+  await db.run('UPDATE gifts SET price_currency = \'RSD\' WHERE price IS NOT NULL AND price_currency = \'EUR\' AND price NOT LIKE \'%€%\' AND price NOT LIKE \'%EUR%\' AND price NOT LIKE \'%$%\' AND price NOT LIKE \'%USD%\' AND price NOT LIKE \'%RSD%\'');
 
   // Now extract numeric values — fetch and update in code since regex replace differs between PG and SQLite
   const gifts = await db.getAll('SELECT id, price FROM gifts WHERE price IS NOT NULL');

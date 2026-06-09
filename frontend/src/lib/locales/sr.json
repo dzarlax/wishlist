@@ -173,6 +173,36 @@
     "or": "ili",
     "sessionExpired": "Sesija je istekla, prijavite se ponovo"
   },
+  "invite": {
+    "title": "Registracija preko pozivnice",
+    "subtitle": "Napravite nalog za svoju listu želja.",
+    "name": "Ime",
+    "slug": "Adresa liste želja",
+    "accept": "Napravi nalog",
+    "accepted": "Nalog napravljen",
+    "invalid": "Pozivnica nije važeća",
+    "required": "Popunite ime, adresu i lozinku",
+    "passwordLength": "Lozinka mora imati najmanje 8 znakova",
+    "acceptFailed": "Nije moguće prihvatiti pozivnicu",
+    "aiIncluded": "AI pristup je uključen za ovaj nalog"
+  },
+  "admin": {
+    "title": "Admin",
+    "createInvite": "Napravi pozivnicu",
+    "nameHint": "Ime",
+    "aiAccess": "AI pristup",
+    "adminAccess": "Admin",
+    "copyLink": "Kopiraj",
+    "linkCopied": "Link kopiran",
+    "inviteCreated": "Pozivnica napravljena",
+    "inviteRevoked": "Pozivnica opozvana",
+    "accessUpdated": "Pristup ažuriran",
+    "users": "Korisnici",
+    "invites": "Pozivnice",
+    "invite": "Pozivnica",
+    "expires": "ističe",
+    "revoke": "Opozovi"
+  },
   "language": {
     "switch": "Пребаци на српски",
     "russian": "Руски",
