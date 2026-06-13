@@ -25,3 +25,12 @@ global.IntersectionObserver = class IntersectionObserver {
   }
   unobserve() {}
 };
+
+// Svelte transitions call the Web Animations API, which jsdom does not provide.
+Element.prototype.animate = vi.fn(() => ({
+  cancel: vi.fn(),
+  finish: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  onfinish: null,
+}));
