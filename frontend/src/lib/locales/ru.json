@@ -17,7 +17,7 @@
     "reserved": "Забронированные",
     "purchased": "Купленные",
     "purchasedSection": "Купленные подарки",
-    "giftedSection": "Подаренные подарки",
+    "giftedSection": "Полученные подарки",
     "resultsCount": "Показано {count} из {total}",
     "sortBy": "Сортировка",
     "sortByPriority": "По приоритету",
@@ -39,14 +39,19 @@
   "status": {
     "available": "Доступно",
     "reserved": "Забронировано",
+    "reservedByYou": "Вы забронировали",
+    "reservedByOther": "Уже забронировано",
     "purchased": "Куплено",
-    "gifted": "Подарено"
+    "gifted": "Получено"
   },
   "actions": {
     "reserve": "Забронировать",
     "unreserve": "Отменить",
-    "markPurchased": "Куплено",
-    "markGifted": "Подарен",
+    "markPurchased": "Отметить купленным",
+    "markGifted": "Уже есть",
+    "openLink": "Открыть ссылку",
+    "alreadyChosen": "Уже выбрали",
+    "copyLink": "Скопировать ссылку",
     "edit": "Редактировать",
     "delete": "Удалить",
     "cancel": "Отмена",
@@ -135,20 +140,25 @@
     "reserved": "Подарок забронирован!",
     "unreserved": "Бронирование отменено!",
     "markedPurchased": "Подарок отмечен как купленный!",
-    "markedGifted": "Подарок отмечен как подаренный!",
+    "markedGifted": "Подарок отмечен как полученный!",
     "error": "Произошла ошибка",
     "invalidSecretCode": "Неверный секретный код",
     "copySuccess": "Скопировано!"
   },
   "giftCard": {
+    "noPrice": "Цена не указана",
     "reservedBy": "Забронировал: {name}",
     "reservedAt": "Забронировано: {date}"
   },
   "settings": {
     "title": "Настройки",
     "categories": "Категории",
+    "categoriesDescription": "Группы подарков, которые видят гости и владелец.",
     "priorities": "Приоритеты",
+    "prioritiesDescription": "Метки важности, которые помогают сортировать желания.",
     "profile": "Профиль",
+    "profileDescription": "Email и пароль текущего владельца вишлиста.",
+    "adminDescription": "Инвайты, AI-доступ и права пользователей.",
     "sortOrder": "Порядок",
     "translations": "Переводы",
     "add": "Добавить",
@@ -164,6 +174,7 @@
   },
   "auth": {
     "login": "Войти",
+    "ownerLogin": "Я владелец списка",
     "logout": "Выйти",
     "password": "Пароль",
     "loginSuccess": "Вы вошли в систему",
