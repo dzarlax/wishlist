@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Implementation Plan: Private Homepage, Owner Login, and Wishlist Sharing</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f3ee;
+      --panel: #ffffff;
+      --ink: #1f2328;
+      --muted: #667085;
+      --line: rgba(31, 35, 40, 0.12);
+      --accent: #4f46e5;
+      --accent-soft: rgba(79, 70, 229, 0.12);
+      --ok: #047857;
+      --warn: #b45309;
+      --risk: #b91c1c;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111418;
+        --panel: #191d22;
+        --ink: #eef2f7;
+        --muted: #a8b0bd;
+        --line: rgba(255, 255, 255, 0.12);
+        --accent-soft: rgba(129, 140, 248, 0.18);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 64px;
+    }
+
+    header {
+      margin-bottom: 24px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 800px;
+      font-size: clamp(30px, 5vw, 52px);
+      font-weight: 650;
+    }
+
+    h2 {
+      margin-bottom: 12px;
+      font-size: 24px;
+      font-weight: 650;
+    }
+
+    h3 {
+      margin-top: 18px;
+      margin-bottom: 8px;
+      font-size: 17px;
+      font-weight: 650;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul,
+    ol {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code {
+      padding: 1px 5px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: rgba(127, 127, 127, 0.08);
+      font-size: 0.92em;
+    }
+
+    .lead {
+      max-width: 820px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      margin-bottom: 16px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      margin: 0 8px 8px 0;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .approval {
+      border-color: rgba(79, 70, 229, 0.4);
+      background: linear-gradient(0deg, var(--accent-soft), transparent 65%), var(--panel);
+    }
+
+    .risk {
+      color: var(--risk);
+      font-weight: 650;
+    }
+
+    .warn {
+      color: var(--warn);
+      font-weight: 650;
+    }
+
+    .ok {
+      color: var(--ok);
+      font-weight: 650;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .step {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(127, 127, 127, 0.05);
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .mockup-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+      gap: 18px;
+      margin-top: 14px;
+    }
+
+    .mockup {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8f5ef;
+      color: #22262c;
+      box-shadow: 0 18px 48px rgba(16, 24, 40, 0.12);
+    }
+
+    .mockup.dark {
+      background: #111418;
+      color: #eef2f7;
+    }
+
+    .mockbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(31, 35, 40, 0.10);
+    }
+
+    .dark .mockbar {
+      border-bottom-color: rgba(255, 255, 255, 0.10);
+    }
+
+    .brand {
+      min-width: 0;
+      font-size: 20px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .mock-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .mock-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 8px 12px;
+      border: 1px solid rgba(31, 35, 40, 0.12);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      color: inherit;
+      font-size: 13px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .dark .mock-btn {
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .mock-btn.primary {
+      border-color: #4f46e5;
+      background: #4f46e5;
+      color: #fff;
+    }
+
+    .mock-body {
+      padding: 28px;
+    }
+
+    .mock-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 22px;
+      align-items: center;
+    }
+
+    .mock-title {
+      margin: 0;
+      max-width: 520px;
+      font-size: 38px;
+      line-height: 1.08;
+      font-weight: 680;
+    }
+
+    .mock-copy {
+      margin: 12px 0 0;
+      max-width: 520px;
+      color: rgba(34, 38, 44, 0.62);
+    }
+
+    .dark .mock-copy {
+      color: rgba(238, 242, 247, 0.62);
+    }
+
+    .owner-panel,
+    .share-panel {
+      border: 1px solid rgba(31, 35, 40, 0.10);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.78);
+      padding: 16px;
+    }
+
+    .dark .owner-panel,
+    .dark .share-panel {
+      border-color: rgba(255, 255, 255, 0.10);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .mock-field {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid rgba(31, 35, 40, 0.12);
+      background: rgba(255, 255, 255, 0.8);
+      color: rgba(34, 38, 44, 0.54);
+      font-size: 13px;
+    }
+
+    .dark .mock-field {
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(17, 20, 24, 0.8);
+      color: rgba(238, 242, 247, 0.56);
+    }
+
+    .guest-note {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .guest-note div,
+    .gift-tile {
+      border: 1px solid rgba(31, 35, 40, 0.10);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.58);
+      padding: 12px;
+      font-size: 13px;
+      color: rgba(34, 38, 44, 0.62);
+    }
+
+    .dark .guest-note div,
+    .dark .gift-tile {
+      border-color: rgba(255, 255, 255, 0.10);
+      background: rgba(255, 255, 255, 0.04);
+      color: rgba(238, 242, 247, 0.62);
+    }
+
+    .guest-note strong,
+    .gift-tile strong,
+    .share-panel strong {
+      display: block;
+      margin-bottom: 5px;
+      color: inherit;
+    }
+
+    .gift-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .gift-image {
+      height: 72px;
+      margin: -12px -12px 10px;
+      background: linear-gradient(135deg, rgba(79, 70, 229, 0.22), rgba(20, 184, 166, 0.20));
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: min(100% - 20px, 1120px);
+        padding-top: 20px;
+      }
+
+      header,
+      .card {
+        padding: 18px;
+      }
+
+      .grid,
+      .flow,
+      .mockup-wrap,
+      .mock-hero,
+      .guest-note,
+      .gift-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .mock-body {
+        padding: 18px;
+      }
+
+      .mock-title {
+        font-size: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <span class="tag">Planning gate</span>
+      <span class="tag">Frontend-first</span>
+      <span class="tag">No production code changes yet</span>
+      <h1>Private Root Homepage, Owner Login, and Copyable Wishlist Links</h1>
+      <p class="lead">
+        Plan the next iteration of the Wishlist app so the root homepage no longer exposes the list of all wishlists,
+        wishlist owners can log in from the homepage, guests continue to open lists by direct link, and each opened
+        wishlist has an easy share-link action.
+      </p>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Task Summary</h2>
+        <p>
+          Replace the root <code>#</code> experience from a public wishlist directory into a simple entry screen:
+          explain that guests use direct links, provide a login button for wishlist owners, and avoid showing all
+          available users on the main page.
+        </p>
+        <p>
+          Add a copy-link affordance on an opened wishlist route such as <code>#/alexey</code>, so the owner or a guest
+          can quickly copy the direct URL and send it elsewhere.
+        </p>
+      </article>
+
+      <article class="card">
+        <h2>Current Behavior From Code Inspection</h2>
+        <ul>
+          <li><code>frontend/src/App.svelte</code> owns hash routing, auth state, selected user state, modals, filters, and gift grid rendering.</li>
+          <li>The root route currently renders <code>UserSelect.svelte</code>, which displays all users returned by <code>GET /api/users</code>.</li>
+          <li>Direct wishlist links already exist as hash routes: <code>#/&lt;slug&gt;</code>.</li>
+          <li>Owner login already exists through <code>LoginModal.svelte</code>, but it currently requires a known <code>userSlug</code> and is only shown after a wishlist is opened.</li>
+          <li>JWT auth is stored in <code>frontend/src/lib/stores/auth.js</code> and <code>POST /api/auth/login</code> accepts <code>{ slug, password }</code>.</li>
+          <li><code>GET /api/users/:slug</code> exists on the backend, while <code>GET /api/users</code> exposes the whole sanitized user list.</li>
+          <li>Locale files already contain root-homepage and auth copy in Russian, English, and Serbian.</li>
+        </ul>
+      </article>
+
+      <article class="card full">
+        <h2>Desired Behavior</h2>
+        <div class="flow">
+          <div class="step">
+            <strong>Root homepage</strong>
+            No public list of wishlist owners. Show concise app identity, a primary owner login button, and short guest guidance: "open the link you received."
+          </div>
+          <div class="step">
+            <strong>Owner login</strong>
+            From the root page, the owner can enter their username and password. After successful login, navigate to <code>#/&lt;slug&gt;</code>.
+          </div>
+          <div class="step">
+            <strong>Guest access</strong>
+            Guests open a direct URL such as <code>https://host/#/alexey</code>; they can browse and reserve gifts without seeing a directory of other wishlists.
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Primary Implementation Approach</h2>
+        <p class="ok">Recommended: frontend-only behavior change first.</p>
+        <ul>
+          <li>Keep <code>/api/users</code> for now because <code>App.svelte</code> relies on it to resolve hash slugs and handle the single-user redirect path.</li>
+          <li>Replace the visual root directory with a new root entry component or repurpose <code>UserSelect.svelte</code> into a non-directory home screen.</li>
+          <li>Keep login fields inside <code>LoginModal.svelte</code>; the root page should expose only a login button/CTA, not a persistent login form.</li>
+          <li>Extend <code>LoginModal.svelte</code> so it can optionally collect a username when no <code>userSlug</code> is provided.</li>
+          <li>On successful root login, use the returned user from <code>auth.loginWithPassword(slug, password)</code> to navigate to <code>#/&lt;slug&gt;</code>.</li>
+          <li>Add a share/copy button in the selected wishlist header that copies <code>window.location.origin + window.location.pathname + '#/' + currentUser.slug</code>.</li>
+          <li>Use <code>navigator.clipboard.writeText</code> with a fallback for older or restricted browser contexts.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Privacy Boundary</h2>
+        <p>
+          This plan removes the public list from the homepage UI. It does <strong>not</strong> make wishlist slugs secret at the API level,
+          because <code>GET /api/users</code> would still expose sanitized users.
+        </p>
+        <p>
+          If the requirement is "do not expose the list of users through the API either," that becomes a backend/API-contract change:
+          replace root directory usage with direct <code>/api/users/:slug</code> lookup, adjust tests, and restrict or remove public
+          <code>/api/users</code>. That is possible, but it has more compatibility risk and should be approved explicitly.
+        </p>
+      </article>
+
+      <article class="card full">
+        <h2>Likely File Changes</h2>
+        <ul>
+          <li><code>frontend/src/App.svelte</code> - root route rendering, root login trigger, post-login navigation, copy-link handler, selected wishlist header controls.</li>
+          <li><code>frontend/src/lib/UserSelect.svelte</code> - either replace with a non-directory homepage or split into a new component such as <code>HomeEntry.svelte</code>.</li>
+          <li><code>frontend/src/lib/LoginModal.svelte</code> - support root login by adding a wishlist-address/slug field when <code>userSlug</code> is absent.</li>
+          <li><code>frontend/src/lib/locales/ru.json</code>, <code>en.json</code>, <code>sr.json</code> - add copy for root login, direct-link guidance, slug field, and share-link success/error labels.</li>
+          <li><code>frontend/tests/App.test.js</code> - update root homepage tests, add owner-login/root behavior expectations if practical, and add share-link rendering checks.</li>
+          <li>Optional backend follow-up only if API privacy is required: <code>server.js</code>, <code>frontend/src/lib/utils/api.js</code>, and tests around user lookup.</li>
+        </ul>
+      </article>
+
+      <article class="card full">
+        <h2>Proposed UI Mockup</h2>
+        <p>
+          This is a planning mockup, not final production markup. It fixes the intended information architecture:
+          the root page is an owner entry point, not a directory, and the selected wishlist exposes a direct share action.
+        </p>
+
+        <div class="mockup-wrap">
+          <section class="mockup" aria-label="Root homepage mockup">
+            <div class="mockbar">
+              <div class="brand">🎁 Wishlist</div>
+              <div class="mock-actions">
+                <span class="mock-btn">🌙</span>
+                <span class="mock-btn">RU</span>
+                <span class="mock-btn primary">🔒 Войти</span>
+              </div>
+            </div>
+            <div class="mock-body">
+              <div class="mock-hero">
+                <div>
+                  <h3 class="mock-title">Ваш вишлист открывается по личной ссылке</h3>
+                  <p class="mock-copy">
+                    Гости переходят по ссылке, которую им отправил владелец. На главной странице нет общего списка чужих вишлистов.
+                  </p>
+                  <div class="guest-note">
+                    <div><strong>Для гостей</strong>Откройте полученную ссылку и забронируйте подарок секретным кодом.</div>
+                    <div><strong>Для владельца</strong>Войдите, чтобы добавлять подарки и управлять своим списком.</div>
+                    <div><strong>Для отправки</strong>Скопируйте ссылку из своего вишлиста и отправьте ее друзьям.</div>
+                  </div>
+                </div>
+                <aside class="owner-panel">
+                  <strong>Владелец вишлиста?</strong>
+                  <p class="mock-copy" style="margin-top: 6px;">
+                    Войдите, чтобы открыть свой список, добавлять подарки и скопировать ссылку для гостей.
+                  </p>
+                  <div class="mock-btn primary" style="margin-top: 12px; width: 100%;">🔒 Войти</div>
+                </aside>
+              </div>
+            </div>
+          </section>
+
+          <section class="mockup dark" aria-label="Opened wishlist mockup">
+            <div class="mockbar">
+              <div class="brand">🎁 Alexey</div>
+              <div class="mock-actions">
+                <span class="mock-btn">🔗 Скопировать ссылку</span>
+                <span class="mock-btn">🔒 Войти</span>
+              </div>
+            </div>
+            <div class="mock-body">
+              <aside class="share-panel">
+                <strong>Прямая ссылка на этот вишлист</strong>
+                <div class="mock-field">https://wishlist.example/#/alexey</div>
+              </aside>
+              <div class="gift-grid">
+                <article class="gift-tile">
+                  <div class="gift-image"></div>
+                  <strong>Наушники</strong>
+                  Доступно · Очень хочу
+                </article>
+                <article class="gift-tile">
+                  <div class="gift-image"></div>
+                  <strong>Книга</strong>
+                  Забронировано
+                </article>
+                <article class="gift-tile">
+                  <div class="gift-image"></div>
+                  <strong>Кофемолка</strong>
+                  Доступно · Было бы здорово
+                </article>
+              </div>
+            </div>
+          </section>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Implementation Steps After Approval</h2>
+        <ol>
+          <li>Introduce a root home state that does not render any user cards or user names.</li>
+          <li>Add a root-visible login button. When clicked, open the existing login modal in "username + password" mode.</li>
+          <li>Normalize the entered username on the client: trim whitespace, remove a leading <code>@</code>, and lower-case it.</li>
+          <li>After successful password login, navigate to the returned user's direct wishlist route.</li>
+          <li>Add a share button on selected wishlist pages near the title/header actions, visible to guests and owners.</li>
+          <li>Use localized toast messages for copied link and copy failure.</li>
+          <li>Update tests and run the frontend test/build checks.</li>
+          <li>Update this HTML plan with actual changed files, checks run, known limitations, and follow-up recommendations.</li>
+        </ol>
+      </article>
+
+      <article class="card">
+        <h2>UI Direction</h2>
+        <ul>
+          <li>Stay inside the existing Svelte/Tailwind visual language: ivory/dark backgrounds, 8px panels where needed, compact utility buttons, and existing header controls.</li>
+          <li>Do not create a public marketing landing page. The first screen should be a functional entry screen.</li>
+          <li>Main root action: <code>Войти</code> for owners. The page should not show a permanent login form; fields belong in the modal.</li>
+          <li>Wishlist page share action should be low-friction and not compete with owner-only add/settings buttons.</li>
+          <li>On mobile, header controls must wrap cleanly without hiding login/share actions.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Assumptions</h2>
+        <ul>
+          <li>"Убрать список виш-листов" means remove the public visual directory from the root homepage.</li>
+          <li>Direct links can continue using the existing <code>#/&lt;slug&gt;</code> format.</li>
+          <li>Owners know their username. Direct wishlist links are for guests, not for owner login.</li>
+          <li>Guest reservation flow stays unchanged: no login required, secret code required for reservation management.</li>
+          <li>No database schema or migration is needed for the frontend-only version.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Test Plan</h2>
+        <ul>
+          <li>Run root app tests with <code>npm test</code> or the project-specific frontend Vitest command after implementation.</li>
+          <li>Run production build with <code>npm run build</code>.</li>
+          <li>Verify locale JSON remains valid and all new keys exist in <code>ru</code>, <code>en</code>, and <code>sr</code>.</li>
+          <li>Browser QA root route: no user cards or names visible; owner login opens from the main page.</li>
+          <li>Browser QA direct route: <code>#/&lt;slug&gt;</code> still loads that wishlist for guests.</li>
+          <li>Browser QA owner route: owner can log in, sees owner controls, and stays on or is routed to their own wishlist.</li>
+          <li>Browser QA share: clicking copy-link copies the exact direct URL and shows a localized success toast.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Manual QA Checklist</h2>
+        <ul>
+          <li>Root page with multiple users does not show a chooser/list/card grid of all wishlists.</li>
+          <li>Root page still works when no users exist: no broken empty directory copy.</li>
+          <li>Single-user deployments do not auto-redirect away from the new root page unless explicitly desired.</li>
+          <li>Opening a valid direct link loads the selected wishlist without requiring login.</li>
+          <li>Opening an invalid direct link has a clear not-found or fallback state; it should not silently show the hidden directory.</li>
+          <li>Share button remains available to guests and owners, including mobile widths.</li>
+          <li>Login modal is understandable in Russian, English, and Serbian.</li>
+          <li>SSO behavior remains coherent if SSO is enabled; root SSO should still end up on the authenticated user's wishlist.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Risks</h2>
+        <ul>
+          <li><span class="warn">Existing one-user redirect:</span> <code>loadUsers()</code> currently redirects the root route to the only user. This must be changed or the new homepage will not appear on single-user installs.</li>
+          <li><span class="warn">Username discovery:</span> owners need to remember their username. The login modal should not ask them for a share link.</li>
+          <li><span class="warn">API exposure:</span> hiding the UI directory does not hide <code>/api/users</code>.</li>
+          <li><span class="warn">Clipboard permissions:</span> clipboard writes can fail outside secure contexts or in older browsers; add a fallback and clear error toast.</li>
+          <li><span class="warn">Header density:</span> theme, language, auth, settings, add, and share controls can crowd mobile headers; layout needs explicit mobile QA.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Rollback Plan</h2>
+        <ul>
+          <li>Revert the frontend component changes to restore the previous root-route user selection screen.</li>
+          <li>Keep direct wishlist links unchanged, so rolling back the root UI should not affect guest links.</li>
+          <li>If share-link copy causes issues, remove only the share button/handler without affecting wishlist browsing or reservation flows.</li>
+          <li>No database rollback is expected for the recommended frontend-only implementation.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Open Questions</h2>
+        <ul>
+          <li>Should <code>/api/users</code> also stop exposing the full user list publicly, or is hiding it from the homepage UI enough for now?</li>
+          <li>Resolved: root login should ask for username, not a share link. Direct links are copied from an opened wishlist for guests.</li>
+          <li>When an authenticated owner lands on the root page, should the app auto-open their own wishlist or show a "go to my wishlist" button?</li>
+          <li>Should the old "All wishlists" back button disappear from opened wishlist pages, since the root page will no longer be a directory?</li>
+        </ul>
+      </article>
+
+      <article class="card approval full">
+        <h2>Approval Gate</h2>
+        <p>
+          No production code has been changed by this plan. Approval is required before implementation.
+        </p>
+        <p>
+          Recommended approval wording: approve the frontend-only version first, with the public <code>/api/users</code> endpoint left unchanged.
+          If API-level privacy is required, approve that explicitly as an expanded backend/API-contract scope.
+        </p>
+      </article>
+
+      <article class="card full">
+        <h2>Implementation Update</h2>
+        <p>
+          Approved and implemented on 2026-06-13. The root page no longer renders the public wishlist directory.
+          It now shows a polished explanatory homepage for the invite-based wishlist service. Existing owners can log in
+          from the primary CTA, new owners can open invite instructions, and guests continue to use direct wishlist links.
+        </p>
+        <ul>
+          <li><code>frontend/src/lib/UserSelect.svelte</code> was renamed to <code>frontend/src/lib/HomePage.svelte</code> because the root route is no longer a user picker.</li>
+          <li><code>frontend/src/lib/HomePage.svelte</code> now renders the festive explanatory root page without user cards, names, or slug list. It explains what Wishlist is, why it exists, how gift reservation works, and how owners/guests get access.</li>
+          <li>The hero now prioritizes <strong>Owner login</strong> visually, with <strong>Get an invite</strong> as a secondary action. The invite action opens a dedicated invite-instructions modal instead of performing an easy-to-miss scroll on small screens.</li>
+          <li>The homepage includes a product mockup with a guest link and distinct gift statuses: available, reserved, and purchased.</li>
+          <li>A lightweight footer was added to summarize the access model: owners sign in, guests open direct links.</li>
+          <li><code>frontend/src/App.svelte</code> no longer auto-redirects single-user root visits, opens login from the root, navigates to the authenticated user's wishlist after login, and adds a copy-link button on opened wishlists.</li>
+          <li><code>frontend/src/lib/LoginModal.svelte</code> now supports root login by username when no current wishlist slug is present.</li>
+          <li><code>frontend/src/lib/locales/ru.json</code>, <code>en.json</code>, and <code>sr.json</code> were updated for the new root screen, username login field, invite modal, footer, mockup labels, and copy-link toasts.</li>
+          <li><code>frontend/tests/App.test.js</code> and <code>frontend/tests/setup.js</code> were updated for the new root behavior, invite modal, and modal transition testing.</li>
+          <li><code>Dockerfile</code>, <code>docker-compose.dev.yml</code>, and <code>frontend/vite.config.js</code> were adjusted so the dev compose runs the Vite dev server on <code>localhost:5173</code> with bind-mounted source files, avoiding image rebuilds for frontend edits.</li>
+        </ul>
+        <h3>Checks Run</h3>
+        <ul>
+          <li><code>npm test -- --run</code> in <code>frontend</code>: passed, 8 tests.</li>
+          <li><code>npm run build</code> in <code>frontend</code>: passed.</li>
+          <li><code>npx eslint src/App.svelte src/lib/HomePage.svelte tests/App.test.js</code>: passed for the latest touched Svelte/test files.</li>
+          <li><code>docker compose -f docker-compose.dev.yml ps</code>: <code>wishlist-app-dev</code> running on <code>localhost:3000</code>.</li>
+          <li><code>curl.exe -i http://localhost:3000/health</code>: returned <code>200 OK</code>.</li>
+          <li>Browser QA on <code>http://localhost:5173/</code>: desktop and mobile root page checked with Playwright; no horizontal overflow was detected on mobile.</li>
+          <li>Browser QA confirmed the primary owner-login CTA opens the login modal, the invite CTA opens the invite-instructions modal, and the invite modal can route existing owners to login.</li>
+        </ul>
+        <h3>Known Limitation</h3>
+        <p>
+          Dev compose now serves frontend source through Vite, so normal Svelte and locale edits do not require rebuilding
+          the Docker image. Rebuilds are still required when dependency installation, Dockerfile layers, or base runtime
+          settings change.
+        </p>
+        <p>
+          Full <code>npm run lint</code> in <code>frontend</code> still fails on repository-wide pre-existing formatting/config
+          issues, including CRLF-related Prettier errors in many files and a parse error in <code>tailwind.config.js</code>.
+          Focused lint on the touched Svelte/test files passes after formatting.
+        </p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

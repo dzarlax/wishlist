@@ -12,6 +12,7 @@
   const dispatch = createEventDispatcher();
 
   let password = '';
+  let wishlistAddress = '';
   let loading = false;
   let ssoConfig = { sso: false };
 
@@ -19,14 +20,19 @@
     ssoConfig = val || { sso: false };
   });
 
+  function normalizeUsername(value) {
+    return value.trim().replace(/^@/, '').toLowerCase();
+  }
+
   async function handlePasswordLogin() {
-    if (!password.trim() || !userSlug) return;
+    const slug = userSlug || normalizeUsername(wishlistAddress);
+    if (!password.trim() || !slug) return;
     loading = true;
 
     try {
-      await auth.loginWithPassword(userSlug, password);
+      const user = await auth.loginWithPassword(slug, password);
       toasts.success($t('auth.loginSuccess'));
-      dispatch('authenticated');
+      dispatch('authenticated', user);
     } catch (error) {
       toasts.error(error.message || $t('auth.loginFailed'));
     } finally {
@@ -106,6 +112,29 @@
       {/if}
 
       <!-- Password Input -->
+      {#if !userSlug}
+        <div>
+          <label
+            for="wishlist-address"
+            class="block {designSystem.text.combinations
+              .label} text-black/70 dark:text-white/70 mb-2"
+          >
+            {$t('auth.wishlistAddress')} *
+          </label>
+          <input
+            id="wishlist-address"
+            type="text"
+            bind:value={wishlistAddress}
+            placeholder={$t('auth.wishlistAddressPlaceholder')}
+            disabled={loading}
+            autocomplete="username"
+            class="w-full {designSystem.text.spacing
+              .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+              .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all disabled:opacity-50"
+          />
+        </div>
+      {/if}
+
       <div>
         <label
           for="auth-password"
@@ -119,6 +148,7 @@
           bind:value={password}
           placeholder="••••••••"
           disabled={loading}
+          autocomplete="current-password"
           class="w-full {designSystem.text.spacing
             .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
             .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all disabled:opacity-50"
@@ -143,7 +173,7 @@
       </button>
       <button
         on:click={handlePasswordLogin}
-        disabled={loading || !password.trim()}
+        disabled={loading || !password.trim() || (!userSlug && !wishlistAddress.trim())}
         class="px-4 py-2 rounded-none {designSystem.text.weight
           .semibold} text-white bg-graphite dark:bg-black hover:bg-black dark:hover:bg-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       >

@@ -171,7 +171,9 @@
     "loginFailed": "Invalid password",
     "loginWithSso": "Login with SSO",
     "or": "or",
-    "sessionExpired": "Session expired, please log in again"
+    "sessionExpired": "Session expired, please log in again",
+    "wishlistAddress": "Login",
+    "wishlistAddressPlaceholder": "alexey"
   },
   "invite": {
     "title": "Invite registration",
@@ -231,9 +233,134 @@
     "noUsers": "No users",
     "noUsersDescription": "No wishlists are available yet. New wishlists are added by invitation from the administrator.",
     "backToUsers": "All wishlists",
+    "backToHome": "Home",
     "wishlistOf": "Wishlist: {name}",
     "openWishlist": "Open wishlist",
     "openWishlistFor": "Open wishlist for {name}",
+    "copyWishlistLink": "Copy link",
+    "linkCopied": "Wishlist link copied",
+    "linkCopyFailed": "Could not copy link",
+    "privateHome": {
+      "kicker": "A private wishlist for celebrations",
+      "title": "Gifts without guessing or duplicates",
+      "subtitle": "Collect wishes in one list and send the link to close people. Guests choose a gift, reserve it with a secret code, and never see other wishlists.",
+      "guestHint": "If you are a guest, just open the link you received.",
+      "cta": {
+        "invite": "Get an invite",
+        "login": "Owner login",
+        "note": "Wishlists are currently created by administrator invite. Guests open a list from a link without signing in."
+      },
+      "inviteModal": {
+        "kicker": "Invite-only access",
+        "title": "How to get an invite",
+        "body": "New wishlists are currently created through an administrator invite. This keeps the homepage from becoming a public directory of other people's lists.",
+        "ownerTitle": "I want my own wishlist",
+        "ownerBody": "Ask the administrator to create an invite. The invite link lets you create an account and collect your wishes in one list.",
+        "guestTitle": "I am a guest",
+        "guestBody": "You do not need to register. Open the link from the wishlist owner, choose a gift, and reserve it with a secret code.",
+        "close": "Got it"
+      },
+      "ownerCard": {
+        "title": "Wishlist owner?",
+        "body": "Log in with your username to open your list, add gifts, and copy the link for guests."
+      },
+      "signedIn": {
+        "title": "You are signed in",
+        "body": "Open your wishlist to manage gifts and send the link to guests."
+      },
+      "openMine": "Open my wishlist",
+      "guests": {
+        "title": "For guests",
+        "body": "Open the link you received, choose a gift, and reserve it with a secret code."
+      },
+      "owners": {
+        "title": "For owners",
+        "body": "After login, you can add gifts, edit details, and archive received gifts."
+      },
+      "share": {
+        "title": "How to share",
+        "body": "Open your wishlist and use the copy-link button in the page header."
+      },
+      "linkPreview": {
+        "label": "Guest link example",
+        "body": "The owner copies this kind of link from their wishlist and sends it to friends."
+      },
+      "scene": {
+        "title": "One list instead of long chats",
+        "body": "The owner adds wishes, and guests use the link to choose and reserve gifts. The surprise still stays a surprise.",
+        "note": "The owner manages the list. Guests only receive the link."
+      },
+      "mockup": {
+        "label": "Wishlist example",
+        "title": "Celebration wishlist",
+        "subtitle": "3 wishes · guest link",
+        "shareLabel": "Guest link",
+        "available": "Available",
+        "reserved": "Reserved",
+        "purchased": "Purchased",
+        "gift1": {
+          "title": "Coffee machine",
+          "meta": "example wish"
+        },
+        "gift2": {
+          "title": "Board game",
+          "meta": "already chosen by guests"
+        },
+        "gift3": {
+          "title": "Gift certificate",
+          "meta": "already purchased by a guest"
+        }
+      },
+      "why": {
+        "kicker": "Why it exists",
+        "title": "So gifting is easier",
+        "body": "Wishlist helps you collect ideas ahead of time, share them with close people, and show guests which gifts are already reserved."
+      },
+      "reasons": {
+        "noDuplicates": {
+          "title": "No duplicates",
+          "body": "Guests see what is reserved and avoid buying the same gift twice."
+        },
+        "secret": {
+          "title": "Surprise preserved",
+          "body": "The owner manages the list, while guest reservation codes stay private."
+        },
+        "simple": {
+          "title": "Everything together",
+          "body": "Links, prices, descriptions, images, and statuses stay in one place."
+        }
+      },
+      "how": {
+        "kicker": "How it works",
+        "title": "Three steps from wish to celebration"
+      },
+      "steps": {
+        "open": {
+          "title": "Owner collects wishes",
+          "body": "Adds gifts, links, prices, images, and priorities."
+        },
+        "reserve": {
+          "title": "Guest reserves",
+          "body": "Chooses a gift and keeps a secret code for reservation changes."
+        },
+        "celebrate": {
+          "title": "Guests gift calmly",
+          "body": "No messy chats and no one buys the same gift twice."
+        }
+      },
+      "access": {
+        "title": "How to get access",
+        "ownerTitle": "Create your own wishlist",
+        "ownerBody": "Get an invite from the service administrator, sign in, and collect your wishes in one list.",
+        "guestTitle": "Choose a gift as a guest",
+        "guestBody": "Open the link from the wishlist owner and reserve a gift without creating an account."
+      },
+      "footer": {
+        "tagline": "A private wishlist service · {year}",
+        "ownerAccess": "Owners sign in with username and password.",
+        "guestAccess": "Guests open a wishlist from a direct link."
+      }
+    },
     "guestNote": {
       "title": "For guests",
       "body": "You can reserve a gift with your name and a secret code. Keep the code to cancel or mark the gift as purchased later."

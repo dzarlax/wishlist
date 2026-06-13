@@ -8,6 +8,21 @@ RUN cd frontend && npm install
 COPY frontend/ ./frontend/
 RUN cd frontend && npm run build
 
+# Development stage
+FROM node:20-alpine AS dev
+
+WORKDIR /app
+
+# Install root and frontend dependencies once in the image. Source code is bind-mounted by docker-compose.dev.yml.
+COPY package*.json ./
+RUN npm install
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm install
+
+EXPOSE 3000 5173
+
+CMD ["npm", "run", "dev"]
+
 # Production stage
 FROM node:20-alpine
 
