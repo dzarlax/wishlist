@@ -122,6 +122,17 @@
     window.location.hash = '';
   }
 
+  function upsertUser(user) {
+    if (!user?.slug) return;
+    const existingIndex = users.findIndex((item) => item.slug === user.slug);
+    if (existingIndex === -1) {
+      users = [...users, user];
+      return;
+    }
+
+    users = users.map((item, index) => (index === existingIndex ? { ...item, ...user } : item));
+  }
+
   function handleHashChange() {
     inviteToken = getInviteTokenFromHash();
     if (inviteToken) {
@@ -344,8 +355,20 @@
 
   function onAuthenticated(event) {
     showLoginModal = false;
-    if (!currentUser && event.detail?.slug) {
-      navigateToUser(event.detail);
+    const authenticatedUser = event.detail;
+    const shouldOpenOwnWishlist = !currentUser;
+
+    if (authenticatedUser?.slug) {
+      upsertUser(authenticatedUser);
+
+      if (shouldOpenOwnWishlist || currentUser?.slug === authenticatedUser.slug) {
+        currentUser = authenticatedUser;
+        loadGifts();
+      }
+
+      if (shouldOpenOwnWishlist) {
+        navigateToUser(authenticatedUser);
+      }
     }
     toasts.success($t('auth.loginSuccess'));
   }
