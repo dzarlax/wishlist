@@ -2,13 +2,21 @@ version: '3.8'
 
 services:
   wishlist:
-    build: .
+    build:
+      context: .
+      target: dev
     container_name: wishlist-app-dev
     ports:
       - "3000:3000"
+      - "5173:5173"
     environment:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-wishlist2025}
       - PORT=${PORT:-3000}
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
     volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/frontend/node_modules
       - ./wishlist.db:/app/wishlist.db
     restart: unless-stopped

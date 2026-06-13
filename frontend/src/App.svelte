@@ -24,7 +24,7 @@
   import InviteRegistration from './lib/InviteRegistration.svelte';
   import SecretCodeModal from './lib/SecretCodeModal.svelte';
   import SettingsModal from './lib/SettingsModal.svelte';
-  import UserSelect from './lib/UserSelect.svelte';
+  import HomePage from './lib/HomePage.svelte';
   import ToastContainer from './lib/components/ToastContainer.svelte';
   import LanguageSwitcher from './lib/components/LanguageSwitcher.svelte';
   import { t } from './lib/utils/i18n.js';
@@ -122,6 +122,17 @@
     window.location.hash = '';
   }
 
+  function upsertUser(user) {
+    if (!user?.slug) return;
+    const existingIndex = users.findIndex((item) => item.slug === user.slug);
+    if (existingIndex === -1) {
+      users = [...users, user];
+      return;
+    }
+
+    users = users.map((item, index) => (index === existingIndex ? { ...item, ...user } : item));
+  }
+
   function handleHashChange() {
     inviteToken = getInviteTokenFromHash();
     if (inviteToken) {
@@ -161,19 +172,12 @@
     usersLoading = true;
     try {
       users = await fetchUsers();
-      if (users.length === 1 && !getSlugFromHash() && !getInviteTokenFromHash()) {
-        navigateToUser(users[0]);
-      }
     } catch (error) {
       console.error('Error loading users:', error);
       users = [];
     } finally {
       usersLoading = false;
     }
-  }
-
-  function onUserSelect(event) {
-    navigateToUser(event.detail);
   }
 
   async function loadGifts() {
@@ -349,9 +353,58 @@
     toasts.success($t('auth.logoutSuccess'));
   }
 
-  function onAuthenticated() {
+  function onAuthenticated(event) {
     showLoginModal = false;
+    const authenticatedUser = event.detail;
+    const shouldOpenOwnWishlist = !currentUser;
+
+    if (authenticatedUser?.slug) {
+      upsertUser(authenticatedUser);
+
+      if (shouldOpenOwnWishlist || currentUser?.slug === authenticatedUser.slug) {
+        currentUser = authenticatedUser;
+        loadGifts();
+      }
+
+      if (shouldOpenOwnWishlist) {
+        navigateToUser(authenticatedUser);
+      }
+    }
     toasts.success($t('auth.loginSuccess'));
+  }
+
+  function getWishlistUrl(user) {
+    if (typeof window === 'undefined' || !user?.slug) return '';
+    return `${window.location.origin}${window.location.pathname}#/${user.slug}`;
+  }
+
+  function copyWithFallback(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return copied;
+  }
+
+  async function copyWishlistLink() {
+    const url = getWishlistUrl(currentUser);
+    if (!url) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else if (!copyWithFallback(url)) {
+        throw new Error('Clipboard unavailable');
+      }
+      toasts.success($t('users.linkCopied'));
+    } catch {
+      toasts.error($t('users.linkCopyFailed'));
+    }
   }
 
   async function onInviteRegistered(event) {
@@ -371,9 +424,9 @@
           <button
             on:click={navigateToUserList}
             class="px-3 py-1.5 rounded-full text-xs bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 transition-all"
-            title={$t('users.backToUsers')}
+            title={$t('users.backToHome')}
           >
-            ← {$t('users.backToUsers')}
+            ← {$t('users.backToHome')}
           </button>
         {/if}
         <h1
@@ -427,6 +480,16 @@
           {/if}
         {/if}
 
+        {#if currentUser}
+          <button
+            on:click={copyWishlistLink}
+            class="h-[42px] px-4 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center gap-2 text-sm font-medium text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
+            title={$t('users.copyWishlistLink')}
+          >
+            🔗 <span class="hidden sm:inline">{$t('users.copyWishlistLink')}</span>
+          </button>
+        {/if}
+
         <!-- Add Button (only for owner) -->
         {#if isOwner}
           <button
@@ -443,7 +506,7 @@
     {#if inviteToken}
       <InviteRegistration token={inviteToken} on:registered={onInviteRegistered} />
     {:else if !currentUser}
-      <UserSelect {users} loading={usersLoading} on:select={onUserSelect} />
+      <HomePage loading={usersLoading} on:login={handleLogin} />
     {:else}
       <!-- Search and Filters -->
       <div class="mb-6 sm:mb-7 space-y-4">
@@ -636,9 +699,9 @@
   <SettingsModal on:close={() => (showSettingsModal = false)} on:updated={loadGifts} />
 {/if}
 
-{#if showLoginModal && currentUser}
+{#if showLoginModal}
   <LoginModal
-    userSlug={currentUser.slug}
+    userSlug={currentUser?.slug || null}
     on:close={() => (showLoginModal = false)}
     on:authenticated={onAuthenticated}
   />

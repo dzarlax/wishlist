@@ -171,7 +171,9 @@
     "loginFailed": "Pogrešna lozinka",
     "loginWithSso": "Prijavi se preko SSO",
     "or": "ili",
-    "sessionExpired": "Sesija je istekla, prijavite se ponovo"
+    "sessionExpired": "Sesija je istekla, prijavite se ponovo",
+    "wishlistAddress": "Login",
+    "wishlistAddressPlaceholder": "alexey"
   },
   "invite": {
     "title": "Registracija preko pozivnice",
@@ -232,9 +234,134 @@
     "noUsers": "Nema korisnika",
     "noUsersDescription": "Još nema dostupnih lista želja. Nove liste se dodaju pozivnicom administratora.",
     "backToUsers": "Sve liste želja",
+    "backToHome": "Početna",
     "wishlistOf": "Lista želja: {name}",
     "openWishlist": "Otvori",
     "openWishlistFor": "Otvori listu želja za {name}",
+    "copyWishlistLink": "Kopiraj link",
+    "linkCopied": "Link liste želja je kopiran",
+    "linkCopyFailed": "Nije moguće kopirati link",
+    "privateHome": {
+      "kicker": "Privatna lista želja za proslave",
+      "title": "Pokloni bez pogađanja i dupliranja",
+      "subtitle": "Skupite želje u jednu listu i pošaljite link bliskim ljudima. Gosti biraju poklon, rezervišu ga tajnim kodom i ne vide tuđe liste.",
+      "guestHint": "Ako ste gost, samo otvorite link koji ste dobili.",
+      "cta": {
+        "invite": "Dobijte pozivnicu",
+        "login": "Prijava vlasnika",
+        "note": "Liste želja se trenutno kreiraju pozivnicom administratora. Gosti otvaraju listu preko linka bez prijave."
+      },
+      "inviteModal": {
+        "kicker": "Pristup preko pozivnice",
+        "title": "Kako dobiti pozivnicu",
+        "body": "Nove liste želja se trenutno kreiraju preko pozivnice administratora. Tako početna stranica ne postaje javni katalog tuđih lista.",
+        "ownerTitle": "Želim svoju listu želja",
+        "ownerBody": "Zatražite od administratora da napravi pozivnicu. Link iz pozivnice vam omogućava da kreirate nalog i skupite želje u jednu listu.",
+        "guestTitle": "Ja sam gost",
+        "guestBody": "Registracija nije potrebna. Otvorite link koji je poslao vlasnik liste, izaberite poklon i rezervišite ga tajnim kodom.",
+        "close": "Razumem"
+      },
+      "ownerCard": {
+        "title": "Vlasnik liste želja?",
+        "body": "Prijavite se korisničkim imenom da otvorite svoju listu, dodajete poklone i kopirate link za goste."
+      },
+      "signedIn": {
+        "title": "Već ste prijavljeni",
+        "body": "Otvorite svoju listu da upravljate poklonima i pošaljete link gostima."
+      },
+      "openMine": "Otvori moju listu",
+      "guests": {
+        "title": "Za goste",
+        "body": "Otvorite link koji ste dobili, izaberite poklon i rezervišite ga tajnim kodom."
+      },
+      "owners": {
+        "title": "Za vlasnika",
+        "body": "Posle prijave možete dodavati poklone, menjati detalje i arhivirati primljeno."
+      },
+      "share": {
+        "title": "Kako podeliti",
+        "body": "Otvorite svoju listu i koristite dugme za kopiranje linka u zaglavlju stranice."
+      },
+      "linkPreview": {
+        "label": "Primer linka za goste",
+        "body": "Vlasnik kopira ovakav link iz svoje liste i šalje ga prijateljima."
+      },
+      "scene": {
+        "title": "Jedna lista umesto dugih dopisivanja",
+        "body": "Vlasnik dodaje želje, a gosti preko linka biraju i rezervišu poklone. Iznenađenje i dalje ostaje iznenađenje.",
+        "note": "Listu uređuje vlasnik. Gosti dobijaju samo link."
+      },
+      "mockup": {
+        "label": "Primer liste želja",
+        "title": "Lista za proslavu",
+        "subtitle": "3 želje · link za goste",
+        "shareLabel": "Link za goste",
+        "available": "Dostupno",
+        "reserved": "Rezervisano",
+        "purchased": "Kupljeno",
+        "gift1": {
+          "title": "Aparat za kafu",
+          "meta": "primer želje"
+        },
+        "gift2": {
+          "title": "Društvena igra",
+          "meta": "gosti su već izabrali"
+        },
+        "gift3": {
+          "title": "Poklon vaučer",
+          "meta": "gost je već kupio"
+        }
+      },
+      "why": {
+        "kicker": "Zašto postoji",
+        "title": "Da poklanjanje bude jednostavnije",
+        "body": "Wishlist pomaže da unapred skupite ideje, podelite ih sa bliskim ljudima i pokažete gostima koji su pokloni već rezervisani."
+      },
+      "reasons": {
+        "noDuplicates": {
+          "title": "Bez dupliranja",
+          "body": "Gosti vide šta je rezervisano i ne kupuju isti poklon dva puta."
+        },
+        "secret": {
+          "title": "Iznenađenje ostaje",
+          "body": "Vlasnik upravlja listom, a tajni kodovi gostiju ostaju privatni."
+        },
+        "simple": {
+          "title": "Sve na jednom mestu",
+          "body": "Linkovi, cene, opisi, slike i statusi stoje zajedno."
+        }
+      },
+      "how": {
+        "kicker": "Kako radi",
+        "title": "Tri koraka od želje do slavlja"
+      },
+      "steps": {
+        "open": {
+          "title": "Vlasnik skuplja želje",
+          "body": "Dodaje poklone, linkove, cene, slike i prioritete."
+        },
+        "reserve": {
+          "title": "Gost rezerviše",
+          "body": "Bira poklon i čuva tajni kod za izmene rezervacije."
+        },
+        "celebrate": {
+          "title": "Gosti mirno poklanjaju",
+          "body": "Nema haosa u četovima i niko ne kupuje isti poklon dva puta."
+        }
+      },
+      "access": {
+        "title": "Kako dobiti pristup",
+        "ownerTitle": "Napravite svoju listu želja",
+        "ownerBody": "Dobijte pozivnicu od administratora servisa, prijavite se i skupite želje u jednu listu.",
+        "guestTitle": "Izaberite poklon kao gost",
+        "guestBody": "Otvorite link od vlasnika liste i rezervišite poklon bez kreiranja naloga."
+      },
+      "footer": {
+        "tagline": "Privatan servis za liste želja · {year}",
+        "ownerAccess": "Vlasnici se prijavljuju korisničkim imenom i lozinkom.",
+        "guestAccess": "Gosti otvaraju listu želja direktnim linkom."
+      }
+    },
     "guestNote": {
       "title": "Za goste",
       "body": "Poklon možete rezervisati svojim imenom i tajnim kodom. Sačuvajte kod da kasnije otkažete rezervaciju ili označite kupovinu."
