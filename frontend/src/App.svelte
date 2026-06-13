@@ -26,7 +26,6 @@
   import SettingsModal from './lib/SettingsModal.svelte';
   import HomePage from './lib/HomePage.svelte';
   import ToastContainer from './lib/components/ToastContainer.svelte';
-  import LanguageSwitcher from './lib/components/LanguageSwitcher.svelte';
   import { t } from './lib/utils/i18n.js';
 
   let currentTheme = 'dark';
@@ -67,6 +66,8 @@
   let showViewModal = false;
   let showLoginModal = false;
   let showSettingsModal = false;
+  let showHeaderMenu = false;
+  let headerMenuEl;
 
   // Secret code modal state
   let showSecretCodeModal = false;
@@ -82,6 +83,7 @@
   let selectedPriority = '';
   let sortBy = 'priority';
   let showPurchased = false;
+  let guestReservationIds = [];
 
   // Reference data from API
   let categoriesList = [];
@@ -146,11 +148,13 @@
       const user = users.find((u) => u.slug === slug);
       if (user) {
         currentUser = user;
+        loadGuestReservations(user.slug);
         loadGifts();
         return;
       }
     }
     currentUser = null;
+    guestReservationIds = [];
     gifts = [];
   }
 
@@ -264,6 +268,63 @@
     sortBy = 'priority';
   }
 
+  function getGuestReservationsKey(slug) {
+    return `wishlist_guest_reservations:${slug}`;
+  }
+
+  function loadGuestReservations(slug) {
+    if (!slug) {
+      guestReservationIds = [];
+      return;
+    }
+
+    try {
+      guestReservationIds = JSON.parse(localStorage.getItem(getGuestReservationsKey(slug)) || '[]');
+    } catch {
+      guestReservationIds = [];
+    }
+  }
+
+  function saveGuestReservations(slug, ids) {
+    guestReservationIds = [...new Set(ids.map(String))];
+    if (slug) {
+      localStorage.setItem(getGuestReservationsKey(slug), JSON.stringify(guestReservationIds));
+    }
+  }
+
+  function rememberGuestReservation(giftId) {
+    if (!currentUser) return;
+    saveGuestReservations(currentUser.slug, [...guestReservationIds, String(giftId)]);
+  }
+
+  function forgetGuestReservation(giftId) {
+    if (!currentUser) return;
+    saveGuestReservations(
+      currentUser.slug,
+      guestReservationIds.filter((id) => id !== String(giftId))
+    );
+  }
+
+  function isGuestReservationOwner(gift) {
+    return !isOwner && guestReservationIds.includes(String(gift.id));
+  }
+
+  function closeHeaderMenu() {
+    showHeaderMenu = false;
+  }
+
+  function handleHeaderMenuClickOutside(event) {
+    if (headerMenuEl && !headerMenuEl.contains(event.target)) {
+      closeHeaderMenu();
+    }
+  }
+
+  function handleHeaderMenuKeydown(event) {
+    if (event.key === 'Escape') {
+      closeHeaderMenu();
+    }
+  }
+
   function openAddModal() {
     if (!currentUser || !isOwner) return;
     showAddModal = true;
@@ -276,6 +337,7 @@
   }
 
   function openReserveModal(gift) {
+    if (isOwner) return;
     selectedGift = gift;
     showReserveModal = true;
   }
@@ -312,6 +374,7 @@
         await purchaseUserGift(slug, giftId, { secret_code: secretCode });
       } else if (secretCodeAction === 'unreserve') {
         await unreserveUserGift(slug, giftId, { secret_code: secretCode });
+        forgetGuestReservation(giftId);
       }
 
       loadGifts();
@@ -344,6 +407,11 @@
     loadGifts();
   }
 
+  function onGiftReserved(event) {
+    rememberGuestReservation(event.detail?.giftId);
+    onGiftSaved();
+  }
+
   function handleLogin() {
     showLoginModal = true;
   }
@@ -357,6 +425,9 @@
     showLoginModal = false;
     const authenticatedUser = event.detail;
     const shouldOpenOwnWishlist = !currentUser;
+    authUser = authenticatedUser;
+    isAuthenticated = Boolean(authenticatedUser);
+    authLoading = false;
 
     if (authenticatedUser?.slug) {
       upsertUser(authenticatedUser);
@@ -407,23 +478,30 @@
     }
   }
 
+  async function copyWishlistLinkFromMenu() {
+    closeHeaderMenu();
+    await copyWishlistLink();
+  }
+
   async function onInviteRegistered(event) {
     await loadUsers();
     navigateToUser(event.detail);
   }
 </script>
 
+<svelte:window on:click={handleHeaderMenuClickOutside} on:keydown={handleHeaderMenuKeydown} />
+
 <div class="min-h-screen bg-ivory dark:bg-dark-bg transition-colors duration-300">
   <ToastContainer />
 
   <div class="px-6 sm:px-7 py-6 sm:py-7">
     <!-- Header -->
-    <header class="flex items-center justify-between mb-6 sm:mb-7">
-      <div class="flex items-center gap-3">
+    <header class="flex flex-col gap-4 mb-6 sm:mb-7 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex min-w-0 items-center gap-3">
         {#if currentUser && users.length > 1}
           <button
             on:click={navigateToUserList}
-            class="px-3 py-1.5 rounded-full text-xs bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+            class="h-9 px-3 rounded-full text-xs bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 transition-all"
             title={$t('users.backToHome')}
           >
             ← {$t('users.backToHome')}
@@ -441,65 +519,123 @@
         </h1>
       </div>
 
-      <div class="flex items-center gap-2 sm:gap-3">
-        <!-- Theme Toggle -->
-        <button
-          on:click={() => theme.set(currentTheme === 'dark' ? 'light' : 'dark')}
-          class="px-4 py-2 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center justify-center gap-2 text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
-          title={$t(`theme.${currentTheme === 'dark' ? 'light' : 'dark'}Theme`)}
-        >
-          <span class="text-xl">{currentTheme === 'dark' ? '☀️' : '🌙'}</span>
-        </button>
-
-        <!-- Language Switcher -->
-        <LanguageSwitcher />
-
-        <!-- Auth: Login/Logout -->
-        {#if !authLoading}
-          {#if isAuthenticated}
-            <button
-              on:click={() => (showSettingsModal = true)}
-              class="px-4 py-2 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center justify-center text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
-              title={$t('settings.title')}
-            >
-              <span class="text-xl">⚙️</span>
-            </button>
-            <button
-              on:click={handleLogout}
-              class="h-[42px] px-4 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center gap-2 text-sm font-medium text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
-            >
-              {authUser?.name || $t('auth.logout')} ✕
-            </button>
-          {:else if currentUser}
-            <button
-              on:click={handleLogin}
-              class="h-[42px] px-4 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center gap-2 text-sm font-medium text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
-            >
-              🔒 {$t('auth.login')}
-            </button>
-          {/if}
-        {/if}
-
-        {#if currentUser}
-          <button
-            on:click={copyWishlistLink}
-            class="h-[42px] px-4 rounded-full bg-ivory dark:bg-dark-bg hover:bg-ivory dark:hover:bg-black/5 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center gap-2 text-sm font-medium text-graphite dark:text-dark-text hover:scale-105 active:scale-95"
-            title={$t('users.copyWishlistLink')}
-          >
-            🔗 <span class="hidden sm:inline">{$t('users.copyWishlistLink')}</span>
-          </button>
-        {/if}
-
-        <!-- Add Button (only for owner) -->
+      <div class="flex items-center gap-2 lg:justify-end">
         {#if isOwner}
           <button
             on:click={openAddModal}
-            class="flex items-center gap-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-500 dark:hover:bg-indigo-400 text-white px-4 sm:px-5 py-2 rounded-full shadow-editorial transition-all duration-200 text-sm font-medium tracking-tighter hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
+            class="h-10 flex items-center gap-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-500 dark:hover:bg-indigo-400 text-white px-4 sm:px-5 rounded-full shadow-editorial transition-all duration-200 text-sm font-medium tracking-tighter hover:shadow-editorial-lg hover:-translate-y-0.5 active:translate-y-0"
           >
             <span class="text-base">+</span>
-            <span class="hidden sm:inline">{$t('app.addButton')}</span>
+            <span>{$t('app.addButton')}</span>
+          </button>
+          <button
+            on:click={copyWishlistLink}
+            class="h-10 w-10 sm:w-auto sm:px-4 rounded-full bg-white/70 dark:bg-white/[0.06] hover:bg-white dark:hover:bg-white/[0.10] border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium text-graphite dark:text-dark-text active:scale-95"
+            title={$t('users.copyWishlistLink')}
+            aria-label={$t('users.copyWishlistLink')}
+          >
+            <span>🔗</span>
+            <span class="hidden sm:inline">{$t('users.copyWishlistLink')}</span>
+          </button>
+        {:else if currentUser && !authLoading && !isAuthenticated}
+          <button
+            on:click={handleLogin}
+            class="h-10 rounded-full bg-indigo-600 px-4 text-sm font-medium tracking-tighter text-white shadow-editorial transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-500 hover:shadow-editorial-lg active:translate-y-0 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+          >
+            {$t('auth.login')}
           </button>
         {/if}
+
+        <div class="relative" bind:this={headerMenuEl}>
+          <button
+            on:click={(event) => {
+              event.stopPropagation();
+              showHeaderMenu = !showHeaderMenu;
+            }}
+            class="h-10 w-10 rounded-full bg-white/70 dark:bg-white/[0.06] hover:bg-white dark:hover:bg-white/[0.10] border border-black/[0.08] dark:border-white/[0.08] shadow-editorial transition-all duration-200 flex items-center justify-center text-graphite dark:text-dark-text active:scale-95"
+            title={$t('filters.more')}
+            aria-expanded={showHeaderMenu}
+            aria-label={$t('filters.more')}
+          >
+            ⋯
+          </button>
+
+          {#if showHeaderMenu}
+            <div
+              class="fixed left-6 right-6 top-24 z-40 w-auto overflow-hidden rounded-[14px] border border-black/[0.08] bg-white shadow-editorial-lg dark:border-white/[0.10] dark:bg-[#202226] sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-64"
+              role="menu"
+            >
+              {#if currentUser}
+                <button
+                  on:click={copyWishlistLinkFromMenu}
+                  class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-graphite transition-colors hover:bg-black/[0.04] dark:text-dark-text dark:hover:bg-white/[0.06]"
+                  role="menuitem"
+                >
+                  <span>🔗</span>
+                  <span>{$t('users.copyWishlistLink')}</span>
+                </button>
+              {/if}
+
+              {#if isAuthenticated}
+                <button
+                  on:click={() => {
+                    closeHeaderMenu();
+                    showSettingsModal = true;
+                  }}
+                  class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-graphite transition-colors hover:bg-black/[0.04] dark:text-dark-text dark:hover:bg-white/[0.06]"
+                  role="menuitem"
+                >
+                  <span>⚙️</span>
+                  <span>{$t('settings.title')}</span>
+                </button>
+                <button
+                  on:click={() => {
+                    closeHeaderMenu();
+                    handleLogout();
+                  }}
+                  class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-graphite transition-colors hover:bg-black/[0.04] dark:text-dark-text dark:hover:bg-white/[0.06]"
+                  role="menuitem"
+                >
+                  <span>✕</span>
+                  <span>{authUser?.name || $t('auth.logout')}</span>
+                </button>
+              {/if}
+
+              <div class="border-t border-black/[0.06] px-3 py-2 dark:border-white/[0.08]">
+                <div class="flex items-center justify-between gap-3">
+                  <div
+                    class="flex items-center gap-1 rounded-full bg-black/[0.04] p-1 dark:bg-white/[0.06]"
+                    aria-label={$t('language.switch')}
+                  >
+                    {#each ['ru', 'en', 'sr'] as code (code)}
+                      <button
+                        on:click={() => locale.set(code)}
+                        class="h-7 rounded-full px-2 text-xs font-medium uppercase transition-colors {code ===
+                        $locale
+                          ? 'bg-white text-graphite shadow-sm dark:bg-white/[0.14] dark:text-white'
+                          : 'text-black/55 hover:text-black dark:text-white/55 dark:hover:text-white'}"
+                        type="button"
+                      >
+                        {code}
+                      </button>
+                    {/each}
+                  </div>
+                  <button
+                    on:click={() => {
+                      theme.set(currentTheme === 'dark' ? 'light' : 'dark');
+                      closeHeaderMenu();
+                    }}
+                    class="h-8 w-8 flex-shrink-0 rounded-full bg-black/[0.04] hover:bg-black/[0.07] text-sm text-graphite transition-all dark:bg-white/[0.06] dark:text-dark-text dark:hover:bg-white/[0.10]"
+                    title={$t(`theme.${currentTheme === 'dark' ? 'light' : 'dark'}Theme`)}
+                    aria-label={$t(`theme.${currentTheme === 'dark' ? 'light' : 'dark'}Theme`)}
+                  >
+                    {currentTheme === 'dark' ? '☀️' : '🌙'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          {/if}
+        </div>
       </div>
     </header>
 
@@ -509,78 +645,75 @@
       <HomePage loading={usersLoading} on:login={handleLogin} />
     {:else}
       <!-- Search and Filters -->
-      <div class="mb-6 sm:mb-7 space-y-4">
-        <div class="relative">
-          <input
-            type="text"
-            bind:value={searchQuery}
-            placeholder={$t('app.filterPlaceholder')}
-            class="w-full px-5 py-3 pl-11 bg-white/80 dark:bg-dark-bg/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all shadow-editorial"
-          />
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-          <select
-            bind:value={selectedCategory}
-            class="px-3 py-2 bg-white dark:bg-dark-bg border border-black/[0.08] dark:border-white/[0.08] rounded-full text-xs text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer"
-          >
-            <option value="">{$t('filters.allCategories')}</option>
-            {#each categoriesList as cat (cat.code)}
-              <option value={cat.code}>{cat.emoji} {cat.name}</option>
-            {/each}
-          </select>
-
-          <div class="flex gap-2 flex-wrap items-center">
-            {#each ['available', 'reserved'] as status (status)}
-              <button
-                on:click={() => (selectedStatus = selectedStatus === status ? '' : status)}
-                class:font-medium={selectedStatus === status}
-                class="whitespace-nowrap px-3 py-1.5 rounded-full text-xs transition-all {selectedStatus ===
-                status
-                  ? 'bg-graphite text-white'
-                  : 'bg-transparent border border-black/10 dark:border-white/10 text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'}"
-              >
-                {status === 'available' ? '✨' : '🔒'}
-                {$t('status.' + status)}
-              </button>
-            {/each}
-
-            <div class="w-px h-4 bg-black/10 dark:bg-white/10 mx-1"></div>
-
-            {#each prioritiesList as prio (prio.code)}
-              <button
-                on:click={() =>
-                  (selectedPriority = selectedPriority === prio.code ? '' : prio.code)}
-                class:font-medium={selectedPriority === prio.code}
-                class="whitespace-nowrap px-3 py-1.5 rounded-full text-xs transition-all {selectedPriority ===
-                prio.code
-                  ? 'bg-graphite text-white'
-                  : 'bg-transparent border border-black/10 dark:border-white/10 text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5'}"
-              >
-                {prio.emoji}
-                {prio.name}
-              </button>
-            {/each}
+      <div
+        class="mb-6 sm:mb-7 rounded-[14px] border border-black/[0.06] bg-white/45 p-2.5 shadow-sm dark:border-white/[0.07] dark:bg-white/[0.03]"
+      >
+        <div class="flex flex-col gap-2 xl:flex-row xl:items-center">
+          <div class="relative min-w-0 xl:flex-1">
+            <input
+              type="text"
+              bind:value={searchQuery}
+              placeholder={$t('app.filterPlaceholder')}
+              class="h-10 w-full rounded-full border border-black/[0.08] bg-white/80 px-4 text-sm text-graphite transition-all placeholder-black/40 focus:border-indigo-500/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 dark:border-white/[0.08] dark:bg-dark-bg/80 dark:text-dark-text dark:placeholder-white/40"
+            />
           </div>
 
-          <select
-            bind:value={sortBy}
-            class="px-3 py-2 bg-white dark:bg-dark-bg border border-black/[0.08] dark:border-white/[0.08] rounded-full text-xs text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer"
-          >
-            <option value="priority">🔥 {$t('filters.sortByPriority')}</option>
-            <option value="name">🔤 {$t('filters.sortByName')}</option>
-            <option value="price">💰 {$t('filters.sortByPrice')}</option>
-            <option value="created_at">📅 {$t('filters.sortByDate')}</option>
-          </select>
+          <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center xl:flex-nowrap">
+            <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center xl:flex-nowrap">
+              <select
+                bind:value={selectedCategory}
+                class="h-9 min-w-0 px-3 bg-white dark:bg-dark-bg border border-black/[0.08] dark:border-white/[0.08] rounded-full text-xs text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer sm:w-auto"
+              >
+                <option value="">{$t('filters.allCategories')}</option>
+                {#each categoriesList as cat (cat.code)}
+                  <option value={cat.code}>{cat.emoji} {cat.name}</option>
+                {/each}
+              </select>
 
-          {#if searchQuery || selectedCategory || selectedStatus || selectedPriority || sortBy !== 'priority'}
-            <button
-              on:click={clearFilters}
-              class="px-3 py-1.5 rounded-full text-xs bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+              <select
+                bind:value={selectedStatus}
+                class="h-9 min-w-0 px-3 bg-white dark:bg-dark-bg border border-black/[0.08] dark:border-white/[0.08] rounded-full text-xs text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer sm:w-auto"
+              >
+                <option value="">{$t('filters.allStatuses')}</option>
+                <option value="available">✨ {$t('status.available')}</option>
+                <option value="reserved">🔒 {$t('status.reserved')}</option>
+                <option value="purchased">✅ {$t('status.purchased')}</option>
+              </select>
+
+              <select
+                bind:value={selectedPriority}
+                class="h-9 min-w-0 px-3 bg-white dark:bg-dark-bg border border-black/[0.08] dark:border-white/[0.08] rounded-full text-xs text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer sm:w-auto"
+              >
+                <option value="">{$t('filters.allPriorities')}</option>
+                {#each prioritiesList as prio (prio.code)}
+                  <option value={prio.code}>{prio.emoji} {prio.name}</option>
+                {/each}
+              </select>
+            </div>
+
+            <div
+              class="flex items-center gap-2 border-t border-black/[0.08] pt-2 dark:border-white/[0.08] sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0"
             >
-              ✕ {$t('actions.cancel')}
-            </button>
-          {/if}
+              <select
+                bind:value={sortBy}
+                class="h-9 min-w-0 px-3 bg-white dark:bg-dark-bg border border-black/[0.08] dark:border-white/[0.08] rounded-full text-xs text-graphite dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer sm:w-auto"
+              >
+                <option value="priority">🔥 {$t('filters.sortByPriority')}</option>
+                <option value="name">🔤 {$t('filters.sortByName')}</option>
+                <option value="price">💰 {$t('filters.sortByPrice')}</option>
+                <option value="created_at">📅 {$t('filters.sortByDate')}</option>
+              </select>
+
+              {#if searchQuery || selectedCategory || selectedStatus || selectedPriority || sortBy !== 'priority'}
+                <button
+                  on:click={clearFilters}
+                  class="h-9 px-3 rounded-full text-xs bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+                >
+                  ✕ {$t('actions.cancel')}
+                </button>
+              {/if}
+            </div>
+          </div>
         </div>
 
         {#if filteredGifts.length !== activeGifts.length}
@@ -633,6 +766,7 @@
                 {index}
                 isLarge={cardSpan.isLarge}
                 {isOwner}
+                isGuestReservationOwner={isGuestReservationOwner(gift)}
                 on:view={() => openViewModal(gift)}
                 on:edit={() => openEditModal(gift)}
                 on:reserve={() => openReserveModal(gift)}
@@ -675,6 +809,7 @@
                       {index}
                       isLarge={false}
                       {isOwner}
+                      isGuestReservationOwner={isGuestReservationOwner(gift)}
                       on:view={() => openViewModal(gift)}
                       on:edit={() => openEditModal(gift)}
                       on:reserve={() => openReserveModal(gift)}
@@ -730,7 +865,7 @@
     gift={selectedGift}
     userSlug={currentUser.slug}
     on:close={() => (showReserveModal = false)}
-    on:saved={onGiftSaved}
+    on:saved={onGiftReserved}
   />
 {/if}
 
@@ -746,6 +881,8 @@
 {#if showViewModal && selectedGift && currentUser}
   <ViewGiftModal
     gift={selectedGift}
+    {isOwner}
+    isGuestReservationOwner={isGuestReservationOwner(selectedGift)}
     on:close={() => (showViewModal = false)}
     on:reserve={() => {
       showViewModal = false;

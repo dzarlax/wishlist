@@ -44,12 +44,14 @@
 <div class="relative" bind:this={button}>
   <button
     on:click={toggle}
-    class="px-4 py-2 rounded-full bg-surface dark:bg-[#d1c7ba] hover:bg-[#D8D6D3] dark:hover:bg-[#ddd4c8] border border-black/[0.08] dark:border-white/[0.10] shadow-editorial transition-all duration-200 flex items-center justify-center"
+    class="h-8 px-2 rounded-full hover:bg-white/80 dark:hover:bg-white/[0.10] transition-all duration-200 flex items-center justify-center"
     aria-label={$t('language.switch')}
     aria-expanded={isOpen}
     type="button"
   >
-    <span class="text-xl">{getCurrentLocale().flag}</span>
+    <span class="text-sm font-medium text-graphite dark:text-dark-text uppercase"
+      >{getCurrentLocale().code}</span
+    >
   </button>
 
   {#if isOpen}

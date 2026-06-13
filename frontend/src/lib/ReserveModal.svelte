@@ -1,13 +1,10 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { fade, fly, scale } from 'svelte/transition';
+  import { fade, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { toasts } from './stores/toasts.js';
   import { t } from './utils/i18n.js';
   import { designSystem } from './utils/design-system.js';
-
-  // @ts-ignore - Ignore svelteHTML type errors from node_modules
-  import { colors, typography } from './utils/design-system.js';
 
   export let gift;
   export let userSlug = null;
@@ -57,7 +54,7 @@
         toasts.success($t('toasts.reserved') + `: ${secretCode.trim()}`);
       }
 
-      dispatch('saved');
+      dispatch('saved', { giftId: gift.id, secretCode: secretCode.trim() });
     } catch {
       error = $t('toasts.error');
     } finally {
@@ -80,10 +77,11 @@
   function handleBackdropKeydown(event) {
     // Don't close if focus is on an input element
     const target = event.target;
-    const isInput = target.tagName === 'INPUT' ||
-                    target.tagName === 'TEXTAREA' ||
-                    target.tagName === 'SELECT' ||
-                    target.isContentEditable;
+    const isInput =
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable;
     if (isInput) return;
 
     if (event.key === 'Enter' || event.key === ' ') {
@@ -113,10 +111,14 @@
     tabindex="-1"
   >
     <!-- Header -->
-    <div class="relative px-7 py-5 border-b {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08]">
+    <div
+      class="relative px-7 py-5 border-b {designSystem.color.neutral.border
+        .DEFAULT} dark:border-white/[0.08]"
+    >
       <h2
         id="reserve-modal-title"
-        class="{designSystem.text['2xl']} {designSystem.text.weight.medium} {designSystem.text.tracking.tighter} text-graphite dark:text-dark-text"
+        class="{designSystem.text['2xl']} {designSystem.text.weight.medium} {designSystem.text
+          .tracking.tighter} text-graphite dark:text-dark-text"
       >
         🔒 {$t('modals.reserve.title')}
       </h2>
@@ -134,7 +136,9 @@
       {/if}
 
       <div>
-        <label for="reserve-name" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-2"
+        <label
+          for="reserve-name"
+          class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-2"
           >{$t('modals.reserve.yourName')} {$t('modals.add.optional')}</label
         >
         <input
@@ -142,12 +146,17 @@
           type="text"
           bind:value={reservedBy}
           placeholder={$t('modals.reserve.yourNamePlaceholder')}
-          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+          class="w-full {designSystem.text.spacing
+            .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+            .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
         />
       </div>
 
       <div>
-        <label for="reserve-secret-code" class="block {designSystem.text.combinations.label} text-black/70 dark:text-white/70 mb-[7px]"
+        <label
+          for="reserve-secret-code"
+          class="block {designSystem.text.combinations
+            .label} text-black/70 dark:text-white/70 mb-[7px]"
           >🔑 {$t('modals.reserve.secretCode')} *</label
         >
         <input
@@ -155,26 +164,40 @@
           type="text"
           bind:value={secretCode}
           placeholder={$t('modals.reserve.secretCodePlaceholder')}
-          class="w-full {designSystem.text.spacing.input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
+          class="w-full {designSystem.text.spacing
+            .input} bg-white/80 dark:bg-dark-bg/80 border {designSystem.color.neutral.border
+            .DEFAULT} dark:border-white/[0.08] rounded-none text-graphite dark:text-dark-text placeholder-black/40 dark:placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/10 transition-all"
         />
-        <p class="mt-2 text-sm {designSystem.color.neutral.text.muted} {designSystem.color.neutral.text.mutedDark}">
+        <p
+          class="mt-2 text-sm {designSystem.color.neutral.text.muted} {designSystem.color.neutral
+            .text.mutedDark}"
+        >
           ⚠️ {$t('modals.reserve.secretCodeHint')}
         </p>
       </div>
     </div>
 
     <!-- Footer -->
-    <div class="px-7 py-5 border-t {designSystem.color.neutral.border.DEFAULT} dark:border-white/[0.08] flex gap-3 justify-end">
+    <div
+      class="px-7 py-5 border-t {designSystem.color.neutral.border
+        .DEFAULT} dark:border-white/[0.08] flex gap-3 justify-end"
+    >
       <button
         on:click={() => dispatch('close')}
-        class="h-10 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem.color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary.textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary.hoverDark} transition-all duration-200"
+        class="h-10 px-4 rounded-full font-medium {designSystem.color.secondary.bg} {designSystem
+          .color.secondary.bgDark} {designSystem.color.secondary.text} {designSystem.color.secondary
+          .textDark} {designSystem.color.secondary.hover} {designSystem.color.secondary
+          .hoverDark} transition-all duration-200"
       >
         {$t('actions.cancel')}
       </button>
       <button
         on:click={handleSubmit}
         disabled={loading}
-        class="h-10 px-4 rounded-full font-medium {designSystem.color.primary.bg} {designSystem.color.primary.bgDark} {designSystem.color.primary.text} {designSystem.color.primary.textDark} {designSystem.color.primary.hover} {designSystem.color.primary.hoverDark} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="h-10 px-4 rounded-full font-medium {designSystem.color.primary.bg} {designSystem
+          .color.primary.bgDark} {designSystem.color.primary.text} {designSystem.color.primary
+          .textDark} {designSystem.color.primary.hover} {designSystem.color.primary
+          .hoverDark} transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? $t('app.loading') : $t('actions.reserve')}
       </button>

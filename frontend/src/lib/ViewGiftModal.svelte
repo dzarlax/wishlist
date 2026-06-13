@@ -1,11 +1,13 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { fade, fly, scale } from 'svelte/transition';
+  import { fly, scale } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { t, formatPrice, formatDate } from './utils/i18n.js';
   import { getPriorityColors, getStatusColors } from './utils/design-system.js';
 
   export let gift;
+  export let isOwner = false;
+  export let isGuestReservationOwner = false;
 
   const dispatch = createEventDispatcher();
 
@@ -184,14 +186,18 @@
             : 'bg-emerald-100 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700/50'} border"
         >
           <h4 class="text-sm font-semibold {statusColors.text} uppercase tracking-wide">
-            {$t(`status.${gift.status}`)}
+            {gift.status === 'reserved' && !isOwner
+              ? isGuestReservationOwner
+                ? $t('status.reservedByYou')
+                : $t('status.reservedByOther')
+              : $t(`status.${gift.status}`)}
           </h4>
-          {#if gift.reserved_by}
+          {#if gift.reserved_by && (isOwner || isGuestReservationOwner)}
             <p class="text-sm {statusColors.text}">
               {$t('modals.view.reservedBy')}: {gift.reserved_by}
             </p>
           {/if}
-          {#if gift.reserved_at}
+          {#if gift.reserved_at && (isOwner || isGuestReservationOwner)}
             <p class="text-sm {statusColors.text}">
               {$t('modals.view.reservedAt')}: {$formatDate(gift.reserved_at)}
             </p>

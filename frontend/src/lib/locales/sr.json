@@ -17,7 +17,7 @@
     "reserved": "Rezervisano",
     "purchased": "Kupljeno",
     "purchasedSection": "Kupljeni pokloni",
-    "giftedSection": "Poklonjeni pokloni",
+    "giftedSection": "Dobijeni pokloni",
     "resultsCount": "Prikazano {count} od {total}",
     "sortBy": "Sortiraj",
     "sortByPriority": "Po prioritetu",
@@ -39,14 +39,19 @@
   "status": {
     "available": "Dostupno",
     "reserved": "Rezervisano",
+    "reservedByYou": "Vi ste rezervisali",
+    "reservedByOther": "Već rezervisano",
     "purchased": "Kupljeno",
-    "gifted": "Poklonjeno"
+    "gifted": "Dobijeno"
   },
   "actions": {
     "reserve": "Rezerviši",
     "unreserve": "Otkaži",
-    "markPurchased": "Kupljeno",
-    "markGifted": "Poklonjeno",
+    "markPurchased": "Označi kao kupljeno",
+    "markGifted": "Već imam",
+    "openLink": "Otvori link",
+    "alreadyChosen": "Već izabrano",
+    "copyLink": "Kopiraj link",
     "edit": "Uredi",
     "delete": "Obriši",
     "cancel": "Otkaži",
@@ -135,20 +140,25 @@
     "reserved": "Poklon rezervisan!",
     "unreserved": "Rezervacija otkazana!",
     "markedPurchased": "Poklon označen kao kupljen!",
-    "markedGifted": "Poklon označen kao poklonjen!",
+    "markedGifted": "Poklon označen kao dobijen!",
     "error": "Došlo je do greške",
     "invalidSecretCode": "Nevažeći tajni kod",
     "copySuccess": "Kopirano!"
   },
   "giftCard": {
+    "noPrice": "Cena nije navedena",
     "reservedBy": "Rezervisao: {name}",
     "reservedAt": "Rezervisano: {date}"
   },
   "settings": {
     "title": "Podešavanja",
     "categories": "Kategorije",
+    "categoriesDescription": "Grupe poklona koje vide gosti i vlasnik liste.",
     "priorities": "Prioriteti",
+    "prioritiesDescription": "Oznake važnosti koje pomažu u sortiranju želja.",
     "profile": "Profil",
+    "profileDescription": "Email i lozinka trenutnog vlasnika liste želja.",
+    "adminDescription": "Pozivnice, AI pristup i korisnička prava.",
     "sortOrder": "Redosled",
     "translations": "Prevodi",
     "add": "Dodaj",
@@ -164,6 +174,7 @@
   },
   "auth": {
     "login": "Prijavi se",
+    "ownerLogin": "Ja sam vlasnik liste",
     "logout": "Odjavi se",
     "password": "Lozinka",
     "loginSuccess": "Uspešna prijava",

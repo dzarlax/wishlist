@@ -138,7 +138,7 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(container.textContent).toContain('No gifts');
-      expect(container.textContent).toContain('Copy link');
+      expect(container.textContent).toContain('Login');
     });
   });
 

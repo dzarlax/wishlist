@@ -47,15 +47,18 @@
 </script>
 
 <div
-  class="flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg {styles.bg} {styles.border} {styles.text}"
+  class="flex w-full min-w-0 items-start gap-3 px-4 py-3 rounded-lg border shadow-lg {styles.bg} {styles.border} {styles.text}"
   transition:fly={{ y: -30, opacity: 0, duration: 300 }}
   role="alert"
 >
-  <span class="text-lg flex-shrink-0">{styles.icon}</span>
-  <span class="flex-1 text-sm font-medium tracking-tight">{toast.message}</span>
+  <span class="text-lg leading-5 flex-shrink-0">{styles.icon}</span>
+  <span class="min-w-0 flex-1 text-sm font-medium leading-snug tracking-tight break-words"
+    >{toast.message}</span
+  >
   <button
     on:click={() => dispatch('remove')}
-    class="flex-shrink-0 ml-2 hover:opacity-70 transition-opacity"
+    class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full leading-none hover:bg-black/10 dark:hover:bg-white/10 hover:opacity-70 transition-opacity"
+    aria-label="Close notification"
   >
     ✕
   </button>
