@@ -336,8 +336,7 @@
             target="_blank"
             rel="noopener noreferrer"
             class="inline-flex h-9 flex-shrink-0 items-center justify-center gap-2 rounded-full border {designSystem
-              .color.neutral.border.DEFAULT} bg-transparent {designSystem.color.neutral.text
-              .muted} px-3 text-xs font-medium transition-all duration-200 hover:border-black/20 hover:bg-black/5 active:scale-95 dark:border-white/[0.08] dark:hover:border-white/20 dark:hover:bg-white/5"
+              .color.neutral.border.DEFAULT} bg-transparent px-3 text-xs font-medium text-black/65 transition-all duration-200 hover:border-black/20 hover:bg-black/5 active:scale-95 dark:border-white/[0.08] dark:text-white/70 dark:hover:border-white/20 dark:hover:bg-white/5"
             title={$t('actions.openLink')}
           >
             <span>🔗</span>
@@ -383,8 +382,7 @@
             target="_blank"
             rel="noopener noreferrer"
             class="inline-flex h-9 flex-shrink-0 items-center justify-center gap-2 rounded-full border {designSystem
-              .color.neutral.border.DEFAULT} bg-transparent {designSystem.color.neutral.text
-              .muted} px-3 text-xs font-medium transition-all duration-200 hover:border-black/20 hover:bg-black/5 active:scale-95 dark:border-white/[0.08] dark:hover:border-white/20 dark:hover:bg-white/5"
+              .color.neutral.border.DEFAULT} bg-transparent px-3 text-xs font-medium text-black/65 transition-all duration-200 hover:border-black/20 hover:bg-black/5 active:scale-95 dark:border-white/[0.08] dark:text-white/70 dark:hover:border-white/20 dark:hover:bg-white/5"
             title={$t('actions.openLink')}
           >
             <span>🔗</span>
@@ -445,8 +443,7 @@
             target="_blank"
             rel="noopener noreferrer"
             class="inline-flex h-9 flex-shrink-0 items-center justify-center gap-2 rounded-full border {designSystem
-              .color.neutral.border.DEFAULT} bg-transparent {designSystem.color.neutral.text
-              .muted} px-3 text-xs font-medium transition-all duration-200 hover:border-black/20 hover:bg-black/5 active:scale-95 dark:border-white/[0.08] dark:hover:border-white/20 dark:hover:bg-white/5"
+              .color.neutral.border.DEFAULT} bg-transparent px-3 text-xs font-medium text-black/65 transition-all duration-200 hover:border-black/20 hover:bg-black/5 active:scale-95 dark:border-white/[0.08] dark:text-white/70 dark:hover:border-white/20 dark:hover:bg-white/5"
             title={$t('actions.openLink')}
           >
             <span>🔗</span>

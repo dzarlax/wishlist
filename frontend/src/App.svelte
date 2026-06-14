@@ -892,6 +892,10 @@
       showViewModal = false;
       requestSecretCode(selectedGift, 'purchased');
     }}
+    on:unreserve={() => {
+      showViewModal = false;
+      requestSecretCode(selectedGift, 'unreserve');
+    }}
   />
 {/if}
 

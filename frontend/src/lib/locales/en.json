@@ -118,6 +118,8 @@
       "price": "Price",
       "link": "Link",
       "openLink": "Open link",
+      "openGiftPage": "Open gift page",
+      "cancelReservation": "Cancel reservation",
       "reservedBy": "Reserved by",
       "reservedAt": "Reserved at",
       "createdAt": "Created"

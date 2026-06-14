@@ -118,6 +118,8 @@
       "price": "Cena",
       "link": "Link",
       "openLink": "Otvori link",
+      "openGiftPage": "Otvori stranicu poklona",
+      "cancelReservation": "Otkaži rezervaciju",
       "reservedBy": "Rezervisao",
       "reservedAt": "Rezervisan u",
       "createdAt": "Kreiran"
