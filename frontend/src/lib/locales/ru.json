@@ -118,6 +118,8 @@
       "price": "Цена",
       "link": "Ссылка",
       "openLink": "Открыть ссылку",
+      "openGiftPage": "Перейти к подарку",
+      "cancelReservation": "Отменить бронь",
       "reservedBy": "Забронировал",
       "reservedAt": "Дата бронирования",
       "createdAt": "Создан"

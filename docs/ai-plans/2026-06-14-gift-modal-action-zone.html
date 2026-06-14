@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plan: Gift Modal Action Zone</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f7f4ef; color: #202124; line-height: 1.55; }
+    main { max-width: 980px; margin: 0 auto; padding: 32px 20px 56px; }
+    h1 { font-size: 34px; margin: 0 0 8px; }
+    h2 { font-size: 22px; margin: 28px 0 10px; }
+    p, li { font-size: 15px; }
+    code { background: #ece7de; border-radius: 4px; padding: 2px 5px; }
+    .card { background: #fff; border: 1px solid #e4ddd2; border-radius: 12px; padding: 18px; margin: 16px 0; }
+    .muted { color: #69645d; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #5b3df5; margin-bottom: 10px; }
+    ul, ol { padding-left: 22px; }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="tag">Approval gate</span>
+    <h1>Gift Modal Action Zone</h1>
+    <p class="muted">Repository: <code>D:\Projects\Code\Personal\wishlist</code>. Branch: <code>codex/gift-modal-polish</code>. Created: 2026-06-14.</p>
+
+    <section class="card">
+      <h2>Task Summary</h2>
+      <p>
+        Redesign the gift details modal so it helps the guest decide and act: understand the gift, open the external page, and reserve it.
+        At the same time, fix role-specific behavior so owners do not see guest-only reservation CTAs.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Current Behavior</h2>
+      <ul>
+        <li><code>ViewGiftModal.svelte</code> uses a heavy header with <code>Просмотр подарка</code>, then image, title, badges, sections, metadata, and a bottom CTA.</li>
+        <li>The CTA is visually separated from price and external link.</li>
+        <li>Labels are uppercase and feel more administrative than consumer-facing.</li>
+        <li>Owner view currently still shows the guest action <code>Забронировать</code> for available gifts.</li>
+        <li>The modal can show creation/reservation metadata that is not useful for guests.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Desired Behavior</h2>
+      <ul>
+        <li>Use a lighter modal header: close button plus useful status, not a generic <code>Просмотр подарка</code> title.</li>
+        <li>Limit image height to keep title, price, and actions in view.</li>
+        <li>Use natural section labels: <code>Описание</code>, <code>Цена</code>, <code>Ссылка</code> without uppercase styling.</li>
+        <li>Add a sticky bottom action zone with price on the left and primary/secondary actions on the right.</li>
+        <li>Guest available: price + external link + <code>Забронировать</code>.</li>
+        <li>Guest reserved: show status and allow secret-code actions where appropriate.</li>
+        <li>Owner: show owner-safe details and external link, but do not show <code>Забронировать</code>.</li>
+        <li>Hide creation date from guest view; keep it only for owner if we still need it.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Wording Decision</h2>
+      <p>
+        The review suggested <code>Открыть товар</code>, but Wishlist links can point to a course, experience, donation page, or product.
+        I recommend <code>Открыть страницу</code> or <code>Перейти к подарку</code>. My preference is <code>Перейти к подарку</code>:
+        it says what the user is trying to do, without reducing everything to a shop item.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Likely File Changes</h2>
+      <ul>
+        <li><code>frontend/src/lib/ViewGiftModal.svelte</code>: main modal layout, sticky action footer, role-specific actions, image sizing, softer labels.</li>
+        <li><code>frontend/src/lib/locales/{ru,en,sr}.json</code>: modal status/action copy.</li>
+        <li>Possibly <code>frontend/src/App.svelte</code> only if event wiring needs adjustment.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Test Plan</h2>
+      <ul>
+        <li><code>cd frontend &amp;&amp; npx eslint src/lib/ViewGiftModal.svelte src/App.svelte</code>.</li>
+        <li><code>cd frontend &amp;&amp; npm test</code> if snapshots/assertions are affected.</li>
+        <li><code>cd frontend &amp;&amp; npm run build</code>.</li>
+        <li>Browser QA in dev compose: owner available gift, guest available gift, reserved gift, mobile-width modal.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Risks And Rollback</h2>
+      <ul>
+        <li>Sticky footer can overlap content on mobile; add bottom padding to modal body and verify small viewport.</li>
+        <li>Role-specific CTA logic can hide a useful action accidentally; verify owner and guest separately.</li>
+        <li>Rollback is local to <code>ViewGiftModal.svelte</code> and locale copy.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Approval Gate</h2>
+      <p>Approved by the user on 2026-06-14 with “погнали”. Implementation started after this gate.</p>
+    </section>
+
+    <section class="card">
+      <h2>Implementation Notes</h2>
+      <ul>
+        <li>Updated <code>ViewGiftModal.svelte</code> with a status-first header and removed the generic modal title from the visible UI.</li>
+        <li>Limited the modal image height and switched it to <code>object-contain</code> on a quiet product background.</li>
+        <li>Moved price, external navigation, and primary actions into a sticky bottom action zone.</li>
+        <li>Changed external-link copy to <code>Перейти к подарку</code> in Russian, with English and Serbian translations.</li>
+        <li>Owner view no longer shows guest-only reservation actions.</li>
+        <li>Guest view hides owner metadata such as creation date, while owner view can still see creation/reservation dates.</li>
+        <li>Added modal support for dispatching <code>unreserve</code>, wired in <code>App.svelte</code> through the existing secret-code flow.</li>
+        <li>Changed modal positioning to top-aligned with internal scrolling so the sticky footer stays inside the viewport.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Checks Run</h2>
+      <ul>
+        <li><code>npm run build</code> passed after the modal rewrite.</li>
+        <li><code>npm run build</code> passed again after the modal positioning fix.</li>
+        <li><code>npm --prefix frontend test -- --run</code> passed: 9 frontend tests.</li>
+        <li><code>npm run lint:frontend</code> was attempted, but existing project-wide Prettier/CRLF issues and a pre-existing <code>tailwind.config.js</code> parse error prevented a clean lint run.</li>
+        <li>Browser QA in dev compose verified owner available gift: modal shows status, details, price block, and <code>Перейти к подарку</code>, with no <code>Забронировать</code>.</li>
+        <li>Browser QA in dev compose verified guest available gift: modal shows <code>Перейти к подарку</code> plus <code>Забронировать</code>, without owner metadata.</li>
+        <li>Browser QA in dev compose verified guest reserved gift: modal shows <code>Уже забронировано</code>, price, <code>Перейти к подарку</code>, <code>Отметить купленным</code>, and <code>Отменить бронь</code>.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Known Limitations</h2>
+      <ul>
+        <li>The broader privacy/API plan for removing reservation names from persisted responses was not implemented in this pass.</li>
+        <li>Project-wide lint formatting needs a separate cleanup decision to avoid mixing modal UX changes with repository formatting churn.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
