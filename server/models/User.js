@@ -30,6 +30,11 @@ class UserModel {
     return this.db.getOne('SELECT * FROM users WHERE email = ?', [email]);
   }
 
+  async findUniqueByEmail(email) {
+    const users = await this.db.getAll('SELECT * FROM users WHERE email = ?', [email]);
+    return users.length === 1 ? users[0] : null;
+  }
+
   async create(data) {
     const { slug, name, admin_password, avatar_emoji, email, is_admin, can_use_ai } = data;
     const hashedPassword = await bcrypt.hash(admin_password, 10);

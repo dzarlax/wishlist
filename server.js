@@ -26,6 +26,8 @@ const { initDatabase } = require('./server/db');
 const { config, validateConfig } = require('./server/config/env');
 const { extractMetadata } = require('./server/utils/metadata');
 const { translateText } = require('./server/utils/translate');
+const { createOidcAuth } = require('./server/auth/oidc');
+const { safeRequestUrl } = require('./server/utils/request-logging');
 
 validateConfig();
 
@@ -34,6 +36,7 @@ const app = express();
 let db;
 let Gift, User, Invite, Category, Priority;
 let saveDB = null;
+let oidcAuth = null;
 const startTime = Date.now();
 
 // Initialize database
@@ -115,7 +118,8 @@ app.use(cors({
 }));
 
 if (!config.skipMorganInTest) {
-  app.use(morgan('dev'));
+  morgan.token('safe-url', req => safeRequestUrl(req, config.oidcEnabled));
+  app.use(morgan(':method :safe-url :status :response-time ms - :res[content-length]'));
 }
 
 app.use(express.json());
@@ -166,9 +170,11 @@ function getInviteUrl(token) {
 
 // Get auth config (SSO availability)
 app.get('/api/auth/config', (req, res) => {
+  const ssoEnabled = config.oidcEnabled || config.authentikEnabled;
   res.json({
-    sso: config.authentikEnabled,
-    ssoUrl: config.authentikEnabled ? config.authentikUrl : null
+    sso: ssoEnabled,
+    ssoUrl: config.authentikEnabled ? config.authentikUrl : null,
+    ssoProvider: config.oidcEnabled ? 'oidc' : config.authentikEnabled ? 'authentik' : null
   });
 });
 
@@ -200,6 +206,10 @@ app.post('/api/auth/login', adminAuthLimiter, async (req, res) => {
 
 // SSO: redirect to Authentik authorization page
 app.get('/api/auth/sso/redirect', (req, res) => {
+  if (config.oidcEnabled) {
+    if (!oidcAuth) return res.status(404).json({ error: 'SSO not enabled' });
+    return oidcAuth.redirect(req, res);
+  }
   if (!config.authentikEnabled) {
     return res.status(404).json({ error: 'SSO not enabled' });
   }
@@ -218,6 +228,10 @@ app.get('/api/auth/sso/redirect', (req, res) => {
 
 // SSO: callback from Authentik with authorization code
 app.get('/api/auth/sso/callback', async (req, res) => {
+  if (config.oidcEnabled) {
+    if (!oidcAuth) return res.status(404).json({ error: 'SSO not enabled' });
+    return oidcAuth.callback(req, res);
+  }
   try {
     const { code, error: authError } = req.query;
     // Silent auth failed (prompt=none, user not logged in) — just go home quietly
@@ -865,11 +879,33 @@ if (process.env.NODE_ENV !== 'development') {
 }
 
 // Start
-initDB().then(() => {
+async function startServer() {
+  if (config.oidcEnabled) {
+    oidcAuth = createOidcAuth({
+      settings: config,
+      userModel: { findUniqueByEmail: email => User.findUniqueByEmail(email) },
+      generateToken
+    });
+    try {
+      await oidcAuth.initialize();
+    } catch {
+      console.error('OIDC initialization failed');
+      process.exitCode = 1;
+      return;
+    }
+  }
+
+  await initDB();
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`🎁 Wishlist app running on http://localhost:${PORT}`);
-  });
-}).catch(err => {
-  console.error('Failed to initialize database:', err);
+  const onListening = () => {
+    const address = server.address();
+    console.log(`🎁 Wishlist app running on http://localhost:${address.port}`);
+  };
+  const testHost = process.env.NODE_ENV === 'test' && process.env.WISHLIST_TEST_HOST;
+  const server = testHost ? app.listen(PORT, testHost, onListening) : app.listen(PORT, onListening);
+}
+
+startServer().catch(err => {
+  console.error('Failed to initialize application:', err);
+  process.exitCode = 1;
 });
