@@ -73,23 +73,32 @@ function createProvider(mode = {}) {
         iss: mode.badIssuer ? `${providerIssuer}/wrong` : providerIssuer,
         aud: mode.badAudience ? 'another-client' : clientId,
         sub: mode.idTokenSub || 'synthetic-subject-1',
-        email: mode.idTokenEmail || 'owner@example.test',
-        email_verified: true,
+        email: mode.idTokenEmail === undefined ? 'owner@example.test' : mode.idTokenEmail,
+        email_verified: mode.idTokenEmailVerified === undefined ? true : mode.idTokenEmailVerified,
         nonce: mode.badNonce ? 'wrong-nonce' : pending.nonce,
         iat: Math.floor(Date.now() / 1000) - 10,
         exp: mode.expired ? Math.floor(Date.now() / 1000) - 1 : Math.floor(Date.now() / 1000) + 300
       };
+      if (mode.omitIdTokenEmail) delete claims.email;
+      if (mode.omitIdTokenEmailVerified) delete claims.email_verified;
       const signingKey = mode.badSignature ? alternateKeyPair : keyPair;
       const idToken = signJwt(claims, signingKey, 'synthetic-key');
       return response({ access_token: 'synthetic-access-token', token_type: 'Bearer', expires_in: 300, id_token: idToken });
     }
     if (url.pathname.endsWith('/userinfo')) {
       if (new Headers(init.headers).get('authorization') !== 'Bearer synthetic-access-token') return response({ error: 'unauthorized' }, 401);
-      return response({
+      if (mode.userInfoFetchFailure) throw new Error('synthetic provider transport detail');
+      if (mode.userInfoStatus) return response({ error: 'synthetic provider protocol detail' }, mode.userInfoStatus);
+      if (mode.userInfoMalformed) return new Response('synthetic malformed claims payload', { headers: { 'Content-Type': 'application/json' } });
+      const userInfo = {
         sub: mode.userInfoSub || 'synthetic-subject-1',
-        email: mode.email || 'owner@example.test',
-        email_verified: mode.emailVerified === undefined ? true : mode.emailVerified
-      });
+        email: mode.email === undefined ? 'owner@example.test' : mode.email
+      };
+      if (!mode.omitUserInfoEmailVerified) {
+        userInfo.email_verified = mode.emailVerified === undefined ? true : mode.emailVerified;
+      }
+      if (mode.omitUserInfoEmail) delete userInfo.email;
+      return response(userInfo);
     }
     throw new Error(`Unexpected fake provider request: ${url.pathname}`);
   }
@@ -178,6 +187,15 @@ function flowCookie(response) {
   return response.headers['Set-Cookie'].split(';', 1)[0];
 }
 
+async function completeCallback(mode) {
+  return withAuth(mode, async ({ oidc, provider, warnings, users }) => {
+    const { start, callbackUrl } = await beginFlow(oidc, provider);
+    const result = makeResponse();
+    await oidc.callback(callbackRequest(callbackUrl, flowCookie(start)), result);
+    return { location: result.location, warnings, users };
+  });
+}
+
 test('OIDC config rejects simultaneous, partial, and unsafe settings', () => {
   const valid = {
     oidcEnabled: true, oidcIssuer: issuer, oidcClientId: clientId, oidcClientSecret: clientSecret,
@@ -209,6 +227,51 @@ test('OIDC validates signed ID token and exact existing email before compatible 
     assert.equal(users[0].can_use_ai, true);
   });
 });
+
+test('OIDC accepts verified email from the signed ID token when UserInfo omits verification', async () => {
+  const result = await completeCallback({ omitUserInfoEmailVerified: true });
+  assert.match(result.location, /sso-complete/);
+  assert.deepEqual(result.warnings, []);
+});
+
+test('OIDC accepts UserInfo-only verified email when ID Token omits email claims', async () => {
+  const result = await completeCallback({ omitIdTokenEmail: true, omitIdTokenEmailVerified: true });
+  assert.match(result.location, /sso-complete/);
+  assert.deepEqual(result.warnings, []);
+});
+
+for (const [label, mode] of [
+  ['unverified ID token email', { idTokenEmailVerified: false }],
+  ['unverified UserInfo email', { emailVerified: false }],
+  ['malformed ID token verification claim', { idTokenEmailVerified: 'true' }],
+  ['malformed UserInfo verification claim', { emailVerified: 'true' }],
+  ['missing both email verification claims', { omitIdTokenEmailVerified: true, omitUserInfoEmailVerified: true }],
+  ['verified ID token without its email claim and no UserInfo proof', { omitIdTokenEmail: true, omitUserInfoEmailVerified: true }],
+  ['mismatched ID token and UserInfo emails', { idTokenEmail: 'different@example.test', email: 'owner@example.test' }],
+  ['missing UserInfo email', { omitUserInfoEmail: true }]
+]) {
+  test(`OIDC denies ${label}`, async () => {
+    const result = await completeCallback(mode);
+    assert.match(result.location, /error=oidc/);
+    assert.equal(result.users.length, 1);
+    assert.ok(result.warnings.every(entry => /^OIDC callback denied: userinfo_(email|verification)$/.test(entry)));
+    assert.ok(result.warnings.every(entry => !/synthetic|owner@|different@/.test(entry)));
+  });
+}
+
+for (const [label, mode, expectedCode] of [
+  ['UserInfo subject mismatch', { userInfoSub: 'different-subject' }, 'userinfo_subject'],
+  ['UserInfo HTTP failure', { userInfoStatus: 503 }, 'userinfo_protocol'],
+  ['malformed UserInfo response', { userInfoMalformed: true }, 'userinfo_protocol'],
+  ['UserInfo transport failure', { userInfoFetchFailure: true }, 'userinfo_fetch']
+]) {
+  test(`OIDC reports a safe ${label} reason`, async () => {
+    const result = await completeCallback(mode);
+    assert.match(result.location, /error=oidc/);
+    assert.deepEqual(result.warnings, [`OIDC callback denied: ${expectedCode}`]);
+    assert.ok(result.warnings.every(entry => !/synthetic|owner@|different@|access-token/.test(entry)));
+  });
+}
 
 for (const configuredIssuer of [issuer, `${issuer}/`, 'https://oidc.example.test/cdn-cgi/access/apps/example']) {
   test(`OIDC accepts exact discovery issuer ${configuredIssuer}`, async () => {
