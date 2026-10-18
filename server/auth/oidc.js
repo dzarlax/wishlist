@@ -58,7 +58,10 @@ function emailFromVerifiedClaims(idClaims, userInfo) {
 
   const verifiedIdEmail = idClaims.email_verified === true && hasIdEmail;
   const verifiedUserInfoEmail = userInfo.email_verified === true;
-  if (!verifiedIdEmail && !verifiedUserInfoEmail) return { error: 'email_verification_missing' };
+  const bothVerificationClaimsMissing = !hasIdVerification && !hasUserInfoVerification;
+  if (!verifiedIdEmail && !verifiedUserInfoEmail && !bothVerificationClaimsMissing) {
+    return { error: 'email_verification_missing' };
+  }
 
   return { email: userInfo.email };
 }
