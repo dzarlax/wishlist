@@ -1,10 +1,17 @@
 const assert = require('node:assert/strict');
+const { spawn } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const test = require('node:test');
 const initSqlJs = require('sql.js');
 const { SqliteAdapter } = require('../server/db/adapter');
 const UserModel = require('../server/models/User');
 const InviteModel = require('../server/models/Invite');
 const { requireAdmin, requireAiAccess } = require('../server/middleware/access');
+const { config } = require('../server/config/env');
+const { generateToken, extractAuth, requireOwner, requireAuth } = require('../server/middleware/auth');
+const jwt = require('jsonwebtoken');
 
 async function createDb() {
   const SQL = await initSqlJs();
@@ -228,4 +235,194 @@ test('access middleware blocks missing or insufficient privileges', () => {
 
   result = runMiddleware(requireAiAccess, { can_use_ai: true });
   assert.equal(result.nextCalled, true);
+});
+
+test('local password JWT remains seven-day app auth and forged Authentik headers grant no access', () => {
+  const priorSecret = config.jwtSecret;
+  const priorExpiry = config.jwtExpiresIn;
+  config.jwtSecret = 'synthetic-test-jwt-secret';
+  config.jwtExpiresIn = '7d';
+  try {
+    const user = { id: 17, slug: 'owner', is_admin: true, can_use_ai: true };
+    const token = generateToken(user);
+    const claims = jwt.verify(token, config.jwtSecret);
+    assert.deepEqual({ id: claims.id, slug: claims.slug }, { id: 17, slug: 'owner' });
+    assert.ok(claims.exp - claims.iat >= 7 * 24 * 60 * 60 - 1);
+
+    const forgedHeaderReq = {
+      headers: { 'X-Authentik-Email': 'owner@example.test' },
+      get(name) { return this.headers[name]; }
+    };
+    extractAuth(forgedHeaderReq, {}, () => {});
+    assert.equal(forgedHeaderReq.authUser, null);
+
+    const authResponse = () => ({
+      statusCode: 200,
+      status(code) { this.statusCode = code; return this; },
+      json() {}
+    });
+    const unauthenticated = { authUser: null };
+    const unauthResponse = authResponse();
+    requireAuth(unauthenticated, unauthResponse, () => {});
+    assert.equal(unauthResponse.statusCode, 401);
+
+    const ownerResponse = authResponse();
+    let ownerNext = false;
+    requireOwner({ authUser: claims, wishlistUser: { id: 17 } }, ownerResponse, () => { ownerNext = true; });
+    assert.equal(ownerNext, true);
+
+    const otherOwnerResponse = authResponse();
+    requireOwner({ authUser: claims, wishlistUser: { id: 18 } }, otherOwnerResponse, () => {});
+    assert.equal(otherOwnerResponse.statusCode, 403);
+  } finally {
+    config.jwtSecret = priorSecret;
+    config.jwtExpiresIn = priorExpiry;
+  }
+});
+
+test('OIDC email lookup rejects duplicate rows and keeps database exact-case semantics', async () => {
+  const singleUser = { id: 17, email: 'owner@example.test' };
+  const model = new UserModel({
+    async getAll(_query, values) {
+      assert.deepEqual(values, ['owner@example.test']);
+      return [singleUser];
+    }
+  });
+  assert.equal(await model.findUniqueByEmail('owner@example.test'), singleUser);
+
+  const duplicates = new UserModel({
+    async getAll() { return [singleUser, { id: 18, email: 'owner@example.test' }]; }
+  });
+  assert.equal(await duplicates.findUniqueByEmail('owner@example.test'), null);
+});
+
+test('OIDC discovery failure exits before touching SQLite or starting timers', async t => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wishlist-auth-'));
+  const databasePath = path.join(tempDir, 'synthetic.sqlite');
+  const child = spawn(process.execPath, ['-e', 'global.fetch = async () => { throw new Error("network disabled in test"); }; require("./server.js");'], {
+    cwd: path.join(__dirname, '..'),
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      DATABASE_URL: '',
+      WISHLIST_DB_PATH: databasePath,
+      OIDC_ENABLED: 'true',
+      OIDC_ISSUER: 'https://issuer.example.test',
+      OIDC_CLIENT_ID: 'synthetic-client',
+      OIDC_CLIENT_SECRET: 'synthetic-secret',
+      APP_URL: 'https://wishlist.example.test',
+      AUTHENTIK_ENABLED: 'false',
+      AUTHENTIK_URL: '',
+      AUTHENTIK_CLIENT_ID: '',
+      AUTHENTIK_CLIENT_SECRET: ''
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  let output = '';
+  child.stdout.on('data', chunk => { output += chunk; });
+  child.stderr.on('data', chunk => { output += chunk; });
+
+  t.after(async () => {
+    if (child.exitCode === null) {
+      child.kill('SIGTERM');
+      await new Promise(resolve => child.once('exit', resolve));
+    }
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  const exit = await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(`OIDC startup did not exit: ${output}`)), 10000);
+    child.once('exit', (code, signal) => {
+      clearTimeout(timeout);
+      resolve({ code, signal });
+    });
+  });
+  assert.equal(exit.code, 1);
+  assert.match(output, /OIDC initialization failed/);
+  assert.doesNotMatch(output, /Wishlist app running/);
+  assert.equal(fs.existsSync(databasePath), false);
+});
+
+test('local password login and owner APIs work over HTTP with OIDC disabled', async t => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wishlist-auth-'));
+  const databasePath = path.join(tempDir, 'synthetic.sqlite');
+  const child = spawn(process.execPath, ['-e', 'global.fetch = async () => { throw new Error("network disabled in test"); }; require("./server.js");'], {
+    cwd: path.join(__dirname, '..'),
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      DATABASE_URL: '',
+      WISHLIST_TEST_HOST: '127.0.0.1',
+      PORT: '0',
+      JWT_SECRET: 'synthetic-local-test-secret',
+      JWT_EXPIRES_IN: '7d',
+      WISHLIST_DB_PATH: databasePath,
+      USERS: 'owner:Owner:synthetic-password:🎁:owner@example.test,other:Other:other-password:🎁:other@example.test',
+      OIDC_ENABLED: 'false', OIDC_ISSUER: '', OIDC_CLIENT_ID: '', OIDC_CLIENT_SECRET: '',
+      AUTHENTIK_ENABLED: 'false', AUTHENTIK_URL: '', AUTHENTIK_CLIENT_ID: '', AUTHENTIK_CLIENT_SECRET: '',
+      APP_URL: 'http://localhost:3000'
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  let output = '';
+  child.stdout.on('data', chunk => { output += chunk; });
+  child.stderr.on('data', chunk => { output += chunk; });
+
+  async function waitForServer() {
+    const timeout = Date.now() + 10000;
+    while (Date.now() < timeout) {
+      const match = output.match(/Wishlist app running on http:\/\/localhost:(\d+)/);
+      if (match) return `http://127.0.0.1:${match[1]}`;
+      if (child.exitCode !== null) throw new Error(`Synthetic Wishlist server exited early: ${output}`);
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    throw new Error(`Synthetic Wishlist server did not start: ${output}`);
+  }
+
+  t.after(async () => {
+    if (child.exitCode === null) {
+      child.kill('SIGTERM');
+      await new Promise(resolve => child.once('exit', resolve));
+    }
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  const baseUrl = await waitForServer();
+  const ssoConfig = await fetch(`${baseUrl}/api/auth/config`);
+  assert.deepEqual(await ssoConfig.json(), { sso: false, ssoUrl: null, ssoProvider: null });
+  const ssoRedirect = await fetch(`${baseUrl}/api/auth/sso/redirect`, { redirect: 'manual' });
+  assert.equal(ssoRedirect.status, 404);
+
+  const badLogin = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug: 'owner', password: 'wrong-password' })
+  });
+  assert.equal(badLogin.status, 401);
+
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug: 'owner', password: 'synthetic-password' })
+  });
+  assert.equal(login.status, 200);
+  const { token, user } = await login.json();
+  assert.equal(user.slug, 'owner');
+  const claims = jwt.verify(token, 'synthetic-local-test-secret');
+  assert.equal(claims.exp - claims.iat, 7 * 24 * 60 * 60);
+
+  const me = await fetch(`${baseUrl}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+  assert.equal(me.status, 200);
+  assert.equal((await me.json()).slug, 'owner');
+
+  const forbidden = await fetch(`${baseUrl}/api/users/other/gifts`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Synthetic gift' })
+  });
+  assert.equal(forbidden.status, 403);
+  const ownedGifts = await fetch(`${baseUrl}/api/users/owner/gifts`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  assert.equal(ownedGifts.status, 200);
+  assert.deepEqual(await ownedGifts.json(), []);
+  assert.doesNotMatch(output, /OIDC initialization|\.well-known\/openid-configuration/);
+  assert.equal(fs.existsSync(databasePath), true);
 });

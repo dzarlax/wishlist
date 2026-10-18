@@ -20,7 +20,7 @@ Minimalist design, dark/light theme support, multi-language interface (Russian, 
 - 🌙 **Theme toggle** (light/dark) with preference persistence
 - 🔔 **Toast notifications** for user feedback
 - 🌍 **Multi-language support**: Russian, English, Serbian
-- 🔐 **JWT authentication** with optional Authentik SSO
+- 🔐 **JWT authentication** with local password login and optional Authentik or generic OIDC SSO
 - ✉️ **Invite-link registration** for adding new wishlist owners
 - 🛡️ **Admin approval controls** for invite creation, admin grants, and AI access
 
@@ -58,7 +58,7 @@ GEMINI_API_KEY=your_api_key_here
 For authenticated wishlist management, configure at least one bootstrap user:
 ```bash
 JWT_SECRET=replace_with_a_long_random_secret
-USERS=alexey:Alexey:change_me:🎁:alexey@example.com
+USERS=owner:Owner:change_me:🎁:owner@example.test
 ```
 
 The first user in `USERS` is bootstrapped as an admin and receives AI access. Existing seeded users keep their password if it was changed in the app.
@@ -76,6 +76,28 @@ npm start
 ### 🔒 Authentication, Invites, and AI Access
 
 The app supports the current authenticated flow and the older simple deployment style.
+
+Local password login remains available at `/api/auth/login` in every mode. It issues the app's own seven-day JWT and is independent of OIDC. Generic OIDC creates this app JWT after validating the provider identity; provider access tokens are never used as Wishlist API credentials. Generic OIDC requires one existing account with an exactly matching, unique email and a provider-verified email. It does not create accounts or change roles, profile data, or ownership. Legacy Authentik keeps its existing callback behavior.
+
+#### Optional generic OIDC
+
+Generic OIDC is disabled by default. Set all of these values to enable it:
+
+```dotenv
+OIDC_ENABLED=true
+OIDC_ISSUER=https://issuer.example.test
+OIDC_CLIENT_ID=wishlist-synthetic-client
+OIDC_CLIENT_SECRET=replace-with-client-secret
+APP_URL=https://wishlist.example.test
+```
+
+Register this exact redirect URI with the provider: `https://wishlist.example.test/api/auth/sso/callback`. `APP_URL` must be a fixed HTTPS origin with no path, query, or fragment. Discovery runs only when `OIDC_ENABLED=true`; the app requires HTTPS issuer discovery, authorization code with S256 PKCE, a signed ID token, matching state and nonce, verified email, and a UserInfo subject matching the ID token.
+
+For a Cloudflare Access SaaS OIDC transition, create an OIDC application in Cloudflare Access, use the issuer, client ID, and client secret shown for that application, register the fixed Wishlist callback above, and set the five environment values. Cloudflare Access authenticates the user; Wishlist still issues and validates its own local JWT for app sessions and API ownership checks. Keep the local password login available during the transition and confirm each provider email exactly matches one existing Wishlist account before enabling SSO.
+
+The legacy Authentik integration remains available with `AUTHENTIK_ENABLED=true`, `AUTHENTIK_URL`, `AUTHENTIK_CLIENT_ID`, and `AUTHENTIK_CLIENT_SECRET`. Generic OIDC and Authentik cannot be enabled together. Partial credential sets and unsafe generic OIDC URLs fail startup. With OIDC disabled, there is no provider discovery request.
+
+`WISHLIST_DB_PATH` optionally selects the SQLite file path; when unset, the app uses `wishlist.db` in the project root.
 
 **Recommended authenticated flow:**
 
@@ -102,6 +124,8 @@ ADMIN_PASSWORD="your_password" npm start
 - Reservation, unreserve, and purchased flows remain available to gift givers through secret codes.
 
 **Important production setting:** Always set a non-default `JWT_SECRET` in production.
+
+OIDC environment variables: `OIDC_ENABLED`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and `APP_URL`. Use generic OIDC or legacy Authentik at a time. Password login and the existing local JWT remain available in either mode.
 
 ## 🌍 Languages
 
@@ -465,7 +489,7 @@ docker run -d \
   -v $(pwd)/wishlist.db:/app/wishlist.db \
   -e ADMIN_PASSWORD="your_password" \
   -e JWT_SECRET="replace_with_a_long_random_secret" \
-  -e USERS="alexey:Alexey:change_me:🎁:alexey@example.com" \
+  -e USERS="owner:Owner:change_me:🎁:owner@example.test" \
   -e ALLOWED_ORIGINS="https://yourdomain.com" \
   dzarlax/wishlist-app:latest
 ```
@@ -485,7 +509,7 @@ docker run -d \
   -v $(pwd)/wishlist.db:/app/wishlist.db \
   -e ADMIN_PASSWORD="your_password" \
   -e JWT_SECRET="replace_with_a_long_random_secret" \
-  -e USERS="alexey:Alexey:change_me:🎁:alexey@example.com" \
+  -e USERS="owner:Owner:change_me:🎁:owner@example.test" \
   wishlist-app
 ```
 
