@@ -240,6 +240,41 @@ test('OIDC accepts UserInfo-only verified email when ID Token omits email claims
   assert.deepEqual(result.warnings, []);
 });
 
+test('OIDC accepts a trusted issuer that omits email_verified in both responses', async () => {
+  const result = await completeCallback({ omitIdTokenEmailVerified: true, omitUserInfoEmailVerified: true });
+  assert.match(result.location, /^\/#\/sso-complete\?token=app-jwt-for-17&slug=owner$/);
+  assert.deepEqual(result.warnings, []);
+  assert.equal(result.users.length, 1);
+  assert.equal(result.users[0].is_admin, true);
+  assert.equal(result.users[0].can_use_ai, true);
+});
+
+for (const [label, mode, expectedWarning] of [
+  ['signature validation', { badSignature: true }, 'OIDC callback denied: token_exchange'],
+  ['issuer validation', { badIssuer: true }, 'OIDC callback denied: token_exchange'],
+  ['audience validation', { badAudience: true }, 'OIDC callback denied: token_exchange'],
+  ['nonce validation', { badNonce: true }, 'OIDC callback denied: token_exchange'],
+  ['expiry validation', { expired: true }, 'OIDC callback denied: expiry_validation'],
+  ['PKCE validation', { pkceFailure: true }, 'OIDC callback denied: token_exchange'],
+  ['UserInfo subject mismatch', { userInfoSub: 'different-subject' }, 'OIDC callback denied: userinfo_subject'],
+  ['ID token and UserInfo email mismatch', { idTokenEmail: 'different@example.test' }, 'OIDC callback denied: userinfo_email'],
+  ['missing UserInfo email', { omitUserInfoEmail: true }, 'OIDC callback denied: userinfo_email'],
+  ['case-mismatched existing account email', { idTokenEmail: 'Owner@example.test', email: 'Owner@example.test' }, null],
+  ['unknown existing account', { idTokenEmail: 'unknown@example.test', email: 'unknown@example.test' }, null],
+  ['duplicate existing account', { duplicateExisting: true }, null]
+]) {
+  test(`OIDC still enforces ${label} when both email_verified claims are omitted`, async () => {
+    const result = await completeCallback({
+      omitIdTokenEmailVerified: true,
+      omitUserInfoEmailVerified: true,
+      ...mode
+    });
+    assert.match(result.location, /error=oidc/);
+    assert.equal(result.users.length, mode.duplicateExisting ? 2 : 1);
+    assert.deepEqual(result.warnings, expectedWarning ? [expectedWarning] : []);
+  });
+}
+
 for (const [label, mode, expectedCode] of [
   ['unverified ID token email with verified UserInfo', { idTokenEmailVerified: false }, 'id_token_email_verified_false'],
   ['unverified UserInfo email with verified ID token', { emailVerified: false }, 'userinfo_email_verified_false'],
@@ -249,7 +284,6 @@ for (const [label, mode, expectedCode] of [
   ['malformed UserInfo verification claim', { emailVerified: 'true' }, 'userinfo_email_verified_malformed'],
   ['empty UserInfo verification claim', { emailVerified: '' }, 'userinfo_email_verified_malformed'],
   ['array UserInfo verification claim', { emailVerified: [] }, 'userinfo_email_verified_malformed'],
-  ['missing both email verification claims', { omitIdTokenEmailVerified: true, omitUserInfoEmailVerified: true }, 'email_verification_missing'],
   ['verified ID token without its email claim and no UserInfo proof', { omitIdTokenEmail: true, omitUserInfoEmailVerified: true }, 'email_verification_missing'],
   ['mismatched ID token and UserInfo emails', { idTokenEmail: 'different@example.test', email: 'owner@example.test' }, 'userinfo_email'],
   ['missing UserInfo email', { omitUserInfoEmail: true }, 'userinfo_email']
