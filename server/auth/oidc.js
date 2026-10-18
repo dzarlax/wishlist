@@ -42,11 +42,14 @@ function emailFromVerifiedClaims(idClaims, userInfo) {
   const hasIdVerification = Object.hasOwn(idClaims, 'email_verified');
   const hasUserInfoVerification = Object.hasOwn(userInfo, 'email_verified');
 
-  if (hasIdVerification && typeof idClaims.email_verified !== 'boolean' ||
-      hasUserInfoVerification && typeof userInfo.email_verified !== 'boolean' ||
-      idClaims.email_verified === false || userInfo.email_verified === false) {
-    return { error: 'userinfo_verification' };
+  if (hasIdVerification && typeof idClaims.email_verified !== 'boolean') {
+    return { error: 'id_token_email_verified_malformed' };
   }
+  if (hasUserInfoVerification && typeof userInfo.email_verified !== 'boolean') {
+    return { error: 'userinfo_email_verified_malformed' };
+  }
+  if (idClaims.email_verified === false) return { error: 'id_token_email_verified_false' };
+  if (userInfo.email_verified === false) return { error: 'userinfo_email_verified_false' };
   if (typeof userInfo.email !== 'string' || userInfo.email.trim().length === 0 ||
       hasIdEmail && (typeof idClaims.email !== 'string' || idClaims.email.trim().length === 0) ||
       hasIdEmail && idClaims.email !== userInfo.email) {
@@ -55,7 +58,7 @@ function emailFromVerifiedClaims(idClaims, userInfo) {
 
   const verifiedIdEmail = idClaims.email_verified === true && hasIdEmail;
   const verifiedUserInfoEmail = userInfo.email_verified === true;
-  if (!verifiedIdEmail && !verifiedUserInfoEmail) return { error: 'userinfo_verification' };
+  if (!verifiedIdEmail && !verifiedUserInfoEmail) return { error: 'email_verification_missing' };
 
   return { email: userInfo.email };
 }
