@@ -77,7 +77,7 @@ npm start
 
 The app supports the current authenticated flow and the older simple deployment style.
 
-Local password login remains available at `/api/auth/login` in every mode. It issues the app's own seven-day JWT and is independent of OIDC. Generic OIDC creates this app JWT after validating the provider identity; provider access tokens are never used as Wishlist API credentials. Generic OIDC requires one existing account with an exactly matching, unique email and a provider-verified email. It does not create accounts or change roles, profile data, or ownership. Legacy Authentik keeps its existing callback behavior.
+Local password login remains available at `/api/auth/login` in every mode. It issues the app's own seven-day JWT and is independent of OIDC. Generic OIDC creates this app JWT after validating the provider identity; provider access tokens are never used as Wishlist API credentials. Generic OIDC requires one existing account with an exactly matching, unique email. The provider must assert `email_verified: true` in either the signed ID token or matching UserInfo response; if the ID token includes an email, it must exactly match UserInfo's nonempty email. UserInfo's `sub` must match the signed ID token's `sub`. It does not create accounts or change roles, profile data, or ownership. Legacy Authentik keeps its existing callback behavior.
 
 #### Optional generic OIDC
 
