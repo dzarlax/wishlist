@@ -1,4 +1,12 @@
 {
+  "metadataErrors": {
+    "invalidUrl": "Unesite ispravan javni HTTP ili HTTPS link.",
+    "blockedUrl": "Ovaj link nije dozvoljen za preuzimanje podataka. Koristite javnu stranicu proizvoda.",
+    "rateLimit": "Previše zahteva za linkove. Pokušajte ponovo kasnije.",
+    "tooLarge": "Stranica je prevelika. Unesite podatke o poklonu ručno.",
+    "timeout": "Stranica ne odgovara na vreme. Pokušajte ponovo ili unesite podatke ručno.",
+    "upstream": "Nije moguće preuzeti podatke sa stranice. Unesite ih ručno."
+  },
   "app": {
     "title": "🎁 Wishlist",
     "addButton": "Dodaj",

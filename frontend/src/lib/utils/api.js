@@ -28,7 +28,9 @@ export async function apiRequest(url, options = {}) {
         auth.logout();
         throw new Error('Session expired');
       }
-      throw new Error(data.error || `Request failed (${response.status})`);
+      throw Object.assign(new Error(data.error || `Request failed (${response.status})`), {
+        code: data.code,
+      });
     }
 
     return data;

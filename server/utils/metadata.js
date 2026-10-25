@@ -1,23 +1,12 @@
 const cheerio = require('cheerio');
+const { fetchPublicHtml } = require('./publicFetch');
 
 /**
  * Extract Open Graph / meta tag metadata from a URL.
  * Returns { title, description, image, url }
  */
-async function extractMetadata(url) {
-  const fetch = (await import('node-fetch')).default;
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    },
-    timeout: 10000
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch URL: ${response.status}`);
-  }
-
-  const html = await response.text();
+async function extractMetadata(url, { fetchHtml = fetchPublicHtml } = {}) {
+  const { html } = await fetchHtml(url);
   const $ = cheerio.load(html);
 
   const metadata = {

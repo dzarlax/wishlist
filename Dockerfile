@@ -1,36 +1,36 @@
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
 # Copy frontend package files and build
 COPY frontend/package*.json ./frontend/
-RUN cd frontend && npm install
+RUN cd frontend && npm ci
 COPY frontend/ ./frontend/
 RUN cd frontend && npm run build
 
 # Development stage
-FROM node:20-alpine AS dev
+FROM node:24-alpine AS dev
 
 WORKDIR /app
 
 # Install root and frontend dependencies once in the image. Source code is bind-mounted by docker-compose.dev.yml.
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY frontend/package*.json ./frontend/
-RUN cd frontend && npm install
+RUN cd frontend && npm ci
 
 EXPOSE 3000 5173
 
 CMD ["npm", "run", "dev"]
 
 # Production stage
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
 # Copy production dependencies
 COPY package*.json ./
-RUN npm install --production
+RUN npm ci --omit=dev
 
 # Copy backend and built frontend
 COPY server.js ./
