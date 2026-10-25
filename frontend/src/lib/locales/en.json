@@ -1,4 +1,12 @@
 {
+  "metadataErrors": {
+    "invalidUrl": "Enter a valid public HTTP or HTTPS link.",
+    "blockedUrl": "This link cannot be used to retrieve product details. Use a public product page.",
+    "rateLimit": "Too many link requests. Please try again later.",
+    "tooLarge": "This page is too large. Add the gift details manually.",
+    "timeout": "The page took too long to respond. Try again or add the details manually.",
+    "upstream": "Could not retrieve details from this page. Add them manually."
+  },
   "app": {
     "title": "🎁 Wishlist",
     "addButton": "Add",

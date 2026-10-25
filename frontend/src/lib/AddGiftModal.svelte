@@ -173,8 +173,17 @@
       aiText = '';
 
       toasts.success($t('toasts.added') + ' AI!');
-    } catch {
-      toasts.error($t('modals.add.aiError'));
+    } catch (error) {
+      const metadataErrors = {
+        METADATA_INVALID_URL: 'invalidUrl',
+        METADATA_URL_BLOCKED: 'blockedUrl',
+        METADATA_RATE_LIMIT: 'rateLimit',
+        METADATA_TOO_LARGE: 'tooLarge',
+        METADATA_TIMEOUT: 'timeout',
+        METADATA_UPSTREAM_ERROR: 'upstream',
+      };
+      const key = metadataErrors[error?.code];
+      toasts.error(key ? $t(`metadataErrors.${key}`) : $t('modals.add.aiError'));
     } finally {
       aiLoading = false;
     }

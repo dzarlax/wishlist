@@ -24,7 +24,8 @@ const PriorityModel = require('./server/models/Priority');
 const MigrationManager = require('./server/migrations/migrationManager');
 const { initDatabase } = require('./server/db');
 const { config, validateConfig } = require('./server/config/env');
-const { extractMetadata } = require('./server/utils/metadata');
+const { createMetadataService, requireMetadataUser, metadataErrorHandler } = require('./server/routes/metadata');
+const { jsonBody, jsonBodyErrorHandler } = require('./server/middleware/jsonBody');
 const { translateText } = require('./server/utils/translate');
 const { createOidcAuth } = require('./server/auth/oidc');
 const { safeRequestUrl } = require('./server/utils/request-logging');
@@ -122,7 +123,7 @@ if (!config.skipMorganInTest) {
   app.use(morgan(':method :safe-url :status :response-time ms - :res[content-length]'));
 }
 
-app.use(express.json());
+app.use(jsonBody());
 app.use(express.static('public'));
 
 // Auth middleware on all routes
@@ -729,29 +730,13 @@ app.post('/api/users/:slug/gifts/:id/gifted', resolveUser, requireOwner, async (
 
 // ==================== METADATA & AI ====================
 
-app.post('/api/extract-metadata', async (req, res) => {
-  const { url } = req.body;
-  if (!url || !url.trim()) {
-    return res.status(400).json({ error: 'URL is required' });
-  }
-  try {
-    new URL(url);
-  } catch {
-    return res.status(400).json({ error: 'Invalid URL' });
-  }
-  try {
-    const metadata = await extractMetadata(url);
-    res.json(metadata);
-  } catch (error) {
-    console.error('Metadata extraction error:', error);
-    res.status(500).json({ error: 'Failed to extract metadata' });
-  }
-});
+const metadataService = createMetadataService();
+app.post('/api/extract-metadata', requireMetadataUser, metadataService.extractHandler);
 
-app.post('/api/parse-gift', requireAuth, requireAiAccess, async (req, res) => {
+app.post('/api/parse-gift', requireAuth, requireAiAccess, async (req, res, next) => {
   const { text, locale = 'ru' } = req.body;
 
-  if (!text || text.trim().length === 0) {
+  if (typeof text !== 'string' || text.trim().length === 0) {
     return res.status(400).json({ error: 'Text is required' });
   }
   if (!config.geminiApiKey) {
@@ -759,20 +744,7 @@ app.post('/api/parse-gift', requireAuth, requireAiAccess, async (req, res) => {
   }
 
   try {
-    // Check if text is a URL and extract metadata
-    let metadata = {};
-    let isUrl = false;
-    try {
-      new URL(text.trim());
-      isUrl = true;
-      try {
-        metadata = await extractMetadata(text.trim());
-      } catch {
-        console.log('Could not extract metadata, continuing with AI only');
-      }
-    } catch {
-      // Not a URL
-    }
+    const { metadata, isUrl } = await metadataService.forGift(text, req.currentUser.id);
 
     // Build category list dynamically from DB
     const categories = await Category.findAll(locale);
@@ -848,12 +820,16 @@ Rules:
 
     res.json(parsedData);
   } catch (error) {
-    console.error('Gemini API error:', error);
+    if (error.name === 'MetadataError') return next(error);
+    console.error('Gemini API processing failed');
     res.status(500).json({ error: 'Failed to process gift with AI' });
   }
 });
 
 // ==================== ERROR HANDLING ====================
+
+app.use(jsonBodyErrorHandler);
+app.use(metadataErrorHandler);
 
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
