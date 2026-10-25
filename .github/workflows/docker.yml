@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - fix/wishlist-cve-ssrf
+      - security/2026-10-25-remediation
     tags:
       - 'v*.*.*'
   pull_request:
@@ -63,7 +64,8 @@ jobs:
         with:
           images: dzarlax/wishlist-app
           tags: |
-            type=ref,event=branch
+            type=ref,event=branch,enable=${{ github.ref != 'refs/heads/security/2026-10-25-remediation' }}
+            type=sha,format=long
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
