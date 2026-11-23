@@ -82,7 +82,7 @@
 
 <div class="min-h-[70vh] flex items-center justify-center px-4">
   <div
-    class="w-full max-w-md bg-white/80 dark:bg-dark-bg/80 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial p-7"
+    class="w-full max-w-[var(--width-modal)] bg-white/80 dark:bg-dark-bg/80 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial p-7"
   >
     <div class="mb-6">
       <h2 class="text-2xl font-medium tracking-tighter text-graphite dark:text-dark-text">
