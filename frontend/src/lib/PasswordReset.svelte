@@ -6,6 +6,7 @@
   export let token: string;
 
   const dispatch = createEventDispatcher<{ close: void }>();
+  const backButtonClass = 'font-medium text-indigo-700 underline decoration-indigo-700/60 underline-offset-2 hover:text-indigo-900 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 dark:text-indigo-300 dark:decoration-indigo-300/60 dark:hover:text-indigo-200';
   let password = '';
   let confirmation = '';
   let saving = false;
@@ -48,12 +49,12 @@
   </h2>
   {#if completed}
     <p role="status" class="mb-4">{$t('passwordReset.completed')}</p>
-    <button type="button" class="font-medium underline" on:click={() => dispatch('close')}>
+    <button type="button" class={backButtonClass} on:click={() => dispatch('close')}>
       {$t('passwordReset.back')}
     </button>
   {:else if !/^[A-Za-z0-9_-]{43}$/.test(token)}
     <p role="alert" class="mb-4">{$t('passwordReset.invalidLink')}</p>
-    <button type="button" class="font-medium underline" on:click={() => dispatch('close')}>
+    <button type="button" class={backButtonClass} on:click={() => dispatch('close')}>
       {$t('passwordReset.back')}
     </button>
   {:else}
@@ -62,13 +63,13 @@
         <label for="reset-password" class="mb-1 block text-sm font-medium">{$t('settings.newPassword')}</label>
         <input id="reset-password" type="password" autocomplete="new-password" required
           bind:value={password} disabled={saving}
-          class="w-full rounded-lg border border-black/15 bg-white px-3 py-2 dark:border-white/15 dark:bg-dark-bg" />
+          class="w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-graphite dark:border-white/30 dark:bg-dark-bg dark:text-dark-text" />
       </div>
       <div>
         <label for="reset-confirmation" class="mb-1 block text-sm font-medium">{$t('settings.confirmPassword')}</label>
         <input id="reset-confirmation" type="password" autocomplete="new-password" required
           bind:value={confirmation} disabled={saving}
-          class="w-full rounded-lg border border-black/15 bg-white px-3 py-2 dark:border-white/15 dark:bg-dark-bg" />
+          class="w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-graphite dark:border-white/30 dark:bg-dark-bg dark:text-dark-text" />
       </div>
       {#if errorKey}
         <p role="alert" class="text-sm text-red-700 dark:text-red-300">{$t(errorKey)}</p>
@@ -78,7 +79,7 @@
           class="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white disabled:opacity-50">
           {saving ? $t('app.loading') : $t('passwordReset.save')}
         </button>
-        <button type="button" disabled={saving} class="underline" on:click={() => dispatch('close')}>
+        <button type="button" disabled={saving} class={backButtonClass} on:click={() => dispatch('close')}>
           {$t('passwordReset.back')}
         </button>
       </div>
