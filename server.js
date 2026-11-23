@@ -4,8 +4,9 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const morgan = require('morgan');
+const { body, validationResult } = require('express-validator');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { adminAuthLimiter, reservationLimiter } = require('./server/middleware/rateLimiter');
+const { adminAuthLimiter, reservationLimiter, passwordResetLimiter } = require('./server/middleware/rateLimiter');
 const { requireAdmin, requireAiAccess } = require('./server/middleware/access');
 const {
   validateGiftCreate,
@@ -24,7 +25,8 @@ const PriorityModel = require('./server/models/Priority');
 const MigrationManager = require('./server/migrations/migrationManager');
 const { initDatabase } = require('./server/db');
 const { config, validateConfig } = require('./server/config/env');
-const { extractMetadata } = require('./server/utils/metadata');
+const { createMetadataService, requireMetadataUser, metadataErrorHandler } = require('./server/routes/metadata');
+const { jsonBody, jsonBodyErrorHandler } = require('./server/middleware/jsonBody');
 const { translateText } = require('./server/utils/translate');
 const { createOidcAuth } = require('./server/auth/oidc');
 const { safeRequestUrl } = require('./server/utils/request-logging');
@@ -122,7 +124,7 @@ if (!config.skipMorganInTest) {
   app.use(morgan(':method :safe-url :status :response-time ms - :res[content-length]'));
 }
 
-app.use(express.json());
+app.use(jsonBody());
 app.use(express.static('public'));
 
 // Auth middleware on all routes
@@ -160,6 +162,12 @@ function normalizeOptionalString(value) {
 
 function isValidSlug(slug) {
   return /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(slug);
+}
+
+function getCredentialUserId(value) {
+  if (!/^\d+$/.test(value)) return null;
+  const id = Number(value);
+  return id > 0 && id <= 2147483647 ? id : null;
 }
 
 function getInviteUrl(token) {
@@ -357,6 +365,47 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   res.json(users);
 });
 
+app.patch('/api/admin/users/:id/email', requireAdmin,
+  body('email').isString().bail().trim().isEmail(),
+  async (req, res, next) => {
+    const id = getCredentialUserId(req.params.id);
+    if (id === null) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+    if (!validationResult(req).isEmpty()) {
+      return res.status(400).json({ error: 'Invalid email', code: 'INVALID_EMAIL' });
+    }
+    try {
+      const updated = await User.updateAdminEmail(id, req.body.email);
+      if (!updated) return res.status(404).json({ error: 'User not found' });
+      res.json(User.sanitizeUser(updated));
+    } catch (error) {
+      if ((error.code === '23505' && error.constraint === 'idx_users_email') ||
+          error.message === 'UNIQUE constraint failed: users.email') {
+        return res.status(409).json({ error: 'Email is already in use', code: 'EMAIL_IN_USE' });
+      }
+      next(error);
+    }
+  }
+);
+
+app.post('/api/admin/users/:id/password-reset-link', requireAdmin, async (req, res, next) => {
+  const id = getCredentialUserId(req.params.id);
+  if (id === null) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+  try {
+    const reset = await User.createPasswordReset(id);
+    if (!reset) return res.status(404).json({ error: 'User not found' });
+    res.set('Cache-Control', 'no-store').status(201).json({
+      reset_url: `${config.appUrl.replace(/\/$/, '')}/#/reset-password/${reset.token}`,
+      expires_at: reset.expiresAt
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.patch('/api/admin/users/:id/access', requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!Number.isInteger(id) || id < 1) {
@@ -502,6 +551,25 @@ app.get('/health', async (req, res) => {
 });
 
 // ==================== USER ROUTES ====================
+
+app.post('/api/auth/reset-password', passwordResetLimiter, async (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  const { token, new_password: password } = req.body ?? {};
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(token)) {
+    return res.status(400).json({ error: 'Invalid reset link', code: 'RESET_LINK_INVALID' });
+  }
+  if (typeof password !== 'string' || Buffer.byteLength(password, 'utf8') > 72 || [...password].length < 8) {
+    return res.status(400).json({ error: 'Invalid password length', code: 'INVALID_PASSWORD_LENGTH' });
+  }
+  try {
+    if (!(await User.resetPassword(token, password))) {
+      return res.status(400).json({ error: 'Invalid reset link', code: 'RESET_LINK_INVALID' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Update own profile (email, name, emoji)
 app.put('/api/auth/profile', requireAuth, async (req, res) => {
@@ -729,29 +797,13 @@ app.post('/api/users/:slug/gifts/:id/gifted', resolveUser, requireOwner, async (
 
 // ==================== METADATA & AI ====================
 
-app.post('/api/extract-metadata', async (req, res) => {
-  const { url } = req.body;
-  if (!url || !url.trim()) {
-    return res.status(400).json({ error: 'URL is required' });
-  }
-  try {
-    new URL(url);
-  } catch {
-    return res.status(400).json({ error: 'Invalid URL' });
-  }
-  try {
-    const metadata = await extractMetadata(url);
-    res.json(metadata);
-  } catch (error) {
-    console.error('Metadata extraction error:', error);
-    res.status(500).json({ error: 'Failed to extract metadata' });
-  }
-});
+const metadataService = createMetadataService();
+app.post('/api/extract-metadata', requireMetadataUser, metadataService.extractHandler);
 
-app.post('/api/parse-gift', requireAuth, requireAiAccess, async (req, res) => {
+app.post('/api/parse-gift', requireAuth, requireAiAccess, async (req, res, next) => {
   const { text, locale = 'ru' } = req.body;
 
-  if (!text || text.trim().length === 0) {
+  if (typeof text !== 'string' || text.trim().length === 0) {
     return res.status(400).json({ error: 'Text is required' });
   }
   if (!config.geminiApiKey) {
@@ -759,20 +811,7 @@ app.post('/api/parse-gift', requireAuth, requireAiAccess, async (req, res) => {
   }
 
   try {
-    // Check if text is a URL and extract metadata
-    let metadata = {};
-    let isUrl = false;
-    try {
-      new URL(text.trim());
-      isUrl = true;
-      try {
-        metadata = await extractMetadata(text.trim());
-      } catch {
-        console.log('Could not extract metadata, continuing with AI only');
-      }
-    } catch {
-      // Not a URL
-    }
+    const { metadata, isUrl } = await metadataService.forGift(text, req.currentUser.id);
 
     // Build category list dynamically from DB
     const categories = await Category.findAll(locale);
@@ -848,12 +887,16 @@ Rules:
 
     res.json(parsedData);
   } catch (error) {
-    console.error('Gemini API error:', error);
+    if (error.name === 'MetadataError') return next(error);
+    console.error('Gemini API processing failed');
     res.status(500).json({ error: 'Failed to process gift with AI' });
   }
 });
 
 // ==================== ERROR HANDLING ====================
+
+app.use(jsonBodyErrorHandler);
+app.use(metadataErrorHandler);
 
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });

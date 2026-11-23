@@ -22,6 +22,7 @@
   import ViewGiftModal from './lib/ViewGiftModal.svelte';
   import LoginModal from './lib/LoginModal.svelte';
   import InviteRegistration from './lib/InviteRegistration.svelte';
+  import PasswordReset from './lib/PasswordReset.svelte';
   import SecretCodeModal from './lib/SecretCodeModal.svelte';
   import SettingsModal from './lib/SettingsModal.svelte';
   import HomePage from './lib/HomePage.svelte';
@@ -55,6 +56,8 @@
   let users = [];
   let currentUser = null;
   let inviteToken = null;
+  let passwordResetToken = null;
+  const resetPasswordHash = '#/reset-password/';
   let usersLoading = true;
 
   let gifts = [];
@@ -136,6 +139,24 @@
   }
 
   function handleHashChange() {
+    const hash = window.location.hash;
+    if (hash.startsWith(resetPasswordHash)) {
+      inviteToken = null;
+      showSettingsModal = false;
+      showLoginModal = false;
+      if (hash !== resetPasswordHash) {
+        passwordResetToken = hash.slice(resetPasswordHash.length);
+        window.history.replaceState(window.history.state, '', resetPasswordHash);
+      } else {
+        passwordResetToken ??= '';
+      }
+      currentUser = null;
+      guestReservationIds = [];
+      gifts = [];
+      return;
+    }
+
+    passwordResetToken = null;
     inviteToken = getInviteTokenFromHash();
     if (inviteToken) {
       currentUser = null;
@@ -158,7 +179,13 @@
     gifts = [];
   }
 
+  function closePasswordReset() {
+    window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
+    handleHashChange();
+  }
+
   onMount(async () => {
+    if (window.location.hash.startsWith(resetPasswordHash)) handleHashChange();
     await auth.init();
     await loadUsers();
     await loadReferenceData();
@@ -639,7 +666,11 @@
       </div>
     </header>
 
-    {#if inviteToken}
+    {#if passwordResetToken !== null}
+      {#key passwordResetToken}
+        <PasswordReset token={passwordResetToken} on:close={closePasswordReset} />
+      {/key}
+    {:else if inviteToken}
       <InviteRegistration token={inviteToken} on:registered={onInviteRegistered} />
     {:else if !currentUser}
       <HomePage loading={usersLoading} on:login={handleLogin} />

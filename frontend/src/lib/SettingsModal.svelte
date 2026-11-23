@@ -25,6 +25,7 @@
     updateAdminUserAccess,
   } from './utils/api.js';
   import { auth } from './stores/auth.js';
+  import AdminUserCredentials from './AdminUserCredentials.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -361,6 +362,16 @@
     }
   }
 
+  function onAdminEmailUpdated(event) {
+    const updated = event.detail;
+    adminUsers = adminUsers.map((user) => (user.id === updated.id ? updated : user));
+    if (authUser?.id === updated.id) {
+      profileEmail = updated.email;
+      auth.refresh().catch(() => {});
+    }
+    toasts.success($t('admin.emailUpdated'));
+  }
+
   async function copyInviteUrl() {
     if (!lastInviteUrl) return;
     try {
@@ -484,7 +495,7 @@
               <h3 class="text-sm font-medium text-graphite dark:text-dark-text">
                 {$t('admin.createInvite')}
               </h3>
-              <div class="grid grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input
                   type="email"
                   bind:value={inviteEmail}
@@ -541,14 +552,14 @@
                 </h3>
                 {#each adminUsers as user (user.id)}
                   <div
-                    class="flex items-center gap-3 px-4 py-3 bg-white/50 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] rounded-lg"
+                    class="flex flex-wrap items-center gap-3 px-4 py-3 bg-white/50 dark:bg-white/5 border border-black/[0.06] dark:border-white/[0.06] rounded-lg"
                   >
-                    <div class="flex-1 min-w-0">
+                    <div class="w-full min-w-0 sm:w-auto sm:flex-1">
                       <div class="text-sm font-medium text-graphite dark:text-dark-text">
                         {user.avatar_emoji || '🎁'}
                         {user.name}
                       </div>
-                      <div class="text-xs text-black/40 dark:text-white/40">
+                      <div class="break-words text-xs text-black/40 dark:text-white/40">
                         /{user.slug}{user.email ? ` · ${user.email}` : ''}
                       </div>
                     </div>
@@ -570,6 +581,7 @@
                       />
                       {$t('admin.adminAccess')}
                     </label>
+                    <AdminUserCredentials {user} on:updated={onAdminEmailUpdated} />
                   </div>
                 {/each}
               </div>

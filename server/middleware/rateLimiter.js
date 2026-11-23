@@ -20,7 +20,16 @@ const reservationLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many password reset attempts', code: 'RESET_RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 module.exports = {
   adminAuthLimiter,
   reservationLimiter,
+  passwordResetLimiter,
 };

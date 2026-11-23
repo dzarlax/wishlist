@@ -1,4 +1,11 @@
 const bcrypt = require('bcryptjs');
+const { randomBytes, createHash } = require('node:crypto');
+
+const RESET_TTL_MS = 30 * 60 * 1000;
+
+function hashResetToken(token) {
+  return createHash('sha256').update(token).digest('hex');
+}
 
 class UserModel {
   constructor(db) {
@@ -9,6 +16,9 @@ class UserModel {
     if (!user) return null;
     const sanitized = { ...user };
     delete sanitized.admin_password;
+    delete sanitized.password_reset_hash;
+    delete sanitized.password_reset_expires_at;
+    delete sanitized.admin_email_override;
     sanitized.is_admin = Boolean(sanitized.is_admin);
     sanitized.can_use_ai = Boolean(sanitized.can_use_ai);
     return sanitized;
@@ -49,12 +59,12 @@ class UserModel {
 
   /**
    * Seed a user: create if not exists, update if exists.
-   * Hashes password on create. On update, only rehashes if password changed.
+   * Hashes the initial password and preserves the current password on later runs.
    */
   async seed(data) {
     const existing = await this.findBySlug(data.slug);
     if (existing) {
-      // Only update name, emoji, email — don't overwrite password if it was changed via UI
+      // An explicit admin email change takes precedence over the bootstrap email.
       const accessFields = [];
       const accessParams = [];
       if (data.is_admin !== undefined && !existing.is_admin) {
@@ -66,11 +76,19 @@ class UserModel {
         accessParams.push(Boolean(data.can_use_ai));
       }
       await this.db.run(
-        `UPDATE users SET name = ?, avatar_emoji = ?, email = ?${accessFields.length ? `, ${accessFields.join(', ')}` : ''} WHERE slug = ?`,
+        `UPDATE users SET name = ?, avatar_emoji = ?,
+           password_reset_hash = CASE WHEN NOT admin_email_override AND email IS DISTINCT FROM COALESCE(?, email)
+             THEN NULL ELSE password_reset_hash END,
+           password_reset_expires_at = CASE WHEN NOT admin_email_override AND email IS DISTINCT FROM COALESCE(?, email)
+             THEN NULL ELSE password_reset_expires_at END,
+           email = CASE WHEN admin_email_override THEN email ELSE COALESCE(?, email) END
+           ${accessFields.length ? `, ${accessFields.join(', ')}` : ''} WHERE slug = ?`,
         [
           data.name,
           data.avatar_emoji || existing.avatar_emoji,
-          data.email || existing.email,
+          data.email || null,
+          data.email || null,
+          data.email || null,
           ...accessParams,
           data.slug
         ]
@@ -92,17 +110,60 @@ class UserModel {
   async updateProfile(id, data) {
     const { email, name, avatar_emoji } = data;
     await this.db.run(
-      'UPDATE users SET email = ?, name = ?, avatar_emoji = ? WHERE id = ?',
-      [email || null, name, avatar_emoji, id]
+      `UPDATE users SET
+         password_reset_hash = CASE WHEN email IS DISTINCT FROM ? THEN NULL ELSE password_reset_hash END,
+         password_reset_expires_at = CASE WHEN email IS DISTINCT FROM ? THEN NULL ELSE password_reset_expires_at END,
+         email = ?, name = ?, avatar_emoji = ? WHERE id = ?`,
+      [email || null, email || null, email || null, name, avatar_emoji, id]
     );
   }
 
   async changePassword(id, newPassword) {
     const hashed = await bcrypt.hash(newPassword, 10);
     await this.db.run(
-      'UPDATE users SET admin_password = ? WHERE id = ?',
+      `UPDATE users SET admin_password = ?, password_reset_hash = NULL,
+         password_reset_expires_at = NULL WHERE id = ?`,
       [hashed, id]
     );
+  }
+
+  async updateAdminEmail(id, email) {
+    const { changes } = await this.db.run(
+      `UPDATE users SET
+         password_reset_hash = CASE WHEN email IS DISTINCT FROM ? THEN NULL ELSE password_reset_hash END,
+         password_reset_expires_at = CASE WHEN email IS DISTINCT FROM ? THEN NULL ELSE password_reset_expires_at END,
+         email = ?, admin_email_override = TRUE
+       WHERE id = ?`,
+      [email, email, email, id]
+    );
+    return changes === 1 ? this.findById(id) : null;
+  }
+
+  async createPasswordReset(id) {
+    const token = randomBytes(32).toString('base64url');
+    const expiresAt = Date.now() + RESET_TTL_MS;
+    const { changes } = await this.db.run(
+      'UPDATE users SET password_reset_hash = ?, password_reset_expires_at = ? WHERE id = ?',
+      [hashResetToken(token), expiresAt, id]
+    );
+    return changes === 1 ? { token, expiresAt: new Date(expiresAt).toISOString() } : null;
+  }
+
+  async resetPassword(token, password) {
+    const tokenHash = hashResetToken(token);
+    const user = await this.db.getOne(
+      'SELECT id FROM users WHERE password_reset_hash = ? AND password_reset_expires_at > ?',
+      [tokenHash, Date.now()]
+    );
+    if (!user) return false;
+
+    const hashed = await bcrypt.hash(password, 10);
+    const { changes } = await this.db.run(
+      `UPDATE users SET admin_password = ?, password_reset_hash = NULL, password_reset_expires_at = NULL
+       WHERE id = ? AND password_reset_hash = ? AND password_reset_expires_at > ?`,
+      [hashed, user.id, tokenHash, Date.now()]
+    );
+    return changes === 1;
   }
 
   async updateAccess(id, data) {

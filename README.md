@@ -429,7 +429,7 @@ Parse gift information from text or URL using AI. Requires authenticated user wi
 - Priority detection: Analyzes phrases like "very want" → hot, "would be nice" → medium
 
 ### POST /api/extract-metadata
-Extract Open Graph metadata from a URL
+Extract Open Graph metadata from a public HTTP(S) URL. Requires a Bearer JWT for an existing user (AI permission is not required).
 ```json
 {
   "url": "https://example.com/product"
@@ -445,6 +445,16 @@ Extract Open Graph metadata from a URL
   "url": "https://example.com/product"
 }
 ```
+
+## Metadata request safety
+
+Both metadata extraction and URL-based AI parsing use the same destination policy and per-user budget (10 metadata attempts per minute, at most 4 concurrent loads per process). Plain text AI parsing does not consume this budget. Private, loopback, link-local, reserved, own-infrastructure addresses and nonstandard ports are rejected, including redirects and mixed DNS answers. Connections use only the validated IP addresses; HTTPS certificate validation remains enabled.
+
+Metadata loads allow at most 3 redirects, a 10-second total deadline and 2 MiB of decoded HTML. Policy failures stop AI parsing before calling the AI provider. Ordinary public-page availability failures retain the existing text-only AI fallback.
+
+Errors have the form `{ "error": "safe message", "code": "METADATA_URL_BLOCKED" }`: 400 for invalid/forbidden URLs, 401 for missing user authentication, 429 for exhausted budgets, 502 for unsuitable/oversized upstream content and 504 for timeouts. Internal destinations and URL query strings are not included in these messages. The add-gift dialog localizes metadata policy errors.
+
+JSON APIs accept uncompressed bodies up to 100 KiB. Compressed JSON returns 415, oversized JSON 413 and malformed JSON 400. The resolved `body-parser` version is pinned to 1.20.9 for CVE-2026-111181; Docker uses `npm ci` to preserve the reviewed lockfile.
 
 ## 🔒 CORS Configuration
 
