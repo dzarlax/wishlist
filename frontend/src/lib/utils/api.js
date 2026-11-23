@@ -156,6 +156,10 @@ export async function changePassword(currentPassword, newPassword) {
   });
 }
 
+export async function resetPassword(token, newPassword) {
+  return post('/api/auth/reset-password', { token, new_password: newPassword });
+}
+
 // ==================== Invite & Admin API ====================
 
 export async function fetchInvite(token) {
@@ -184,6 +188,14 @@ export async function fetchAdminUsers() {
 
 export async function updateAdminUserAccess(id, data) {
   return patch(`/api/admin/users/${id}/access`, data);
+}
+
+export async function updateAdminUserEmail(id, email) {
+  return patch(`/api/admin/users/${id}/email`, { email });
+}
+
+export async function createPasswordResetLink(id) {
+  return post(`/api/admin/users/${id}/password-reset-link`, {});
 }
 
 // ==================== AI API ====================

@@ -209,7 +209,27 @@
     "acceptFailed": "Nije moguće prihvatiti pozivnicu",
     "aiIncluded": "AI pristup je uključen za ovaj nalog"
   },
+  "passwordReset": {
+    "title": "Resetovanje lozinke",
+    "save": "Sačuvaj novu lozinku",
+    "completed": "Lozinka je ažurirana. Sada možete da se prijavite novom lozinkom.",
+    "back": "Nazad na Wishlist",
+    "invalidLink": "Link je nevažeći ili je istekao. Zatražite novi link od administratora.",
+    "passwordLength": "Unesite najmanje 8 znakova i najviše 72 bajta.",
+    "mismatch": "Lozinke se ne podudaraju.",
+    "rateLimited": "Previše pokušaja. Pokušajte ponovo kasnije."
+  },
   "admin": {
+    "editEmail": "Promeni imejl",
+    "saveEmail": "Sačuvaj imejl",
+    "emailUpdated": "Imejl je ažuriran",
+    "emailInUse": "Ova imejl adresa se već koristi.",
+    "invalidEmail": "Unesite ispravnu imejl adresu.",
+    "createResetLink": "Napravi link za resetovanje lozinke",
+    "resetLink": "Link za resetovanje",
+    "resetLinkReady": "Kopirajte jednokratni link i pošaljite ga korisniku. Važi 30 minuta.",
+    "resetLinkConfirmation": "Napraviti link za resetovanje lozinke za /{slug}? Prethodni link za ovaj profil prestaće da važi.",
+    "closeCredentialForm": "Zatvori",
     "title": "Admin",
     "createInvite": "Napravi pozivnicu",
     "nameHint": "Ime",

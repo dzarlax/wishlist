@@ -80,9 +80,9 @@
   }
 </script>
 
-<div class="min-h-[70vh] flex items-center justify-center px-4">
+<div class="min-h-[70vh] flex items-center justify-center">
   <div
-    class="w-full max-w-[var(--width-modal)] bg-white/80 dark:bg-dark-bg/80 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial p-7"
+    class="w-full max-w-[var(--width-modal-lg)] bg-white/80 dark:bg-dark-bg/80 border border-black/[0.08] dark:border-white/[0.08] shadow-editorial p-4 sm:p-7"
   >
     <div class="mb-6">
       <h2 class="text-2xl font-medium tracking-tighter text-graphite dark:text-dark-text">
@@ -111,7 +111,7 @@
               >{$t('settings.email')}</span
             >
             <div
-              class="px-3 py-2 text-sm bg-black/5 dark:bg-white/5 text-graphite dark:text-dark-text"
+              class="px-3 py-2 text-sm [overflow-wrap:anywhere] bg-black/5 dark:bg-white/5 text-graphite dark:text-dark-text"
             >
               {invite.email}
             </div>

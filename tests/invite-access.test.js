@@ -30,7 +30,8 @@ async function runMigration(db, version) {
     6: '0006-add-categories-priorities-email.js',
     7: '0007-split-price.js',
     8: '0008-currency-rates.js',
-    9: '0009-add-invites-access-flags.js'
+    9: '0009-add-invites-access-flags.js',
+    10: '0010-add-password-reset.js'
   }[version];
   const migration = require(`../server/migrations/${file}`);
   await migration.up(db);
@@ -185,7 +186,7 @@ test('invite consume reports losing updates so callers can roll back created use
 test('seeded users can bootstrap admin and AI access without replacing passwords', async () => {
   const { db, close } = await createDb();
   try {
-    await migrateThrough(db, 9);
+    await migrateThrough(db, 10);
     const userModel = new UserModel(db);
 
     const created = userModel.sanitizeUser(await userModel.seed({
@@ -212,6 +213,40 @@ test('seeded users can bootstrap admin and AI access without replacing passwords
     assert.equal(userModel.sanitizeUser(updated).can_use_ai, true);
     assert.equal(await userModel.verifyPassword(updated, 'original-password'), true);
     assert.equal(await userModel.verifyPassword(updated, 'different-password'), false);
+  } finally {
+    close();
+  }
+});
+
+test('admin email survives reseeding, and expired or revoked reset links leave the password intact', async () => {
+  const { db, close } = await createDb();
+  try {
+    await migrateThrough(db, 9);
+    const users = new UserModel(db);
+    const seed = { slug: 'test-owner', name: 'Owner', admin_password: 'original-password', email: 'old@example.test' };
+    const original = await users.create(seed);
+    await runMigration(db, 10);
+    await runMigration(db, 10);
+
+    const emailLink = await users.createPasswordReset(original.id);
+    await users.updateAdminEmail(original.id, 'New@example.test');
+    assert.equal(await users.resetPassword(emailLink.token, 'ignored-password'), false);
+    const reseeded = await users.seed(seed);
+    assert.equal(reseeded.id, original.id);
+    assert.equal(reseeded.email, 'New@example.test');
+
+    const expired = await users.createPasswordReset(original.id);
+    await db.run('UPDATE users SET password_reset_expires_at = ? WHERE id = ?', [Date.now() - 1, original.id]);
+    assert.equal(await users.resetPassword(expired.token, 'ignored-password'), false);
+    assert.equal(await users.verifyPassword(await users.findById(original.id), seed.admin_password), true);
+
+    const passwordLink = await users.createPasswordReset(original.id);
+    await users.changePassword(original.id, 'user-chosen-password');
+    assert.equal(await users.resetPassword(passwordLink.token, 'ignored-password'), false);
+
+    const profileLink = await users.createPasswordReset(original.id);
+    await users.updateProfile(original.id, { email: 'self@example.test', name: 'Owner', avatar_emoji: '🎁' });
+    assert.equal(await users.resetPassword(profileLink.token, 'ignored-password'), false);
   } finally {
     close();
   }
@@ -425,4 +460,83 @@ test('local password login and owner APIs work over HTTP with OIDC disabled', as
   assert.deepEqual(await ownedGifts.json(), []);
   assert.doesNotMatch(output, /OIDC initialization|\.well-known\/openid-configuration/);
   assert.equal(fs.existsSync(databasePath), true);
+
+  const request = (route, method, body, bearer) => fetch(`${baseUrl}${route}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(bearer ? { Authorization: `Bearer ${bearer}` } : {})
+    },
+    body: JSON.stringify(body)
+  });
+  const otherLogin = await request('/api/auth/login', 'POST', { slug: 'other', password: 'other-password' });
+  const other = await otherLogin.json();
+  const emailRoute = `/api/admin/users/${other.user.id}/email`;
+  const linkRoute = `/api/admin/users/${other.user.id}/password-reset-link`;
+  const newEmail = { email: '  Other.New@example.test  ' };
+  const invalidLink = { error: 'Invalid reset link', code: 'RESET_LINK_INVALID' };
+
+  assert.equal((await request(emailRoute, 'PATCH', newEmail)).status, 401);
+  assert.equal((await request(linkRoute, 'POST', {})).status, 401);
+  assert.equal((await request(emailRoute, 'PATCH', newEmail, other.token)).status, 403);
+  assert.equal((await request(linkRoute, 'POST', {}, other.token)).status, 403);
+  assert.equal((await request('/api/admin/users/99999/email', 'PATCH', newEmail, token)).status, 404);
+  assert.equal((await request('/api/admin/users/99999/password-reset-link', 'POST', {}, token)).status, 404);
+  assert.equal((await request(emailRoute, 'PATCH', { email: 'invalid' }, token)).status, 400);
+  const conflict = await request(emailRoute, 'PATCH', { email: 'owner@example.test' }, token);
+  assert.equal(conflict.status, 409);
+  assert.equal((await conflict.json()).code, 'EMAIL_IN_USE');
+  const emailUpdate = await request(emailRoute, 'PATCH', newEmail, token);
+  assert.equal(emailUpdate.status, 200);
+  const updated = await emailUpdate.json();
+  assert.equal(updated.id, other.user.id);
+  assert.equal(updated.slug, other.user.slug);
+  assert.equal(updated.email, 'Other.New@example.test');
+
+  async function createLink() {
+    const issuedAt = Date.now();
+    const response = await request(linkRoute, 'POST', {}, token);
+    assert.equal(response.status, 201);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    const link = await response.json();
+    const expiration = new Date(link.expires_at).getTime();
+    assert.ok(expiration >= issuedAt + 30 * 60 * 1000 && expiration <= Date.now() + 30 * 60 * 1000);
+    const match = link.reset_url.match(/^http:\/\/localhost:3000\/#\/reset-password\/([A-Za-z0-9_-]{43})$/);
+    assert.ok(match);
+    return match[1];
+  }
+
+  const olderLink = await createLink();
+  const resetToken = await createLink();
+  assert.notEqual(olderLink, resetToken);
+  const reset = (linkToken, password) => request('/api/auth/reset-password', 'POST', {
+    token: linkToken,
+    new_password: password
+  });
+  const stillValid = await request('/api/auth/login', 'POST', { slug: 'other', password: 'other-password' });
+  assert.equal(stillValid.status, 200);
+  const replaced = await reset(olderLink, 'new-test-password');
+  assert.equal(replaced.status, 400);
+  assert.deepEqual(await replaced.json(), invalidLink);
+  const tooLong = await reset(resetToken, '€'.repeat(25));
+  assert.equal(tooLong.status, 400);
+  assert.equal((await tooLong.json()).code, 'INVALID_PASSWORD_LENGTH');
+  const attempts = await Promise.all([
+    reset(resetToken, 'new-test-password'),
+    reset(resetToken, 'new-test-password')
+  ]);
+  assert.deepEqual(attempts.map(response => response.status).sort(), [200, 400]);
+  assert.deepEqual(await attempts.find(response => response.status === 400).json(), invalidLink);
+
+  const previousPassword = await request('/api/auth/login', 'POST', { slug: 'other', password: 'other-password' });
+  const currentPassword = await request('/api/auth/login', 'POST', { slug: 'other', password: 'new-test-password' });
+  assert.equal(previousPassword.status, 401);
+  assert.equal(currentPassword.status, 200);
+  const existingSession = await fetch(`${baseUrl}/api/auth/me`, { headers: { Authorization: `Bearer ${other.token}` } });
+  assert.equal(existingSession.status, 200);
+  const profile = await existingSession.json();
+  assert.equal(profile.email, 'Other.New@example.test');
+  assert.equal('password_reset_hash' in profile, false);
+  assert.equal('password_reset_expires_at' in profile, false);
+  assert.equal('admin_email_override' in profile, false);
 });

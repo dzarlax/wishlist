@@ -209,7 +209,27 @@
     "acceptFailed": "Could not accept invite",
     "aiIncluded": "AI access is enabled for this account"
   },
+  "passwordReset": {
+    "title": "Reset password",
+    "save": "Save new password",
+    "completed": "Password updated. You can now sign in with your new password.",
+    "back": "Back to Wishlist",
+    "invalidLink": "This link is invalid or has expired. Ask an administrator for a new link.",
+    "passwordLength": "Use at least 8 characters and no more than 72 bytes.",
+    "mismatch": "The passwords do not match.",
+    "rateLimited": "Too many attempts. Try again later."
+  },
   "admin": {
+    "editEmail": "Edit email",
+    "saveEmail": "Save email",
+    "emailUpdated": "Email updated",
+    "emailInUse": "This email is already in use.",
+    "invalidEmail": "Enter a valid email address.",
+    "createResetLink": "Create password reset link",
+    "resetLink": "Reset link",
+    "resetLinkReady": "Copy this one-time link and share it with the user. It expires in 30 minutes.",
+    "resetLinkConfirmation": "Create a password reset link for /{slug}? This replaces any previous reset link for this user.",
+    "closeCredentialForm": "Close",
     "title": "Admin",
     "createInvite": "Create invite",
     "nameHint": "Name",
