@@ -559,11 +559,11 @@
                         {user.avatar_emoji || '🎁'}
                         {user.name}
                       </div>
-                      <div class="break-words text-xs text-black/40 dark:text-white/40">
+                      <div class="break-words text-xs text-black/65 dark:text-white/70">
                         /{user.slug}{user.email ? ` · ${user.email}` : ''}
                       </div>
                     </div>
-                    <label class="flex items-center gap-1 text-xs text-black/60 dark:text-white/60">
+                    <label class="flex items-center gap-1 text-xs text-black/65 dark:text-white/70">
                       <input
                         type="checkbox"
                         checked={user.can_use_ai}
@@ -572,7 +572,7 @@
                       />
                       {$t('admin.aiAccess')}
                     </label>
-                    <label class="flex items-center gap-1 text-xs text-black/60 dark:text-white/60">
+                    <label class="flex items-center gap-1 text-xs text-black/65 dark:text-white/70">
                       <input
                         type="checkbox"
                         checked={user.is_admin}
